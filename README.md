@@ -26,11 +26,15 @@ README.md     this file
 - **Inventory** — tools, parts, locks/keys, order list
 - **Docs & Bylaws** — role, operating boundaries
 
-## Auth (draft)
+## Access model (draft)
 
-Two passwords: a shared **member** password (view) and a **webmaster** password
-(edit / add videos / resolve issues). NOTE: a client-side password on a *public*
-site is cosmetic only — real gating needs a backend. See "Open decisions" below.
+**No login to enter** — the whole site is open to anyone. A **Bike Manager mode**
+(top-bar unlock) reveals the manager-only controls: add videos, resolve issues,
+edit docs/inventory, run the weekly check, apply a verdict to a bike.
+
+The unlock is a soft passcode prompt only. On a *public* site a client-side
+passcode is cosmetic — real gating needs a backend (see "Open decisions").
+Until then, keep genuinely sensitive content out of the site.
 
 ## Open decisions (see chat)
 

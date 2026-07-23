@@ -24,11 +24,7 @@
   a{color:var(--accent-ink)}
   .mono{font-family:var(--font-mono)}
 
-  /* ---------- login gate ---------- */
-  #gate{position:fixed;inset:0;background:var(--bg);z-index:50;display:flex;align-items:center;justify-content:center;padding:24px}
-  .gate-card{width:min(420px,100%);border:2px solid var(--rule);box-shadow:var(--shadow-lg);background:var(--card);padding:28px}
-  .gate-card h1{font-weight:var(--display-wt);font-size:26px;margin:0 0 2px;letter-spacing:-.02em}
-  .gate-card .term{font-family:var(--font-mono);font-size:11px;text-transform:uppercase;letter-spacing:.1em;color:var(--ink-faint);margin-bottom:20px}
+  /* ---------- form controls ---------- */
   label{display:block;font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:var(--ink-faint);margin:0 0 6px}
   input[type=text],input[type=password],input[type=url],textarea,select{
     width:100%;padding:11px 12px;border:1.5px solid var(--rule);border-radius:0;background:#fff;color:var(--ink);
@@ -37,7 +33,7 @@
   .hint{font-size:12px;color:var(--ink-faint);margin-top:10px}
 
   /* ---------- shell ---------- */
-  #app{display:none;min-height:100vh;grid-template-columns:230px 1fr;grid-template-rows:auto 1fr}
+  #app{display:grid;min-height:100vh;grid-template-columns:230px 1fr;grid-template-rows:auto 1fr}
   .topbar{grid-column:1/3;display:flex;align-items:center;gap:14px;padding:12px 18px;background:var(--bg);border-bottom:2px solid #111;position:sticky;top:0;z-index:20}
   .brand{display:flex;flex-direction:column;line-height:1.05}
   .brand b{font-weight:var(--display-wt);font-size:18px;letter-spacing:-.01em}
@@ -132,7 +128,6 @@
   .mt{margin-top:14px}.mt-sm{margin-top:8px}
 
   /* ---------- CMU EMS logo ---------- */
-  .gate-logo{width:82px;height:82px;object-fit:contain;display:block;margin:0 0 14px}
   .topbar-logo{width:34px;height:34px;object-fit:contain;flex:0 0 auto}
 
   /* ---------- bike diagram (out-of-service) ---------- */
@@ -159,27 +154,14 @@
 </head>
 <body>
 
-<!-- ============ LOGIN GATE ============ -->
-<div id="gate">
-  <div class="gate-card">
-    <img class="gate-logo" src="assets/cmu-ems-logo.png" alt="CMU EMS" onerror="this.remove()">
-    <h1>Bike Ops</h1>
-    <div class="term">CMU EMS · Bike Manager Hub</div>
-    <label for="pw">Access password</label>
-    <input id="pw" type="password" placeholder="member password" autocomplete="off">
-    <button class="btn solid block mt" onclick="tryLogin()">Enter</button>
-    <div class="hint">Members enter the shared password to view. The <b>webmaster password</b> unlocks editing (add videos, edit content, resolve issues).<br><br><span class="mono">demo: member = <b>ride</b> · webmaster = <b>wrench</b></span></div>
-  </div>
-</div>
-
-<!-- ============ APP ============ -->
+<!-- ============ APP (open to everyone; Bike Manager mode unlocks editing) ============ -->
 <div id="app">
   <div class="topbar">
     <img class="topbar-logo" src="assets/cmu-ems-logo.png" alt="" onerror="this.remove()">
     <div class="brand"><b>Bike Ops</b><span class="term">CMU EMS</span></div>
     <div class="spacer"></div>
-    <span id="rolePill" class="role-pill">Viewer</span>
-    <button class="btn sm ghost" onclick="toggleWeb()" id="webBtn">Webmaster</button>
+    <span id="rolePill" class="role-pill">Member view</span>
+    <button class="btn sm ghost" onclick="toggleWeb()" id="webBtn">🔒 Bike Manager</button>
   </div>
 
   <nav class="sidebar" id="nav">
@@ -481,32 +463,24 @@
     var it=e.target.closest('.sb-item'); if(it) go(it.dataset.view);
   });
 
-  function tryLogin(){
-    var pw=document.getElementById('pw').value.trim().toLowerCase();
-    if(pw==='ride'||pw==='wrench'){
-      document.getElementById('gate').style.display='none';
-      document.getElementById('app').style.display='grid';
-      if(pw==='wrench') setWeb(true);
-      var last='dash'; try{last=localStorage.getItem('bikeops_view')||'dash';}catch(e){}
-      go(last);
-    } else { alert('Try  ride  (member) or  wrench  (webmaster)'); }
-  }
-  document.getElementById('pw').addEventListener('keydown',function(e){if(e.key==='Enter')tryLogin();});
-
   function setWeb(on){
     document.body.classList.toggle('is-web',on);
     var pill=document.getElementById('rolePill');
-    pill.textContent=on?'Webmaster':'Viewer';
+    pill.textContent=on?'Bike Manager':'Member view';
     pill.className='role-pill'+(on?' web':'');
-    document.getElementById('webBtn').textContent=on?'Exit webmaster':'Webmaster';
+    document.getElementById('webBtn').textContent=on?'Exit manager':'🔒 Bike Manager';
   }
   function toggleWeb(){
     var on=!document.body.classList.contains('is-web');
-    if(on){var p=prompt('Webmaster password:');if((p||'').trim().toLowerCase()!=='wrench'){alert('Nope — demo pw is  wrench');return;}}
+    // Soft gate only — real access control comes with the backend. Public site: this is not secure.
+    if(on){var p=prompt('Bike Manager passcode:');if((p||'').trim().toLowerCase()!=='wrench'){alert('Incorrect. (demo passcode: wrench)');return;}}
     setWeb(on);
   }
 
   renderOOS();
+  // Open to everyone — restore last-viewed section on load (no login).
+  var last='dash'; try{last=localStorage.getItem('bikeops_view')||'dash';}catch(e){}
+  go(last);
 </script>
 </body>
 </html>
