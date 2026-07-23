@@ -130,6 +130,31 @@
   .placeholder{border:1.5px dashed var(--warn);background:#fff8ec;color:#7a4d00;font-size:12.5px;padding:8px 11px;margin-top:10px;font-family:var(--font-mono)}
   .row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
   .mt{margin-top:14px}.mt-sm{margin-top:8px}
+
+  /* ---------- CMU EMS logo ---------- */
+  .gate-logo{width:82px;height:82px;object-fit:contain;display:block;margin:0 0 14px}
+  .topbar-logo{width:34px;height:34px;object-fit:contain;flex:0 0 auto}
+
+  /* ---------- bike diagram (out-of-service) ---------- */
+  .bike-diagram .diagram-head{display:flex;align-items:baseline;justify-content:space-between;gap:12px;margin-bottom:12px;flex-wrap:wrap}
+  .diagram-legend{font-family:var(--font-mono);font-size:11px;color:var(--ink-soft);display:flex;align-items:center;gap:7px}
+  .diagram-legend .sw{width:16px;height:6px;background:var(--oos);display:inline-block}
+  .views{display:grid;grid-template-columns:1.6fr 1fr;gap:14px}
+  @media(max-width:640px){.views{grid-template-columns:1fr}.bikeviz{max-width:400px;margin-inline:auto}}
+  .viewbox{border:1.5px solid var(--rule);background:var(--card-2);padding:10px 12px 12px}
+  .viewlabel{font-family:var(--font-mono);font-size:10.5px;text-transform:uppercase;letter-spacing:.06em;color:var(--ink-faint);margin-bottom:6px}
+  .bikeviz{width:100%;height:auto;display:block}
+  .bikeviz .part{fill:none;stroke:var(--ink);stroke-width:3;stroke-linecap:round;stroke-linejoin:round;transition:stroke .18s var(--ease),fill .18s var(--ease),filter .18s var(--ease)}
+  .bikeviz .part *{vector-effect:non-scaling-stroke}
+  .bikeviz .part.solid{fill:var(--ink);stroke:none}
+  .bikeviz .tire{stroke-width:5}
+  .bikeviz .part.flag{stroke:var(--oos);stroke-width:5;filter:drop-shadow(0 0 5px rgba(210,31,14,.6));animation:partpulse 1.1s var(--ease) infinite}
+  .bikeviz .part.solid.flag{fill:var(--oos);stroke:none}
+  @keyframes partpulse{0%,100%{opacity:.82}50%{opacity:1}}
+  .flagchips{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px;align-items:center;min-height:24px}
+  .flagchip{font-family:var(--font-mono);font-size:11px;text-transform:uppercase;letter-spacing:.04em;background:var(--oos);color:#fff;padding:4px 9px}
+  .flaghint{font-size:12.5px;color:var(--ink-faint)}
+  @media(prefers-reduced-motion:reduce){.bikeviz .part.flag{animation:none}}
 </style>
 </head>
 <body>
@@ -137,6 +162,7 @@
 <!-- ============ LOGIN GATE ============ -->
 <div id="gate">
   <div class="gate-card">
+    <img class="gate-logo" src="assets/cmu-ems-logo.png" alt="CMU EMS" onerror="this.remove()">
     <h1>Bike Ops</h1>
     <div class="term">CMU EMS · Bike Manager Hub</div>
     <label for="pw">Access password</label>
@@ -149,6 +175,7 @@
 <!-- ============ APP ============ -->
 <div id="app">
   <div class="topbar">
+    <img class="topbar-logo" src="assets/cmu-ems-logo.png" alt="" onerror="this.remove()">
     <div class="brand"><b>Bike Ops</b><span class="term">CMU EMS</span></div>
     <div class="spacer"></div>
     <span id="rolePill" class="role-pill">Viewer</span>
@@ -230,8 +257,49 @@
     <!-- ===== OUT OF SERVICE TOOL ===== -->
     <section class="view" data-view="oos">
       <h2 class="view-title">Out-of-Service Decision Tool</h2>
-      <p class="view-sub">Check off what's wrong; the tool tells you whether the bike stays in service. Removes the guesswork so any member gets a consistent answer.</p>
-      <div class="grid cols-2">
+      <p class="view-sub">Check off what's wrong below — the matching part lights up on the bike so you can confirm you're marking the right thing, and the tool gives a consistent in-service / out-of-service verdict.</p>
+
+      <div class="card bike-diagram">
+        <div class="diagram-head">
+          <h3 style="margin:0">Bike diagram</h3>
+          <span class="diagram-legend"><span class="sw"></span>red = flagged part</span>
+        </div>
+        <div class="views">
+          <div class="viewbox">
+            <div class="viewlabel">Side view</div>
+            <svg class="bikeviz" viewBox="0 0 320 190" role="img" aria-label="Side view of a bicycle; parts highlight when a matching problem is checked">
+              <g class="part tire" data-part="tire"><circle cx="72" cy="132" r="37"/><circle cx="248" cy="132" r="37"/></g>
+              <g class="part" data-part="wheel"><circle cx="72" cy="132" r="30"/><circle cx="248" cy="132" r="30"/><line x1="72" y1="132" x2="94" y2="118"/><line x1="72" y1="132" x2="52" y2="120"/><line x1="248" y1="132" x2="270" y2="120"/><line x1="248" y1="132" x2="228" y2="120"/></g>
+              <g class="part" data-part="drivetrain"><circle cx="150" cy="132" r="11"/><circle cx="72" cy="132" r="6"/><line x1="78" y1="127" x2="145" y2="123"/><line x1="78" y1="137" x2="150" y2="143"/><line x1="150" y1="132" x2="158" y2="147"/><line x1="154" y1="147" x2="164" y2="147"/></g>
+              <g class="part" data-part="frame"><line x1="120" y1="66" x2="150" y2="132"/><line x1="150" y1="132" x2="72" y2="132"/><line x1="120" y1="66" x2="72" y2="132"/><line x1="150" y1="132" x2="212" y2="96"/><line x1="120" y1="66" x2="206" y2="70"/></g>
+              <g class="part" data-part="steering"><line x1="206" y1="70" x2="212" y2="96"/><line x1="212" y1="96" x2="248" y2="132"/><line x1="206" y1="70" x2="214" y2="58"/></g>
+              <g class="part" data-part="handlebar"><line x1="214" y1="58" x2="236" y2="54"/><line x1="236" y1="54" x2="240" y2="66"/></g>
+              <g class="part" data-part="seat"><line x1="106" y1="60" x2="130" y2="58" stroke-width="5"/><line x1="120" y1="62" x2="120" y2="66"/></g>
+              <g class="part" data-part="brake"><circle cx="72" cy="101" r="3.5"/><circle cx="248" cy="101" r="3.5"/></g>
+              <g class="part" data-part="lock"><rect x="169" y="109" width="15" height="12" rx="2"/><path d="M172 109 v-3 a4.5 4.5 0 0 1 9 0 v3"/></g>
+              <g class="part solid" data-part="light"><rect x="250" y="90" width="13" height="9" rx="1"/></g>
+              <g class="part solid" data-part="bell"><circle cx="222" cy="54" r="4.5"/></g>
+            </svg>
+          </div>
+          <div class="viewbox">
+            <div class="viewlabel">Front view</div>
+            <svg class="bikeviz" viewBox="0 0 190 190" role="img" aria-label="Front view of a bicycle; parts highlight when a matching problem is checked">
+              <g class="part tire" data-part="tire"><circle cx="95" cy="130" r="40"/></g>
+              <g class="part" data-part="wheel"><circle cx="95" cy="130" r="32"/><circle cx="95" cy="130" r="3"/></g>
+              <g class="part" data-part="steering"><line x1="95" y1="130" x2="86" y2="86"/><line x1="95" y1="130" x2="104" y2="86"/><line x1="86" y1="86" x2="104" y2="86"/><line x1="95" y1="86" x2="95" y2="68"/></g>
+              <g class="part" data-part="frame"><line x1="95" y1="86" x2="95" y2="124"/></g>
+              <g class="part" data-part="handlebar"><line x1="60" y1="64" x2="130" y2="64"/><line x1="60" y1="64" x2="58" y2="70"/><line x1="130" y1="64" x2="132" y2="70"/></g>
+              <g class="part" data-part="seat"><line x1="84" y1="56" x2="106" y2="56" stroke-width="5"/></g>
+              <g class="part" data-part="brake"><circle cx="95" cy="100" r="3.5"/></g>
+              <g class="part solid" data-part="light"><rect x="88" y="92" width="14" height="9" rx="1"/></g>
+              <g class="part solid" data-part="bell"><circle cx="118" cy="62" r="4.5"/></g>
+            </svg>
+          </div>
+        </div>
+        <div id="flagList" class="flagchips"><span class="flaghint">Nothing selected — bike shown normal.</span></div>
+      </div>
+
+      <div class="grid cols-2 mt">
         <div class="card">
           <h3>What's wrong with the bike?</h3>
           <div id="oosList"></div>
@@ -359,32 +427,44 @@
 </div>
 
 <script>
+  var PART_LABEL={brake:"Brakes",wheel:"Wheel / rim",tire:"Tire",frame:"Frame",steering:"Steering",lock:"Lock",drivetrain:"Gears / chain",light:"Light",seat:"Seat",handlebar:"Handlebar",bell:"Bell"};
   var OOS_ITEMS=[
-    {t:"Brakes not working / won't grip",sev:"crit"},
-    {t:"Wheel bent / won't spin true",sev:"crit"},
-    {t:"Tire flat / won't hold air",sev:"crit"},
-    {t:"Frame cracked",sev:"crit"},
-    {t:"Steering / headset loose",sev:"crit"},
-    {t:"No working lock",sev:"crit"},
-    {t:"Gears skipping",sev:"warn"},
-    {t:"Brake pads worn",sev:"warn"},
-    {t:"Light not working",sev:"warn"},
-    {t:"Seat / handlebars loose",sev:"warn"},
-    {t:"Low tire pressure",sev:"warn"},
-    {t:"Bell missing / cosmetic",sev:"minor"}
+    {t:"Brakes not working / won't grip",sev:"crit",parts:["brake"]},
+    {t:"Wheel bent / won't spin true",sev:"crit",parts:["wheel"]},
+    {t:"Tire flat / won't hold air",sev:"crit",parts:["tire"]},
+    {t:"Frame cracked",sev:"crit",parts:["frame"]},
+    {t:"Steering / headset loose",sev:"crit",parts:["steering"]},
+    {t:"No working lock",sev:"crit",parts:["lock"]},
+    {t:"Gears skipping",sev:"warn",parts:["drivetrain"]},
+    {t:"Brake pads worn",sev:"warn",parts:["brake"]},
+    {t:"Light not working",sev:"warn",parts:["light"]},
+    {t:"Seat / handlebars loose",sev:"warn",parts:["seat","handlebar"]},
+    {t:"Low tire pressure",sev:"warn",parts:["tire"]},
+    {t:"Bell missing / cosmetic",sev:"minor",parts:["bell"]}
   ];
   function renderOOS(){
     var h="";
     OOS_ITEMS.forEach(function(it,i){
       var tag=it.sev==="crit"?'<span class="tag crit">Critical</span>':it.sev==="warn"?'<span class="tag warn">Warning</span>':'<span class="tag">Minor</span>';
-      h+='<label class="checkline"><input type="checkbox" data-sev="'+it.sev+'" onchange="calcOOS()"><span class="lbl">'+it.t+'</span>'+tag+'</label>';
+      h+='<label class="checkline"><input type="checkbox" data-sev="'+it.sev+'" data-parts="'+it.parts.join(',')+'" onchange="calcOOS()"><span class="lbl">'+it.t+'</span>'+tag+'</label>';
     });
     document.getElementById("oosList").innerHTML=h;
   }
   function calcOOS(){
-    var boxes=document.querySelectorAll('#oosList input:checked');
-    var crit=0,warn=0;
-    boxes.forEach(function(b){if(b.dataset.sev==="crit")crit++;else if(b.dataset.sev==="warn")warn++;});
+    var boxes=document.querySelectorAll('#oosList input');
+    var crit=0,warn=0,active={};
+    boxes.forEach(function(b){
+      if(!b.checked) return;
+      if(b.dataset.sev==="crit")crit++;else if(b.dataset.sev==="warn")warn++;
+      (b.dataset.parts||"").split(",").forEach(function(p){if(p)active[p]=1;});
+    });
+    document.querySelectorAll('.bikeviz [data-part]').forEach(function(el){
+      el.classList.toggle('flag',!!active[el.getAttribute('data-part')]);
+    });
+    var keys=Object.keys(active);
+    document.getElementById('flagList').innerHTML = keys.length
+      ? keys.map(function(p){return '<span class="flagchip">'+(PART_LABEL[p]||p)+'</span>';}).join('')
+      : '<span class="flaghint">Nothing selected — bike shown normal.</span>';
     var v=document.getElementById("verdict");
     if(crit>0){v.className="verdict oos";v.innerHTML='<span class="big">Out of Service ✕</span>';}
     else if(warn>0){v.className="verdict warn";v.innerHTML='<span class="big">Needs Manager Review</span>';}
