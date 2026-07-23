@@ -1,0 +1,432 @@
+<!doctype html>
+<html lang="en" data-theme="carbon">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CMU EMS · Bike Ops</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#ffffff; --bg-2:#f4f4f4; --card:#ffffff; --card-2:#f6f6f6;
+    --ink:#0a0a0a; --ink-soft:#2e2e2e; --ink-faint:#565656;
+    --rule:#111; --rule-soft:#d6d6d6; --accent:#ff3300; --accent-ink:#cc2900;
+    --chip:#fff; --shadow-sm:2px 2px 0 #111; --shadow-md:3px 3px 0 #111; --shadow-lg:5px 5px 0 #111;
+    --font-body:'Inter',system-ui,sans-serif; --font-mono:'Space Mono',ui-monospace,monospace;
+    --display-wt:800; --radius:0px;
+    --ok:#1f8a3b; --warn:#c07a00; --oos:#d21f0e;
+    --ease:cubic-bezier(.2,.7,.2,1); --ease-out:cubic-bezier(.16,1,.3,1);
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0}
+  body{background:var(--bg);color:var(--ink);font-family:var(--font-body);line-height:1.5;-webkit-font-smoothing:antialiased}
+  a{color:var(--accent-ink)}
+  .mono{font-family:var(--font-mono)}
+
+  /* ---------- login gate ---------- */
+  #gate{position:fixed;inset:0;background:var(--bg);z-index:50;display:flex;align-items:center;justify-content:center;padding:24px}
+  .gate-card{width:min(420px,100%);border:2px solid var(--rule);box-shadow:var(--shadow-lg);background:var(--card);padding:28px}
+  .gate-card h1{font-weight:var(--display-wt);font-size:26px;margin:0 0 2px;letter-spacing:-.02em}
+  .gate-card .term{font-family:var(--font-mono);font-size:11px;text-transform:uppercase;letter-spacing:.1em;color:var(--ink-faint);margin-bottom:20px}
+  label{display:block;font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:var(--ink-faint);margin:0 0 6px}
+  input[type=text],input[type=password],input[type=url],textarea,select{
+    width:100%;padding:11px 12px;border:1.5px solid var(--rule);border-radius:0;background:#fff;color:var(--ink);
+    font-family:var(--font-body);font-size:14px}
+  input:focus,textarea:focus,select:focus{outline:2px solid var(--accent);outline-offset:0}
+  .hint{font-size:12px;color:var(--ink-faint);margin-top:10px}
+
+  /* ---------- shell ---------- */
+  #app{display:none;min-height:100vh;grid-template-columns:230px 1fr;grid-template-rows:auto 1fr}
+  .topbar{grid-column:1/3;display:flex;align-items:center;gap:14px;padding:12px 18px;background:var(--bg);border-bottom:2px solid #111;position:sticky;top:0;z-index:20}
+  .brand{display:flex;flex-direction:column;line-height:1.05}
+  .brand b{font-weight:var(--display-wt);font-size:18px;letter-spacing:-.01em}
+  .brand .term{font-family:var(--font-mono);font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-faint)}
+  .topbar .spacer{flex:1}
+  .role-pill{font-family:var(--font-mono);font-size:11px;text-transform:uppercase;letter-spacing:.08em;border:1.5px solid var(--rule);padding:5px 9px;box-shadow:var(--shadow-sm)}
+  .role-pill.web{background:var(--accent);color:#fff;border-color:transparent}
+
+  .sidebar{border-right:2px solid #111;padding:14px 10px;background:var(--bg-2);display:flex;flex-direction:column;gap:2px}
+  .sb-item{display:flex;align-items:center;gap:10px;padding:10px 12px;border:1.5px solid transparent;cursor:pointer;font-weight:600;font-size:14px;color:var(--ink-soft)}
+  .sb-item .ic{width:18px;text-align:center}
+  .sb-item:hover{background:var(--card)}
+  .sb-item.active{background:var(--card);border-color:var(--rule);box-shadow:var(--shadow-sm);color:var(--ink)}
+  .sb-sep{height:1px;background:var(--rule-soft);margin:8px 4px}
+  .sb-note{margin-top:auto;font-size:11px;color:var(--ink-faint);padding:10px 12px;border-top:1px dashed var(--rule-soft)}
+
+  main{padding:26px clamp(18px,4vw,40px);max-width:1060px}
+  .view{display:none}
+  .view.active{display:block;animation:viewIn .42s var(--ease-out)}
+  @keyframes viewIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+  .btn{transition:transform .14s var(--ease),box-shadow .14s var(--ease)}
+  .sb-item{transition:background .18s var(--ease),border-color .18s var(--ease),color .18s var(--ease)}
+  @media(prefers-reduced-motion:reduce){
+    .view.active{animation:none}
+    .btn,.sb-item{transition:none}
+    .btn:hover{transform:none}
+  }
+  h2.view-title{font-weight:var(--display-wt);font-size:28px;letter-spacing:-.02em;margin:0 0 4px}
+  .view-sub{color:var(--ink-faint);font-size:14px;margin:0 0 22px;max-width:60ch}
+
+  .grid{display:grid;gap:16px}
+  .cols-2{grid-template-columns:repeat(2,1fr)}
+  .cols-3{grid-template-columns:repeat(3,1fr)}
+  @media(max-width:820px){.cols-2,.cols-3{grid-template-columns:1fr}#app{grid-template-columns:1fr}.sidebar{display:none}}
+
+  .card{border:2px solid var(--rule);background:var(--card);box-shadow:var(--shadow-md);padding:18px}
+  .card h3{margin:0 0 10px;font-size:16px;font-weight:700}
+  .card.soft{box-shadow:var(--shadow-sm);border-width:1.5px}
+
+  .status{display:inline-flex;align-items:center;gap:7px;font-family:var(--font-mono);font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;padding:4px 9px;border:1.5px solid var(--rule)}
+  .dot{width:9px;height:9px;border-radius:50%;display:inline-block}
+  .st-ok{color:var(--ok)} .st-ok .dot{background:var(--ok)}
+  .st-warn{color:var(--warn)} .st-warn .dot{background:var(--warn)}
+  .st-oos{color:#fff;background:var(--oos);border-color:transparent} .st-oos .dot{background:#fff}
+
+  .bike-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:12px}
+  .bike-head b{font-size:18px;font-weight:800}
+  .kv{display:flex;justify-content:space-between;gap:12px;padding:7px 0;border-bottom:1px dashed var(--rule-soft);font-size:14px}
+  .kv:last-child{border-bottom:0}
+  .kv span:first-child{color:var(--ink-faint)}
+
+  .btn{display:inline-flex;align-items:center;gap:8px;font-family:var(--font-body);font-weight:600;font-size:14px;padding:10px 14px;border:1.5px solid var(--rule);background:var(--chip);color:var(--ink);cursor:pointer;border-radius:0;box-shadow:var(--shadow-sm)}
+  .btn:hover{transform:translate(-1px,-1px);box-shadow:var(--shadow-md)}
+  .btn:active{transform:translate(1px,1px);box-shadow:none}
+  .btn.solid{background:var(--accent);color:#fff;border-color:transparent}
+  .btn.sm{padding:7px 10px;font-size:12.5px}
+  .btn.block{width:100%;justify-content:center}
+  .btn.ghost{box-shadow:none;background:transparent}
+  .webonly{display:none}
+  body.is-web .webonly{display:inline-flex}
+
+  .tag{font-family:var(--font-mono);font-size:10.5px;text-transform:uppercase;letter-spacing:.05em;border:1.5px solid var(--rule);padding:3px 7px;background:#fff}
+  .tag.crit{background:var(--oos);color:#fff;border-color:transparent}
+  .tag.warn{background:var(--warn);color:#fff;border-color:transparent}
+
+  .legend{display:flex;flex-wrap:wrap;gap:14px;font-size:12px;color:var(--ink-soft);margin:0 0 18px;padding:10px 12px;border:1.5px dashed var(--rule-soft);background:var(--card-2)}
+  .legend .item{display:flex;align-items:center;gap:6px}
+
+  table{width:100%;border-collapse:collapse;font-size:13.5px}
+  th,td{text-align:left;padding:9px 10px;border-bottom:1px solid var(--rule-soft)}
+  th{font-family:var(--font-mono);font-size:10.5px;text-transform:uppercase;letter-spacing:.05em;color:var(--ink-faint);border-bottom:1.5px solid var(--rule)}
+
+  .checkline{display:flex;align-items:flex-start;gap:10px;padding:9px 0;border-bottom:1px dashed var(--rule-soft)}
+  .checkline input{margin-top:3px;width:16px;height:16px;accent-color:var(--accent)}
+  .checkline .lbl{flex:1}
+  .checkline .lbl small{display:block;color:var(--ink-faint);font-size:12px}
+
+  .verdict{margin-top:16px;padding:16px;border:2px solid var(--rule);box-shadow:var(--shadow-md);font-weight:700;display:flex;align-items:center;gap:12px}
+  .verdict.ok{background:#eafaef} .verdict.warn{background:#fff5e0} .verdict.oos{background:#ffe9e6}
+  .verdict .big{font-family:var(--font-mono);font-size:15px;text-transform:uppercase;letter-spacing:.04em}
+
+  .qr{width:120px;height:120px;border:2px solid var(--rule);display:grid;place-items:center;background:#fff;font-family:var(--font-mono);font-size:10px;color:var(--ink-faint);text-align:center;box-shadow:var(--shadow-sm)}
+  .video{border:2px solid var(--rule);box-shadow:var(--shadow-md);background:var(--card)}
+  .video .thumb{aspect-ratio:16/9;background:repeating-linear-gradient(45deg,#eee,#eee 10px,#f6f6f6 10px,#f6f6f6 20px);display:grid;place-items:center;border-bottom:2px solid var(--rule);font-family:var(--font-mono);font-size:12px;color:var(--ink-faint)}
+  .video .meta{padding:12px 14px}
+  .video .meta b{display:block;font-size:14px}
+  .video .meta small{color:var(--ink-faint);font-size:12px}
+
+  .banner{border:2px solid var(--rule);background:var(--accent);color:#fff;padding:10px 14px;font-family:var(--font-mono);font-size:12px;letter-spacing:.03em;margin-bottom:20px;box-shadow:var(--shadow-md)}
+  .placeholder{border:1.5px dashed var(--warn);background:#fff8ec;color:#7a4d00;font-size:12.5px;padding:8px 11px;margin-top:10px;font-family:var(--font-mono)}
+  .row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+  .mt{margin-top:14px}.mt-sm{margin-top:8px}
+</style>
+</head>
+<body>
+
+<!-- ============ LOGIN GATE ============ -->
+<div id="gate">
+  <div class="gate-card">
+    <h1>Bike Ops</h1>
+    <div class="term">CMU EMS · Bike Manager Hub</div>
+    <label for="pw">Access password</label>
+    <input id="pw" type="password" placeholder="member password" autocomplete="off">
+    <button class="btn solid block mt" onclick="tryLogin()">Enter</button>
+    <div class="hint">Members enter the shared password to view. The <b>webmaster password</b> unlocks editing (add videos, edit content, resolve issues).<br><br><span class="mono">demo: member = <b>ride</b> · webmaster = <b>wrench</b></span></div>
+  </div>
+</div>
+
+<!-- ============ APP ============ -->
+<div id="app">
+  <div class="topbar">
+    <div class="brand"><b>Bike Ops</b><span class="term">CMU EMS</span></div>
+    <div class="spacer"></div>
+    <span id="rolePill" class="role-pill">Viewer</span>
+    <button class="btn sm ghost" onclick="toggleWeb()" id="webBtn">Webmaster</button>
+  </div>
+
+  <nav class="sidebar" id="nav">
+    <div class="sb-item active" data-view="dash"><span class="ic">▣</span>Dashboard</div>
+    <div class="sb-item" data-view="bikes"><span class="ic">◉</span>Bikes &amp; Issues</div>
+    <div class="sb-item" data-view="oos"><span class="ic">⚠</span>Out-of-Service Tool</div>
+    <div class="sb-sep"></div>
+    <div class="sb-item" data-view="checks"><span class="ic">☑</span>Checks &amp; Forms</div>
+    <div class="sb-item" data-view="videos"><span class="ic">▶</span>Tutorials</div>
+    <div class="sb-item" data-view="repairs"><span class="ic">✱</span>Repairs &amp; Fixes</div>
+    <div class="sb-item" data-view="inventory"><span class="ic">▦</span>Inventory</div>
+    <div class="sb-item" data-view="docs"><span class="ic">§</span>Docs &amp; Bylaws</div>
+    <div class="sb-note">DRAFT TEMPLATE<br>Data not yet connected</div>
+  </nav>
+
+  <main>
+    <div class="banner">DRAFT TEMPLATE — content is placeholder. Real bike data, jumpkit fields &amp; out-of-service rules get filled in after the office visit.</div>
+
+    <!-- ===== DASHBOARD ===== -->
+    <section class="view active" data-view="dash">
+      <h2 class="view-title">Dashboard</h2>
+      <p class="view-sub">Bike readiness at a glance. This is the first thing you (and members) see on login.</p>
+      <div class="legend">
+        <span class="item"><span class="dot" style="background:var(--ok)"></span>In service</span>
+        <span class="item"><span class="dot" style="background:var(--warn)"></span>Needs review</span>
+        <span class="item"><span class="dot" style="background:var(--oos)"></span>Out of service</span>
+      </div>
+      <div class="grid cols-2">
+        <div class="card">
+          <div class="bike-head"><b>Bike 1</b><span class="status st-ok"><span class="dot"></span>In Service</span></div>
+          <div class="kv"><span>Open issues</span><span>0</span></div>
+          <div class="kv"><span>Last weekly check</span><span>Jul 20</span></div>
+          <div class="kv"><span>Lock / key</span><span>OK · key #1</span></div>
+          <div class="kv"><span>Last tune-up</span><span>—</span></div>
+        </div>
+        <div class="card">
+          <div class="bike-head"><b>Bike 2</b><span class="status st-oos"><span class="dot"></span>Out of Service</span></div>
+          <div class="kv"><span>Open issues</span><span>2</span></div>
+          <div class="kv"><span>Reason</span><span>Rear brake not gripping</span></div>
+          <div class="kv"><span>Last weekly check</span><span>Jul 20</span></div>
+          <div class="kv"><span>Lock / key</span><span>OK · key #2</span></div>
+        </div>
+      </div>
+      <div class="grid cols-3 mt">
+        <div class="card soft"><h3>Weekly readiness</h3><p style="font-size:13px;color:var(--ink-faint);margin:0">Bike-manager-only check, once/week before the meeting.</p><button class="btn sm mt" onclick="go('checks')">Start weekly check</button></div>
+        <div class="card soft"><h3>Report a problem</h3><p style="font-size:13px;color:var(--ink-faint);margin:0">Any member can log a bike problem via QR or here.</p><button class="btn sm mt" onclick="go('bikes')">Report issue</button></div>
+        <div class="card soft"><h3>Supplies to order</h3><p style="font-size:13px;color:var(--ink-faint);margin:0">3 items flagged low.</p><button class="btn sm mt" onclick="go('inventory')">View list</button></div>
+      </div>
+    </section>
+
+    <!-- ===== BIKES & ISSUES ===== -->
+    <section class="view" data-view="bikes">
+      <h2 class="view-title">Bikes &amp; Issues</h2>
+      <p class="view-sub">The running log of what's wrong with each bike. Members report; the webmaster resolves. Feeds each bike's service status.</p>
+      <div class="card">
+        <div class="row" style="justify-content:space-between">
+          <h3 style="margin:0">Open issues</h3>
+          <button class="btn sm solid" onclick="alert('Report form — wired to Google Sheet later')">+ Report a problem</button>
+        </div>
+        <table class="mt">
+          <thead><tr><th>Bike</th><th>Problem</th><th>Severity</th><th>Reported by</th><th>Date</th><th></th></tr></thead>
+          <tbody>
+            <tr><td>Bike 2</td><td>Rear brake not gripping</td><td><span class="tag crit">Critical</span></td><td>member</td><td>Jul 22</td><td><button class="btn sm ghost webonly">Resolve</button></td></tr>
+            <tr><td>Bike 2</td><td>Front light flickers</td><td><span class="tag warn">Warning</span></td><td>member</td><td>Jul 22</td><td><button class="btn sm ghost webonly">Resolve</button></td></tr>
+            <tr><td>Bike 1</td><td>Bell rattles</td><td><span class="tag">Minor</span></td><td>member</td><td>Jul 19</td><td><button class="btn sm ghost webonly">Resolve</button></td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="grid cols-2 mt">
+        <div class="card soft"><h3>Bike 1 — recurring notes</h3><p style="font-size:13px;color:var(--ink-faint)">Chain drops on hard shifts (2x this month). Watch derailleur.</p></div>
+        <div class="card soft"><h3>Bike 2 — recurring notes</h3><p style="font-size:13px;color:var(--ink-faint)">Rear brake needs frequent adjustment — candidate for shop tune-up.</p></div>
+      </div>
+    </section>
+
+    <!-- ===== OUT OF SERVICE TOOL ===== -->
+    <section class="view" data-view="oos">
+      <h2 class="view-title">Out-of-Service Decision Tool</h2>
+      <p class="view-sub">Check off what's wrong; the tool tells you whether the bike stays in service. Removes the guesswork so any member gets a consistent answer.</p>
+      <div class="grid cols-2">
+        <div class="card">
+          <h3>What's wrong with the bike?</h3>
+          <div id="oosList"></div>
+          <div class="placeholder">PLACEHOLDER RULES — you'll finalize which problems mean out-of-service with your bike friend. Easy to edit later.</div>
+        </div>
+        <div>
+          <div class="card">
+            <h3>Verdict</h3>
+            <div id="verdict" class="verdict ok"><span class="big">In Service ✓</span></div>
+            <p class="mt-sm" style="font-size:12.5px;color:var(--ink-faint)">Any <b>critical</b> item → Out of Service. Any <b>warning</b> only → Needs manager review. Nothing → In Service.</p>
+            <button class="btn sm mt webonly" onclick="alert('Logs verdict + puts bike OOS in the sheet later')">Apply to a bike</button>
+          </div>
+          <div class="card soft mt"><h3>Who clears it?</h3><p style="font-size:13px;color:var(--ink-faint);margin:0">Open question from your notes: does only the Bike Manager place a bike out of service &amp; return it to service? We can lock that to webmaster-only.</p></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===== CHECKS & FORMS ===== -->
+    <section class="view" data-view="checks">
+      <h2 class="view-title">Checks &amp; Forms</h2>
+      <p class="view-sub">Every check is a form that saves to the database, and each has its own QR code to stick on the bike / jumpkit.</p>
+      <div class="grid cols-3">
+        <div class="card">
+          <h3>Jumpkit / Bag Check</h3>
+          <p style="font-size:13px;color:var(--ink-faint)">Confirm the equipment bag is complete &amp; stocked.</p>
+          <div class="qr mt">QR →<br>jumpkit form</div>
+          <button class="btn sm mt block" onclick="alert('Opens the jumpkit checklist')">Open form</button>
+          <div class="placeholder">Fields TBD — from the current form you'll grab today.</div>
+        </div>
+        <div class="card">
+          <h3>Pre-Ride Safety Check</h3>
+          <p style="font-size:13px;color:var(--ink-faint)">Quick confirm the bike is safe before checkout.</p>
+          <div class="qr mt">QR →<br>safety form</div>
+          <button class="btn sm mt block" onclick="alert('Opens the pre-ride checklist')">Open form</button>
+        </div>
+        <div class="card">
+          <h3>Weekly Readiness</h3>
+          <p style="font-size:13px;color:var(--ink-faint)">Bike-manager-only, once/week before the meeting.</p>
+          <div class="qr mt">QR →<br>weekly check</div>
+          <button class="btn sm mt block webonly" onclick="alert('Manager-only weekly check')">Start (manager)</button>
+          <div class="placeholder">Restricted to webmaster login.</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===== TUTORIALS ===== -->
+    <section class="view" data-view="videos">
+      <h2 class="view-title">Video Tutorials</h2>
+      <p class="view-sub">How-to library. Webmaster can add videos any time — they save to the database.</p>
+      <div class="row" style="justify-content:space-between;margin-bottom:16px">
+        <span class="tag">3 videos</span>
+        <button class="btn sm solid webonly" onclick="alert('Add-video form: paste a video link + title → saves to sheet')">+ Add video</button>
+      </div>
+      <div class="grid cols-3">
+        <div class="video"><div class="thumb">▶ Bike Ropes Tutorial</div><div class="meta"><b>Tying Bike to Ropes</b><small>Your uploaded clip · 2:14</small></div></div>
+        <div class="video"><div class="thumb">▶ placeholder</div><div class="meta"><b>Pre-ride inspection</b><small>How to check a bike is safe</small></div></div>
+        <div class="video"><div class="thumb">▶ placeholder</div><div class="meta"><b>Fixing a dropped chain</b><small>Quick office fix</small></div></div>
+      </div>
+      <div class="placeholder mt">Video hosting not chosen yet — see the recommendation in chat (Google Drive vs YouTube unlisted).</div>
+    </section>
+
+    <!-- ===== REPAIRS ===== -->
+    <section class="view" data-view="repairs">
+      <h2 class="view-title">Repairs &amp; Fixes</h2>
+      <p class="view-sub">Where to reach out for repairs, and how to do the fixes you can handle in-office.</p>
+      <div class="grid cols-2">
+        <div class="card">
+          <h3>Who to contact</h3>
+          <div class="kv"><span>Bike shop (primary)</span><span>TBD</span></div>
+          <div class="kv"><span>Bike shop (backup)</span><span>TBD</span></div>
+          <div class="kv"><span>Keys — Kryptonite</span><span>order replacements</span></div>
+          <div class="kv"><span>Report major repair to</span><span>Operations officer</span></div>
+          <div class="placeholder">Shop contacts to be researched (public-safety-capable, convenient).</div>
+        </div>
+        <div class="card">
+          <h3>How-to fixes (in office)</h3>
+          <div class="checkline" style="border:0;padding:6px 0"><span class="lbl">▸ Adjust brake tension</span></div>
+          <div class="checkline" style="border:0;padding:6px 0"><span class="lbl">▸ Reseat a dropped chain</span></div>
+          <div class="checkline" style="border:0;padding:6px 0"><span class="lbl">▸ Inflate tires to correct PSI</span></div>
+          <div class="checkline" style="border:0;padding:6px 0"><span class="lbl">▸ Tighten seat &amp; handlebars</span></div>
+          <button class="btn sm mt webonly" onclick="alert('Add a how-to guide')">+ Add guide</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===== INVENTORY ===== -->
+    <section class="view" data-view="inventory">
+      <h2 class="view-title">Inventory</h2>
+      <p class="view-sub">Tools, replacement parts, locks &amp; keys, and a running order list.</p>
+      <div class="card">
+        <table>
+          <thead><tr><th>Item</th><th>Category</th><th>On hand</th><th>Status</th><th></th></tr></thead>
+          <tbody>
+            <tr><td>Kryptonite keys</td><td>Locks/Keys</td><td>2</td><td><span class="status st-ok"><span class="dot"></span>OK</span></td><td></td></tr>
+            <tr><td>Spare tubes</td><td>Parts</td><td>1</td><td><span class="status st-warn"><span class="dot"></span>Low</span></td><td><button class="btn sm ghost webonly">Order</button></td></tr>
+            <tr><td>Brake pads</td><td>Parts</td><td>0</td><td><span class="status st-oos"><span class="dot"></span>Out</span></td><td><button class="btn sm ghost webonly">Order</button></td></tr>
+            <tr><td>Bike lights</td><td>Accessories</td><td>2</td><td><span class="status st-ok"><span class="dot"></span>OK</span></td><td></td></tr>
+          </tbody>
+        </table>
+        <button class="btn sm mt solid webonly" onclick="alert('Add inventory item')">+ Add item</button>
+      </div>
+    </section>
+
+    <!-- ===== DOCS ===== -->
+    <section class="view" data-view="docs">
+      <h2 class="view-title">Docs &amp; Bylaws</h2>
+      <p class="view-sub">Role definition, operating boundaries, and bike bylaws — editable by the webmaster so it stays current across managers.</p>
+      <div class="grid cols-2">
+        <div class="card">
+          <h3>Operating boundaries</h3>
+          <div class="kv"><span>On-campus while on duty</span><span>allowed</span></div>
+          <div class="kv"><span>General bounds</span><span>Mudge · TCS · backside Scaife</span></div>
+          <div class="kv"><span>Keep between duty</span><span>confirm Ashley/Taimur (Mellon)</span></div>
+          <div class="kv"><span>Red shirts</span><span>may ride · no jumpkits</span></div>
+        </div>
+        <div class="card">
+          <h3>Bike Manager role</h3>
+          <p style="font-size:13px;color:var(--ink-faint);margin:0 0 8px">Maintain bikes, organize supplies, monitor readiness, keep members trained. ~20 min/week.</p>
+          <button class="btn sm webonly" onclick="alert('Edit doc content')">Edit</button>
+        </div>
+      </div>
+    </section>
+
+  </main>
+</div>
+
+<script>
+  var OOS_ITEMS=[
+    {t:"Brakes not working / won't grip",sev:"crit"},
+    {t:"Wheel bent / won't spin true",sev:"crit"},
+    {t:"Tire flat / won't hold air",sev:"crit"},
+    {t:"Frame cracked",sev:"crit"},
+    {t:"Steering / headset loose",sev:"crit"},
+    {t:"No working lock",sev:"crit"},
+    {t:"Gears skipping",sev:"warn"},
+    {t:"Brake pads worn",sev:"warn"},
+    {t:"Light not working",sev:"warn"},
+    {t:"Seat / handlebars loose",sev:"warn"},
+    {t:"Low tire pressure",sev:"warn"},
+    {t:"Bell missing / cosmetic",sev:"minor"}
+  ];
+  function renderOOS(){
+    var h="";
+    OOS_ITEMS.forEach(function(it,i){
+      var tag=it.sev==="crit"?'<span class="tag crit">Critical</span>':it.sev==="warn"?'<span class="tag warn">Warning</span>':'<span class="tag">Minor</span>';
+      h+='<label class="checkline"><input type="checkbox" data-sev="'+it.sev+'" onchange="calcOOS()"><span class="lbl">'+it.t+'</span>'+tag+'</label>';
+    });
+    document.getElementById("oosList").innerHTML=h;
+  }
+  function calcOOS(){
+    var boxes=document.querySelectorAll('#oosList input:checked');
+    var crit=0,warn=0;
+    boxes.forEach(function(b){if(b.dataset.sev==="crit")crit++;else if(b.dataset.sev==="warn")warn++;});
+    var v=document.getElementById("verdict");
+    if(crit>0){v.className="verdict oos";v.innerHTML='<span class="big">Out of Service ✕</span>';}
+    else if(warn>0){v.className="verdict warn";v.innerHTML='<span class="big">Needs Manager Review</span>';}
+    else{v.className="verdict ok";v.innerHTML='<span class="big">In Service ✓</span>';}
+  }
+
+  function go(v){
+    document.querySelectorAll('.sb-item').forEach(function(x){x.classList.toggle('active',x.dataset.view===v);});
+    document.querySelectorAll('.view').forEach(function(x){x.classList.toggle('active',x.dataset.view===v);});
+    try{localStorage.setItem('bikeops_view',v);}catch(e){}
+    window.scrollTo(0,0);
+  }
+  document.getElementById('nav').addEventListener('click',function(e){
+    var it=e.target.closest('.sb-item'); if(it) go(it.dataset.view);
+  });
+
+  function tryLogin(){
+    var pw=document.getElementById('pw').value.trim().toLowerCase();
+    if(pw==='ride'||pw==='wrench'){
+      document.getElementById('gate').style.display='none';
+      document.getElementById('app').style.display='grid';
+      if(pw==='wrench') setWeb(true);
+      var last='dash'; try{last=localStorage.getItem('bikeops_view')||'dash';}catch(e){}
+      go(last);
+    } else { alert('Try  ride  (member) or  wrench  (webmaster)'); }
+  }
+  document.getElementById('pw').addEventListener('keydown',function(e){if(e.key==='Enter')tryLogin();});
+
+  function setWeb(on){
+    document.body.classList.toggle('is-web',on);
+    var pill=document.getElementById('rolePill');
+    pill.textContent=on?'Webmaster':'Viewer';
+    pill.className='role-pill'+(on?' web':'');
+    document.getElementById('webBtn').textContent=on?'Exit webmaster':'Webmaster';
+  }
+  function toggleWeb(){
+    var on=!document.body.classList.contains('is-web');
+    if(on){var p=prompt('Webmaster password:');if((p||'').trim().toLowerCase()!=='wrench'){alert('Nope — demo pw is  wrench');return;}}
+    setWeb(on);
+  }
+
+  renderOOS();
+</script>
+</body>
+</html>
