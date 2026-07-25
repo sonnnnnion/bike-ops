@@ -1,6 +1,10 @@
-Drop the CMU EMS logo here as:  cmu-ems-logo.png
+CMU EMS crest — cmuems.png
 
-The site loads it in two places (login screen + top bar). Until the file exists,
-those <img> slots quietly remove themselves, so nothing looks broken.
+Loaded in two places: the top bar (36x36) and the dashboard hero (64x64).
+Both live in index.html; search for "cmuems.png" if you rename or replace it.
 
-A square PNG with a transparent background works best (the round EMS crest is ideal).
+If the filename stops matching, the <img> slots fall back to a plain "EMS" /
+"CMU EMS crest" tile instead of showing a broken image — so a rename fails
+QUIETLY. Check the top bar after swapping the file.
+
+Square PNG works best. The current crest is 395x395.

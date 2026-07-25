@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en" data-theme="carbon">
+<html lang="en" data-theme="ems">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -9,13 +9,18 @@
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
 <style>
   :root{
-    --bg:#ffffff; --bg-2:#f4f4f4; --card:#ffffff; --card-2:#f6f6f6;
-    --ink:#0a0a0a; --ink-soft:#2e2e2e; --ink-faint:#565656;
-    --rule:#111; --rule-soft:#d6d6d6; --accent:#ff3300; --accent-ink:#cc2900;
-    --chip:#fff; --shadow-sm:2px 2px 0 #111; --shadow-md:3px 3px 0 #111; --shadow-lg:5px 5px 0 #111;
+    /* ---- CMU EMS palette: burgundy chrome, Carnegie red accent, warm bright page ---- */
+    --bg:#fbf8f7; --bg-2:#f6eeec; --card:#ffffff; --card-2:#fdf9f8;
+    --ink:#1c1216; --ink-soft:#4a3a3f; --ink-faint:#726167;
+    --rule:#2a191e; --rule-soft:#e6d8db;
+    --brand:#8c1c2b; --brand-2:#a81f33; --brand-wash:#f7e9eb;
+    --accent:#c41230; --accent-ink:#9c0f26;
+    --chip:#fff;
+    --shadow-sm:2px 2px 0 var(--rule); --shadow-md:3px 3px 0 var(--rule); --shadow-lg:5px 5px 0 var(--rule);
     --font-body:'Inter',system-ui,sans-serif; --font-mono:'Space Mono',ui-monospace,monospace;
     --display-wt:800; --radius:0px;
-    --ok:#1f8a3b; --warn:#c07a00; --oos:#d21f0e;
+    --ok:#16794c; --warn:#b45309; --oos:#e03131;
+    --ok-wash:#e8f6ee; --warn-wash:#fdf3e3; --oos-wash:#fdeceb;
     --ease:cubic-bezier(.2,.7,.2,1); --ease-out:cubic-bezier(.16,1,.3,1);
   }
   *{box-sizing:border-box}
@@ -26,31 +31,46 @@
 
   /* ---------- form controls ---------- */
   label{display:block;font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:var(--ink-faint);margin:0 0 6px}
-  input[type=text],input[type=password],input[type=url],textarea,select{
-    width:100%;padding:11px 12px;border:1.5px solid var(--rule);border-radius:0;background:#fff;color:var(--ink);
+  input[type=text],input[type=password],input[type=url],input[type=date],input[type=number],textarea,select{
+    width:100%;padding:10px 12px;border:1.5px solid var(--rule);border-radius:0;background:#fff;color:var(--ink);
     font-family:var(--font-body);font-size:14px}
   input:focus,textarea:focus,select:focus{outline:2px solid var(--accent);outline-offset:0}
   .hint{font-size:12px;color:var(--ink-faint);margin-top:10px}
+  .field{margin-bottom:14px}
+  .field-row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  @media(max-width:640px){.field-row{grid-template-columns:1fr}}
 
   /* ---------- shell ---------- */
-  #app{display:grid;min-height:100vh;grid-template-columns:230px 1fr;grid-template-rows:auto 1fr}
-  .topbar{grid-column:1/3;display:flex;align-items:center;gap:14px;padding:12px 18px;background:var(--bg);border-bottom:2px solid #111;position:sticky;top:0;z-index:20}
+  #app{display:grid;min-height:100vh;grid-template-columns:236px 1fr;grid-template-rows:auto 1fr}
+  /* 1/-1 not 1/3 — on narrow screens #app drops to a single column, and a hard
+     -coded 2-column span would conjure an implicit second column back into it. */
+  .topbar{grid-column:1/-1;display:flex;align-items:center;gap:14px;padding:11px 18px;
+    background:linear-gradient(180deg,var(--brand) 0%,var(--brand-2) 100%);color:#fff;
+    border-bottom:2px solid var(--rule);position:sticky;top:0;z-index:20}
   .brand{display:flex;flex-direction:column;line-height:1.05}
-  .brand b{font-weight:var(--display-wt);font-size:18px;letter-spacing:-.01em}
-  .brand .term{font-family:var(--font-mono);font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-faint)}
+  .brand b{font-weight:var(--display-wt);font-size:18px;letter-spacing:-.01em;color:#fff}
+  .brand .term{font-family:var(--font-mono);font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:#f3d3d8}
   .topbar .spacer{flex:1}
-  .role-pill{font-family:var(--font-mono);font-size:11px;text-transform:uppercase;letter-spacing:.08em;border:1.5px solid var(--rule);padding:5px 9px;box-shadow:var(--shadow-sm)}
-  .role-pill.web{background:var(--accent);color:#fff;border-color:transparent}
+  .topbar .btn{background:rgba(255,255,255,.12);color:#fff;border-color:rgba(255,255,255,.5);box-shadow:none}
+  .topbar .btn:hover{background:rgba(255,255,255,.22);transform:translate(-1px,-1px)}
+  .role-pill{font-family:var(--font-mono);font-size:11px;text-transform:uppercase;letter-spacing:.08em;
+    border:1.5px solid rgba(255,255,255,.55);padding:5px 9px;color:#fff}
+  .role-pill.web{background:#fff;color:var(--brand);border-color:#fff;font-weight:700}
+  .logo-mark{width:36px;height:36px;object-fit:contain;flex:0 0 auto;background:#fff;padding:3px;border:1.5px solid rgba(255,255,255,.6)}
+  .logo-fallback{width:36px;height:36px;flex:0 0 auto;display:grid;place-items:center;background:#fff;color:var(--brand);
+    font-family:var(--font-mono);font-weight:700;font-size:10px;letter-spacing:.02em;border:1.5px solid rgba(255,255,255,.6)}
 
-  .sidebar{border-right:2px solid #111;padding:14px 10px;background:var(--bg-2);display:flex;flex-direction:column;gap:2px}
-  .sb-item{display:flex;align-items:center;gap:10px;padding:10px 12px;border:1.5px solid transparent;cursor:pointer;font-weight:600;font-size:14px;color:var(--ink-soft)}
-  .sb-item .ic{width:18px;text-align:center}
+  .sidebar{border-right:2px solid var(--rule);padding:14px 10px;background:var(--bg-2);display:flex;flex-direction:column;gap:2px}
+  .sb-item{display:flex;align-items:center;gap:10px;padding:9px 12px;border:1.5px solid transparent;cursor:pointer;font-weight:600;font-size:14px;color:var(--ink-soft)}
+  .sb-item .ic{width:18px;text-align:center;color:var(--brand)}
   .sb-item:hover{background:var(--card)}
   .sb-item.active{background:var(--card);border-color:var(--rule);box-shadow:var(--shadow-sm);color:var(--ink)}
+  .sb-item.active .ic{color:var(--accent)}
   .sb-sep{height:1px;background:var(--rule-soft);margin:8px 4px}
+  .sb-label{font-family:var(--font-mono);font-size:9.5px;text-transform:uppercase;letter-spacing:.12em;color:var(--ink-faint);padding:8px 12px 4px}
   .sb-note{margin-top:auto;font-size:11px;color:var(--ink-faint);padding:10px 12px;border-top:1px dashed var(--rule-soft)}
 
-  main{padding:26px clamp(18px,4vw,40px);max-width:1060px}
+  main{padding:26px clamp(18px,4vw,40px);max-width:1080px}
   .view{display:none}
   .view.active{display:block;animation:viewIn .42s var(--ease-out)}
   @keyframes viewIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
@@ -62,16 +82,32 @@
     .btn:hover{transform:none}
   }
   h2.view-title{font-weight:var(--display-wt);font-size:28px;letter-spacing:-.02em;margin:0 0 4px}
-  .view-sub{color:var(--ink-faint);font-size:14px;margin:0 0 22px;max-width:60ch}
+  .view-sub{color:var(--ink-faint);font-size:14px;margin:0 0 22px;max-width:64ch}
+  .backlink{font-size:12.5px;font-family:var(--font-mono);color:var(--ink-faint);cursor:pointer;margin-bottom:10px;display:inline-block}
+  .backlink:hover{color:var(--accent-ink)}
 
   .grid{display:grid;gap:16px}
   .cols-2{grid-template-columns:repeat(2,1fr)}
   .cols-3{grid-template-columns:repeat(3,1fr)}
-  @media(max-width:820px){.cols-2,.cols-3{grid-template-columns:1fr}#app{grid-template-columns:1fr}.sidebar{display:none}}
+  /* Narrow screens: the sidebar becomes a horizontal scrolling strip. It must NOT
+     be hidden — QR codes are scanned on phones, so a member landing on a form deep
+     link would otherwise have no way to reach the rest of the site. */
+  @media(max-width:820px){
+    .cols-2,.cols-3{grid-template-columns:1fr}
+    #app{grid-template-columns:1fr}
+    .sidebar{flex-direction:row;overflow-x:auto;overflow-y:hidden;gap:6px;
+      border-right:0;border-bottom:2px solid var(--rule);padding:8px 10px;
+      position:sticky;top:0;z-index:20;-webkit-overflow-scrolling:touch;
+      scrollbar-width:thin}
+    .sb-item{flex:0 0 auto;white-space:nowrap;padding:8px 12px;font-size:13px}
+    .sb-item .ic{display:none}
+    .sb-note{display:none}
+  }
 
   .card{border:2px solid var(--rule);background:var(--card);box-shadow:var(--shadow-md);padding:18px}
   .card h3{margin:0 0 10px;font-size:16px;font-weight:700}
   .card.soft{box-shadow:var(--shadow-sm);border-width:1.5px}
+  .card.brandtop{border-top:5px solid var(--brand)}
 
   .status{display:inline-flex;align-items:center;gap:7px;font-family:var(--font-mono);font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;padding:4px 9px;border:1.5px solid var(--rule)}
   .dot{width:9px;height:9px;border-radius:50%;display:inline-block}
@@ -85,19 +121,26 @@
   .kv:last-child{border-bottom:0}
   .kv span:first-child{color:var(--ink-faint)}
 
-  .btn{display:inline-flex;align-items:center;gap:8px;font-family:var(--font-body);font-weight:600;font-size:14px;padding:10px 14px;border:1.5px solid var(--rule);background:var(--chip);color:var(--ink);cursor:pointer;border-radius:0;box-shadow:var(--shadow-sm)}
+  .btn{display:inline-flex;align-items:center;gap:8px;font-family:var(--font-body);font-weight:600;font-size:14px;padding:9px 14px;border:1.5px solid var(--rule);background:var(--chip);color:var(--ink);cursor:pointer;border-radius:0;box-shadow:var(--shadow-sm)}
   .btn:hover{transform:translate(-1px,-1px);box-shadow:var(--shadow-md)}
   .btn:active{transform:translate(1px,1px);box-shadow:none}
-  .btn.solid{background:var(--accent);color:#fff;border-color:transparent}
-  .btn.sm{padding:7px 10px;font-size:12.5px}
+  .btn.solid{background:var(--brand);color:#fff;border-color:var(--rule)}
+  .btn.solid:hover{background:var(--brand-2)}
+  .btn.danger{background:var(--oos);color:#fff;border-color:var(--rule)}
+  .btn.sm{padding:6px 10px;font-size:12.5px}
+  .btn.xs{padding:3px 7px;font-size:11px;box-shadow:none}
   .btn.block{width:100%;justify-content:center}
   .btn.ghost{box-shadow:none;background:transparent}
+  .btn:disabled{opacity:.45;cursor:not-allowed;transform:none;box-shadow:var(--shadow-sm)}
   .webonly{display:none}
   body.is-web .webonly{display:inline-flex}
+  body.is-web .webonly.blockonly{display:block}
 
-  .tag{font-family:var(--font-mono);font-size:10.5px;text-transform:uppercase;letter-spacing:.05em;border:1.5px solid var(--rule);padding:3px 7px;background:#fff}
+  .tag{font-family:var(--font-mono);font-size:10.5px;text-transform:uppercase;letter-spacing:.05em;border:1.5px solid var(--rule);padding:3px 7px;background:#fff;display:inline-block}
   .tag.crit{background:var(--oos);color:#fff;border-color:transparent}
   .tag.warn{background:var(--warn);color:#fff;border-color:transparent}
+  .tag.ok{background:var(--ok);color:#fff;border-color:transparent}
+  .tag.brand{background:var(--brand);color:#fff;border-color:transparent}
 
   .legend{display:flex;flex-wrap:wrap;gap:14px;font-size:12px;color:var(--ink-soft);margin:0 0 18px;padding:10px 12px;border:1.5px dashed var(--rule-soft);background:var(--card-2)}
   .legend .item{display:flex;align-items:center;gap:6px}
@@ -106,44 +149,114 @@
   th,td{text-align:left;padding:9px 10px;border-bottom:1px solid var(--rule-soft)}
   th{font-family:var(--font-mono);font-size:10.5px;text-transform:uppercase;letter-spacing:.05em;color:var(--ink-faint);border-bottom:1.5px solid var(--rule)}
 
-  .checkline{display:flex;align-items:flex-start;gap:10px;padding:9px 0;border-bottom:1px dashed var(--rule-soft)}
-  .checkline input{margin-top:3px;width:16px;height:16px;accent-color:var(--accent)}
-  .checkline .lbl{flex:1}
+  .checkline{display:flex;align-items:flex-start;gap:10px;padding:8px 0;border-bottom:1px dashed var(--rule-soft)}
+  .checkline input[type=checkbox]{margin-top:3px;width:16px;height:16px;accent-color:var(--brand);flex:0 0 auto}
+  .checkline .lbl{flex:1;font-size:14px}
   .checkline .lbl small{display:block;color:var(--ink-faint);font-size:12px}
+  .checkline .qty{font-family:var(--font-mono);font-size:11.5px;color:var(--ink-faint);white-space:nowrap}
+  .checkline.done .lbl{color:var(--ink-faint)}
 
-  .verdict{margin-top:16px;padding:16px;border:2px solid var(--rule);box-shadow:var(--shadow-md);font-weight:700;display:flex;align-items:center;gap:12px}
-  .verdict.ok{background:#eafaef} .verdict.warn{background:#fff5e0} .verdict.oos{background:#ffe9e6}
-  .verdict .big{font-family:var(--font-mono);font-size:15px;text-transform:uppercase;letter-spacing:.04em}
+  .verdict{margin-top:16px;padding:16px;border:2px solid var(--rule);box-shadow:var(--shadow-md);font-weight:700;display:flex;align-items:flex-start;gap:12px;flex-wrap:wrap}
+  .verdict.ok{background:var(--ok-wash)} .verdict.warn{background:var(--warn-wash)} .verdict.oos{background:var(--oos-wash)}
+  .verdict .big{font-family:var(--font-mono);font-size:15px;text-transform:uppercase;letter-spacing:.04em;display:block}
+  .verdict .detail{font-weight:500;font-size:13px;color:var(--ink-soft);margin-top:6px;display:block}
 
-  .qr{width:120px;height:120px;border:2px solid var(--rule);display:grid;place-items:center;background:#fff;font-family:var(--font-mono);font-size:10px;color:var(--ink-faint);text-align:center;box-shadow:var(--shadow-sm)}
-  .video{border:2px solid var(--rule);box-shadow:var(--shadow-md);background:var(--card)}
-  .video .thumb{aspect-ratio:16/9;background:repeating-linear-gradient(45deg,#eee,#eee 10px,#f6f6f6 10px,#f6f6f6 20px);display:grid;place-items:center;border-bottom:2px solid var(--rule);font-family:var(--font-mono);font-size:12px;color:var(--ink-faint)}
-  .video .meta{padding:12px 14px}
+  .qr{width:118px;height:118px;border:2px solid var(--rule);display:grid;place-items:center;background:#fff;font-family:var(--font-mono);font-size:10px;color:var(--ink-faint);text-align:center;box-shadow:var(--shadow-sm);padding:6px;line-height:1.35}
+  .video{border:2px solid var(--rule);box-shadow:var(--shadow-md);background:var(--card);display:flex;flex-direction:column}
+  .video .thumb{aspect-ratio:16/9;background:repeating-linear-gradient(45deg,var(--bg-2),var(--bg-2) 10px,#fbf3f2 10px,#fbf3f2 20px);display:grid;place-items:center;border-bottom:2px solid var(--rule);font-family:var(--font-mono);font-size:12px;color:var(--ink-faint);text-align:center;padding:8px}
+  .video .thumb iframe{width:100%;height:100%;border:0}
+  .video .meta{padding:12px 14px;flex:1;display:flex;flex-direction:column;gap:4px}
   .video .meta b{display:block;font-size:14px}
   .video .meta small{color:var(--ink-faint);font-size:12px}
+  .video .meta .acts{margin-top:auto;padding-top:10px}
 
-  .banner{border:2px solid var(--rule);background:var(--accent);color:#fff;padding:10px 14px;font-family:var(--font-mono);font-size:12px;letter-spacing:.03em;margin-bottom:20px;box-shadow:var(--shadow-md)}
-  .placeholder{border:1.5px dashed var(--warn);background:#fff8ec;color:#7a4d00;font-size:12.5px;padding:8px 11px;margin-top:10px;font-family:var(--font-mono)}
+  .banner{border:2px solid var(--rule);background:var(--brand-wash);color:var(--ink);padding:10px 14px;font-family:var(--font-mono);font-size:12px;letter-spacing:.02em;margin-bottom:20px;box-shadow:var(--shadow-sm);border-left:5px solid var(--brand)}
+  .placeholder{border:1.5px dashed var(--warn);background:var(--warn-wash);color:#7a4d00;font-size:12.5px;padding:8px 11px;margin-top:10px;font-family:var(--font-mono)}
+  .draftnote{border:1.5px dashed var(--warn);background:var(--warn-wash);color:#7a4d00;font-size:12px;padding:7px 10px;font-family:var(--font-mono);margin-bottom:14px}
   .row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
-  .mt{margin-top:14px}.mt-sm{margin-top:8px}
+  .mt{margin-top:14px}.mt-sm{margin-top:8px}.mb{margin-bottom:14px}
 
-  /* ---------- CMU EMS logo ---------- */
-  .topbar-logo{width:34px;height:34px;object-fit:contain;flex:0 0 auto}
+  /* ---------- expiry badges ---------- */
+  .expblock{border:1.5px solid var(--rule-soft);background:var(--card-2);padding:11px 12px;margin:8px 0 4px}
+  .expblock .exphead{font-size:13px;font-weight:600;margin-bottom:7px}
+  .exprow{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+  .exprow input[type=date]{max-width:190px}
+  .expbadge{font-family:var(--font-mono);font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;padding:4px 9px;border:1.5px solid var(--rule)}
+  .expbadge.none{color:var(--ink-faint);border-style:dashed;border-color:var(--rule-soft)}
+  .expbadge.good{background:var(--ok);color:#fff;border-color:transparent}
+  .expbadge.soon{background:var(--warn);color:#fff;border-color:transparent}
+  .expbadge.bad{background:var(--oos);color:#fff;border-color:transparent}
+
+  /* ---------- grounded / disabled form ---------- */
+  .grounded{border:2px solid var(--rule);background:var(--oos);color:#fff;padding:13px 15px;box-shadow:var(--shadow-md);margin-bottom:16px;font-weight:700}
+  .grounded .sub{font-weight:500;font-size:13px;margin-top:4px;opacity:.95}
+  .isdisabled{opacity:.4;pointer-events:none;filter:grayscale(.5)}
+
+  /* ---------- form builder (manager mode) ---------- */
+  .builder{border:2px dashed var(--brand);background:var(--brand-wash);padding:14px;margin-bottom:16px}
+  .builder h4{margin:0 0 4px;font-size:14px;font-weight:700;color:var(--brand)}
+  .builder .bsub{font-size:12px;color:var(--ink-soft);margin:0 0 12px}
+  .bsection{border:1.5px solid var(--rule-soft);background:#fff;padding:10px 12px;margin-bottom:10px}
+  .bsection .bhead{display:flex;gap:8px;align-items:center;margin-bottom:8px}
+  .bsection .bhead input{font-weight:700}
+  .bitem{display:grid;grid-template-columns:1fr 74px auto auto;gap:7px;align-items:center;padding:4px 0;border-bottom:1px dashed var(--rule-soft)}
+  .bitem:last-child{border-bottom:0}
+  .bitem input[type=text]{font-size:13px;padding:6px 8px}
+  .bitem input[type=number]{font-size:13px;padding:6px 8px;text-align:center}
+  .bitem .expflag{display:flex;align-items:center;gap:4px;font-size:11px;font-family:var(--font-mono);color:var(--ink-faint);white-space:nowrap}
+  @media(max-width:640px){.bitem{grid-template-columns:1fr;gap:5px}}
+
+  /* ---------- collapsible (bylaws) ---------- */
+  .acc{border:1.5px solid var(--rule);background:var(--card);margin-bottom:10px;box-shadow:var(--shadow-sm)}
+  .acc .acchead{display:flex;align-items:center;gap:10px;padding:12px 14px;cursor:pointer;font-weight:700;font-size:15px}
+  .acc .acchead .num{font-family:var(--font-mono);font-size:12px;color:#fff;background:var(--brand);width:24px;height:24px;display:grid;place-items:center;flex:0 0 auto}
+  .acc .acchead .chev{margin-left:auto;font-family:var(--font-mono);color:var(--ink-faint);transition:transform .2s var(--ease)}
+  .acc.open .acchead .chev{transform:rotate(90deg)}
+  .acc .accbody{display:none;padding:0 14px 14px 48px;font-size:13.5px;color:var(--ink-soft)}
+  .acc.open .accbody{display:block}
+  .acc .accbody ul{margin:0;padding-left:18px}
+  .acc .accbody li{margin-bottom:5px}
+  .acc .accbody textarea{min-height:130px;font-size:13px;font-family:var(--font-body)}
+
+  /* ---------- lectures ---------- */
+  .module{border:2px solid var(--rule);background:var(--card);box-shadow:var(--shadow-md);padding:0;display:flex;flex-direction:column}
+  .module .mhead{display:flex;align-items:center;gap:11px;padding:14px;cursor:pointer}
+  .module .mnum{font-family:var(--font-mono);font-size:13px;font-weight:700;color:#fff;background:var(--brand);width:30px;height:30px;display:grid;place-items:center;flex:0 0 auto}
+  .module .mtitle{font-weight:700;font-size:15px;flex:1}
+  .module .mbody{display:none;border-top:1.5px solid var(--rule-soft);padding:12px 14px}
+  .module.open .mbody{display:block}
+  .module .embed{aspect-ratio:16/9;width:100%;border:1.5px solid var(--rule);background:var(--bg-2)}
+  .module .embed iframe{width:100%;height:100%;border:0;display:block}
+  /* Compact notice, NOT 16/9 — an unlinked module shouldn't open into a
+     screen-tall empty box just because a real slide deck would be that shape. */
+  .noembed{min-height:104px;display:grid;place-items:center;text-align:center;padding:20px 16px;background:var(--bg-2);
+    border:1.5px dashed var(--warn);color:#7a4d00;font-family:var(--font-mono);font-size:12px;line-height:1.6}
+
+  /* ---------- CMU EMS logo blocks ---------- */
+  .crest{width:64px;height:64px;object-fit:contain;flex:0 0 auto}
+  .crest-fallback{width:64px;height:64px;flex:0 0 auto;display:grid;place-items:center;background:var(--brand-wash);
+    border:1.5px dashed var(--brand);color:var(--brand);font-family:var(--font-mono);font-size:9px;text-align:center;line-height:1.3;padding:4px}
+  .herobar{display:flex;align-items:center;gap:16px;border:2px solid var(--rule);border-left:6px solid var(--brand);
+    background:linear-gradient(90deg,var(--brand-wash) 0%,#fff 60%);padding:16px 18px;box-shadow:var(--shadow-md);margin-bottom:20px}
+  .herobar .htxt b{display:block;font-size:20px;font-weight:800;letter-spacing:-.01em}
+  .herobar .htxt span{font-size:13px;color:var(--ink-faint)}
 
   /* ---------- bike diagram (out-of-service) ---------- */
   .bike-diagram .diagram-head{display:flex;align-items:baseline;justify-content:space-between;gap:12px;margin-bottom:12px;flex-wrap:wrap}
   .diagram-legend{font-family:var(--font-mono);font-size:11px;color:var(--ink-soft);display:flex;align-items:center;gap:7px}
   .diagram-legend .sw{width:16px;height:6px;background:var(--oos);display:inline-block}
-  .views{display:grid;grid-template-columns:1.6fr 1fr;gap:14px}
-  @media(max-width:640px){.views{grid-template-columns:1fr}.bikeviz{max-width:400px;margin-inline:auto}}
+  .views{display:grid;grid-template-columns:1.55fr 1fr;gap:14px}
+  @media(max-width:640px){.views{grid-template-columns:1fr}.bikeviz{max-width:420px;margin-inline:auto}}
   .viewbox{border:1.5px solid var(--rule);background:var(--card-2);padding:10px 12px 12px}
   .viewlabel{font-family:var(--font-mono);font-size:10.5px;text-transform:uppercase;letter-spacing:.06em;color:var(--ink-faint);margin-bottom:6px}
   .bikeviz{width:100%;height:auto;display:block}
   .bikeviz .part{fill:none;stroke:var(--ink);stroke-width:3;stroke-linecap:round;stroke-linejoin:round;transition:stroke .18s var(--ease),fill .18s var(--ease),filter .18s var(--ease)}
   .bikeviz .part *{vector-effect:non-scaling-stroke}
   .bikeviz .part.solid{fill:var(--ink);stroke:none}
-  .bikeviz .tire{stroke-width:5}
-  .bikeviz .part.flag{stroke:var(--oos);stroke-width:5;filter:drop-shadow(0 0 5px rgba(210,31,14,.6));animation:partpulse 1.1s var(--ease) infinite}
+  .bikeviz .part.thin{stroke-width:1.6}
+  .bikeviz .tire{stroke-width:5.5}
+  .bikeviz .part.flag{stroke:var(--oos);stroke-width:5;filter:drop-shadow(0 0 5px rgba(224,49,49,.55));animation:partpulse 1.1s var(--ease) infinite}
+  .bikeviz .part.thin.flag{stroke-width:2.6}
   .bikeviz .part.solid.flag{fill:var(--oos);stroke:none}
   @keyframes partpulse{0%,100%{opacity:.82}50%{opacity:1}}
   .flagchips{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px;align-items:center;min-height:24px}
@@ -157,196 +270,156 @@
 <!-- ============ APP (open to everyone; Bike Manager mode unlocks editing) ============ -->
 <div id="app">
   <div class="topbar">
-    <img class="topbar-logo" src="assets/cmu-ems-logo.png" alt="" onerror="this.remove()">
+    <img class="logo-mark" src="assets/cmuems.png" alt="CMU EMS"
+         onerror="this.outerHTML='<div class=\'logo-fallback\'>EMS</div>'">
     <div class="brand"><b>Bike Ops</b><span class="term">CMU EMS</span></div>
     <div class="spacer"></div>
     <span id="rolePill" class="role-pill">Member view</span>
-    <button class="btn sm ghost" onclick="toggleWeb()" id="webBtn">🔒 Bike Manager</button>
+    <button class="btn sm" onclick="toggleWeb()" id="webBtn">🔒 Bike Manager</button>
   </div>
 
   <nav class="sidebar" id="nav">
     <div class="sb-item active" data-view="dash"><span class="ic">▣</span>Dashboard</div>
     <div class="sb-item" data-view="bikes"><span class="ic">◉</span>Bikes &amp; Issues</div>
     <div class="sb-item" data-view="oos"><span class="ic">⚠</span>Out-of-Service Tool</div>
-    <div class="sb-sep"></div>
+    <div class="sb-label">Checks</div>
     <div class="sb-item" data-view="checks"><span class="ic">☑</span>Checks &amp; Forms</div>
-    <div class="sb-item" data-view="videos"><span class="ic">▶</span>Tutorials</div>
+    <div class="sb-label">Learn</div>
+    <div class="sb-item" data-view="videos"><span class="ic">▶</span>Videos</div>
+    <div class="sb-item" data-view="lectures"><span class="ic">▤</span>Lectures</div>
+    <div class="sb-label">Reference</div>
     <div class="sb-item" data-view="repairs"><span class="ic">✱</span>Repairs &amp; Fixes</div>
     <div class="sb-item" data-view="inventory"><span class="ic">▦</span>Inventory</div>
-    <div class="sb-item" data-view="docs"><span class="ic">§</span>Docs &amp; Bylaws</div>
-    <div class="sb-note">DRAFT TEMPLATE<br>Data not yet connected</div>
+    <div class="sb-item" data-view="bylaws"><span class="ic">§</span>Bylaws</div>
+    <div class="sb-item" data-view="docs"><span class="ic">◈</span>Role &amp; Boundaries</div>
+    <div class="sb-item webonly blockonly" data-view="settings" style="display:none"><span class="ic">⚙</span>Site Settings</div>
+    <div class="sb-note" id="sbNote">DRAFT TEMPLATE<br>Backend not yet connected</div>
   </nav>
 
   <main>
-    <div class="banner">DRAFT TEMPLATE — content is placeholder. Real bike data, jumpkit fields &amp; out-of-service rules get filled in after the office visit.</div>
+    <div class="banner" id="topBanner">DRAFT — bike data and out-of-service rules are still being finalized. Forms save locally until the Google Sheet backend is connected (Site Settings).</div>
 
     <!-- ===== DASHBOARD ===== -->
     <section class="view active" data-view="dash">
-      <h2 class="view-title">Dashboard</h2>
-      <p class="view-sub">Bike readiness at a glance. This is the first thing you (and members) see on login.</p>
+      <div class="herobar">
+        <img class="crest" src="assets/cmuems.png" alt=""
+             onerror="this.outerHTML='<div class=\'crest-fallback\'>CMU EMS<br>crest</div>'">
+        <div class="htxt"><b>Bike Ops</b><span>Bike readiness, checks, and training for CMU EMS.</span></div>
+      </div>
       <div class="legend">
         <span class="item"><span class="dot" style="background:var(--ok)"></span>In service</span>
         <span class="item"><span class="dot" style="background:var(--warn)"></span>Needs review</span>
         <span class="item"><span class="dot" style="background:var(--oos)"></span>Out of service</span>
       </div>
-      <div class="grid cols-2">
-        <div class="card">
-          <div class="bike-head"><b>Bike 1</b><span class="status st-ok"><span class="dot"></span>In Service</span></div>
-          <div class="kv"><span>Open issues</span><span>0</span></div>
-          <div class="kv"><span>Last weekly check</span><span>Jul 20</span></div>
-          <div class="kv"><span>Lock / key</span><span>OK · key #1</span></div>
-          <div class="kv"><span>Last tune-up</span><span>—</span></div>
-        </div>
-        <div class="card">
-          <div class="bike-head"><b>Bike 2</b><span class="status st-oos"><span class="dot"></span>Out of Service</span></div>
-          <div class="kv"><span>Open issues</span><span>2</span></div>
-          <div class="kv"><span>Reason</span><span>Rear brake not gripping</span></div>
-          <div class="kv"><span>Last weekly check</span><span>Jul 20</span></div>
-          <div class="kv"><span>Lock / key</span><span>OK · key #2</span></div>
-        </div>
-      </div>
+      <div id="bikeCards" class="grid cols-3"></div>
       <div class="grid cols-3 mt">
-        <div class="card soft"><h3>Weekly readiness</h3><p style="font-size:13px;color:var(--ink-faint);margin:0">Bike-manager-only check, once/week before the meeting.</p><button class="btn sm mt" onclick="go('checks')">Start weekly check</button></div>
-        <div class="card soft"><h3>Report a problem</h3><p style="font-size:13px;color:var(--ink-faint);margin:0">Any member can log a bike problem via QR or here.</p><button class="btn sm mt" onclick="go('bikes')">Report issue</button></div>
-        <div class="card soft"><h3>Supplies to order</h3><p style="font-size:13px;color:var(--ink-faint);margin:0">3 items flagged low.</p><button class="btn sm mt" onclick="go('inventory')">View list</button></div>
+        <div class="card soft"><h3>Jumpkit check</h3><p style="font-size:13px;color:var(--ink-faint);margin:0">Confirm the bag is complete and nothing is expired.</p><button class="btn sm mt" onclick="go('jumpkit-check')">Start check</button></div>
+        <div class="card soft"><h3>Bike safety check</h3><p style="font-size:13px;color:var(--ink-faint);margin:0">Pre-ride check, including weather grounding.</p><button class="btn sm mt" onclick="go('safety-check')">Start check</button></div>
+        <div class="card soft"><h3>Report a problem</h3><p style="font-size:13px;color:var(--ink-faint);margin:0">Any member can log a bike problem.</p><button class="btn sm mt" onclick="go('bikes')">Report issue</button></div>
       </div>
     </section>
 
     <!-- ===== BIKES & ISSUES ===== -->
     <section class="view" data-view="bikes">
       <h2 class="view-title">Bikes &amp; Issues</h2>
-      <p class="view-sub">The running log of what's wrong with each bike. Members report; the webmaster resolves. Feeds each bike's service status.</p>
+      <p class="view-sub">The running log of what's wrong with each bike. Members report; the Bike Manager resolves. Feeds each bike's service status.</p>
       <div class="card">
         <div class="row" style="justify-content:space-between">
           <h3 style="margin:0">Open issues</h3>
-          <button class="btn sm solid" onclick="alert('Report form — wired to Google Sheet later')">+ Report a problem</button>
+          <button class="btn sm solid" onclick="go('safety-check')">+ Report via safety check</button>
         </div>
         <table class="mt">
           <thead><tr><th>Bike</th><th>Problem</th><th>Severity</th><th>Reported by</th><th>Date</th><th></th></tr></thead>
-          <tbody>
-            <tr><td>Bike 2</td><td>Rear brake not gripping</td><td><span class="tag crit">Critical</span></td><td>member</td><td>Jul 22</td><td><button class="btn sm ghost webonly">Resolve</button></td></tr>
-            <tr><td>Bike 2</td><td>Front light flickers</td><td><span class="tag warn">Warning</span></td><td>member</td><td>Jul 22</td><td><button class="btn sm ghost webonly">Resolve</button></td></tr>
-            <tr><td>Bike 1</td><td>Bell rattles</td><td><span class="tag">Minor</span></td><td>member</td><td>Jul 19</td><td><button class="btn sm ghost webonly">Resolve</button></td></tr>
-          </tbody>
+          <tbody id="issueRows"></tbody>
         </table>
-      </div>
-      <div class="grid cols-2 mt">
-        <div class="card soft"><h3>Bike 1 — recurring notes</h3><p style="font-size:13px;color:var(--ink-faint)">Chain drops on hard shifts (2x this month). Watch derailleur.</p></div>
-        <div class="card soft"><h3>Bike 2 — recurring notes</h3><p style="font-size:13px;color:var(--ink-faint)">Rear brake needs frequent adjustment — candidate for shop tune-up.</p></div>
+        <div class="placeholder">Issue list is placeholder until the Sheet backend is connected — real reports will land here.</div>
       </div>
     </section>
 
     <!-- ===== OUT OF SERVICE TOOL ===== -->
     <section class="view" data-view="oos">
       <h2 class="view-title">Out-of-Service Decision Tool</h2>
-      <p class="view-sub">Check off what's wrong below — the matching part lights up on the bike so you can confirm you're marking the right thing, and the tool gives a consistent in-service / out-of-service verdict.</p>
+      <p class="view-sub">Check off what's wrong — the matching part lights up on the bike so you can confirm you're flagging the right thing, and the tool gives a consistent verdict.</p>
 
-      <div class="card bike-diagram">
-        <div class="diagram-head">
-          <h3 style="margin:0">Bike diagram</h3>
-          <span class="diagram-legend"><span class="sw"></span>red = flagged part</span>
-        </div>
-        <div class="views">
-          <div class="viewbox">
-            <div class="viewlabel">Side view</div>
-            <svg class="bikeviz" viewBox="0 0 320 190" role="img" aria-label="Side view of a bicycle; parts highlight when a matching problem is checked">
-              <g class="part tire" data-part="tire"><circle cx="72" cy="132" r="37"/><circle cx="248" cy="132" r="37"/></g>
-              <g class="part" data-part="wheel"><circle cx="72" cy="132" r="30"/><circle cx="248" cy="132" r="30"/><line x1="72" y1="132" x2="94" y2="118"/><line x1="72" y1="132" x2="52" y2="120"/><line x1="248" y1="132" x2="270" y2="120"/><line x1="248" y1="132" x2="228" y2="120"/></g>
-              <g class="part" data-part="drivetrain"><circle cx="150" cy="132" r="11"/><circle cx="72" cy="132" r="6"/><line x1="78" y1="127" x2="145" y2="123"/><line x1="78" y1="137" x2="150" y2="143"/><line x1="150" y1="132" x2="158" y2="147"/><line x1="154" y1="147" x2="164" y2="147"/></g>
-              <g class="part" data-part="frame"><line x1="120" y1="66" x2="150" y2="132"/><line x1="150" y1="132" x2="72" y2="132"/><line x1="120" y1="66" x2="72" y2="132"/><line x1="150" y1="132" x2="212" y2="96"/><line x1="120" y1="66" x2="206" y2="70"/></g>
-              <g class="part" data-part="steering"><line x1="206" y1="70" x2="212" y2="96"/><line x1="212" y1="96" x2="248" y2="132"/><line x1="206" y1="70" x2="214" y2="58"/></g>
-              <g class="part" data-part="handlebar"><line x1="214" y1="58" x2="236" y2="54"/><line x1="236" y1="54" x2="240" y2="66"/></g>
-              <g class="part" data-part="seat"><line x1="106" y1="60" x2="130" y2="58" stroke-width="5"/><line x1="120" y1="62" x2="120" y2="66"/></g>
-              <g class="part" data-part="brake"><circle cx="72" cy="101" r="3.5"/><circle cx="248" cy="101" r="3.5"/></g>
-              <g class="part" data-part="lock"><rect x="169" y="109" width="15" height="12" rx="2"/><path d="M172 109 v-3 a4.5 4.5 0 0 1 9 0 v3"/></g>
-              <g class="part solid" data-part="light"><rect x="250" y="90" width="13" height="9" rx="1"/></g>
-              <g class="part solid" data-part="bell"><circle cx="222" cy="54" r="4.5"/></g>
-            </svg>
-          </div>
-          <div class="viewbox">
-            <div class="viewlabel">Bird's-eye view</div>
-            <svg class="bikeviz" viewBox="0 0 200 210" role="img" aria-label="Top-down bird's-eye view of a bicycle; parts highlight when a matching problem is checked">
-              <g class="part solid" data-part="light"><rect x="92" y="30" width="16" height="8" rx="1"/></g>
-              <g class="part" data-part="handlebar"><line x1="55" y1="56" x2="145" y2="56"/><line x1="55" y1="56" x2="50" y2="69"/><line x1="145" y1="56" x2="150" y2="69"/></g>
-              <g class="part" data-part="brake"><line x1="67" y1="56" x2="63" y2="47"/><circle cx="63" cy="46" r="2.6"/><line x1="133" y1="56" x2="137" y2="47"/><circle cx="137" cy="46" r="2.6"/></g>
-              <g class="part solid" data-part="bell"><circle cx="80" cy="56" r="4.5"/></g>
-              <g class="part" data-part="steering"><line x1="100" y1="56" x2="100" y2="70"/><line x1="93" y1="70" x2="107" y2="70"/></g>
-              <g class="part tire" data-part="tire"><ellipse cx="100" cy="96" rx="8" ry="25"/><ellipse cx="100" cy="182" rx="8" ry="25"/></g>
-              <g class="part" data-part="wheel"><ellipse cx="100" cy="96" rx="4" ry="20"/><circle cx="100" cy="96" r="2.4"/><ellipse cx="100" cy="182" rx="4" ry="20"/><circle cx="100" cy="182" r="2.4"/></g>
-              <g class="part" data-part="frame"><line x1="100" y1="70" x2="100" y2="148"/></g>
-              <g class="part solid" data-part="seat"><path d="M100 144 L91 166 L100 171 L109 166 Z"/></g>
-            </svg>
-          </div>
-        </div>
-        <div id="flagList" class="flagchips"><span class="flaghint">Nothing selected — bike shown normal.</span></div>
-      </div>
+      <div class="card bike-diagram" id="bikeDiagram"></div>
 
       <div class="grid cols-2 mt">
         <div class="card">
-          <h3>What's wrong with the bike?</h3>
+          <div class="row" style="justify-content:space-between;margin-bottom:6px">
+            <h3 style="margin:0">What's wrong with the bike?</h3>
+            <button class="btn xs webonly" onclick="toggleOOSEdit()" id="oosEditBtn">Edit criteria</button>
+          </div>
+          <div id="oosEditor"></div>
           <div id="oosList"></div>
-          <div class="placeholder">PLACEHOLDER RULES — you'll finalize which problems mean out-of-service with your bike friend. Easy to edit later.</div>
         </div>
         <div>
           <div class="card">
             <h3>Verdict</h3>
             <div id="verdict" class="verdict ok"><span class="big">In Service ✓</span></div>
             <p class="mt-sm" style="font-size:12.5px;color:var(--ink-faint)">Any <b>critical</b> item → Out of Service. Any <b>warning</b> only → Needs manager review. Nothing → In Service.</p>
-            <button class="btn sm mt webonly" onclick="alert('Logs verdict + puts bike OOS in the sheet later')">Apply to a bike</button>
+            <button class="btn sm mt webonly" onclick="alert('Applying a verdict to a specific bike needs the Sheet backend — see Site Settings.')">Apply to a bike</button>
           </div>
-          <div class="card soft mt"><h3>Who clears it?</h3><p style="font-size:13px;color:var(--ink-faint);margin:0">Open question from your notes: does only the Bike Manager place a bike out of service &amp; return it to service? We can lock that to webmaster-only.</p></div>
         </div>
       </div>
+
+      <div class="card mt" id="weatherPanel"></div>
     </section>
 
     <!-- ===== CHECKS & FORMS ===== -->
     <section class="view" data-view="checks">
       <h2 class="view-title">Checks &amp; Forms</h2>
-      <p class="view-sub">Every check is a form that saves to the database, and each has its own QR code to stick on the bike / jumpkit.</p>
-      <div class="grid cols-3">
-        <div class="card">
-          <h3>Jumpkit / Bag Check</h3>
-          <p style="font-size:13px;color:var(--ink-faint)">Confirm the equipment bag is complete &amp; stocked.</p>
-          <div class="qr mt">QR →<br>jumpkit form</div>
-          <button class="btn sm mt block" onclick="alert('Opens the jumpkit checklist')">Open form</button>
-          <div class="placeholder">Fields TBD — from the current form you'll grab today.</div>
-        </div>
-        <div class="card">
-          <h3>Pre-Ride Safety Check</h3>
-          <p style="font-size:13px;color:var(--ink-faint)">Quick confirm the bike is safe before checkout.</p>
-          <div class="qr mt">QR →<br>safety form</div>
-          <button class="btn sm mt block" onclick="alert('Opens the pre-ride checklist')">Open form</button>
-        </div>
-        <div class="card">
-          <h3>Weekly Readiness</h3>
-          <p style="font-size:13px;color:var(--ink-faint)">Bike-manager-only, once/week before the meeting.</p>
-          <div class="qr mt">QR →<br>weekly check</div>
-          <button class="btn sm mt block webonly" onclick="alert('Manager-only weekly check')">Start (manager)</button>
-          <div class="placeholder">Restricted to webmaster login.</div>
-        </div>
+      <p class="view-sub">Each check is its own page with its own link, so a QR code can point straight at it.</p>
+      <div class="grid cols-3" id="checkCards"></div>
+      <div class="card mt">
+        <h3>QR codes</h3>
+        <p style="font-size:13px;color:var(--ink-faint);margin:0 0 8px">Each form has a permanent link. Generate a QR for these URLs with any QR tool and stick them on the bag / bike.</p>
+        <div id="qrUrls"></div>
       </div>
     </section>
 
-    <!-- ===== TUTORIALS ===== -->
+    <!-- ===== JUMPKIT CHECK (own view for QR deep-link) ===== -->
+    <section class="view" data-view="jumpkit-check">
+      <span class="backlink" onclick="go('checks')">← Checks &amp; Forms</span>
+      <h2 class="view-title">Jumpkit Check</h2>
+      <p class="view-sub">Work top to bottom through the bag. Expiration dates are checked automatically — you don't have to do the math.</p>
+      <div id="jumpkitForm"></div>
+    </section>
+
+    <!-- ===== SAFETY CHECK (own view for QR deep-link) ===== -->
+    <section class="view" data-view="safety-check">
+      <span class="backlink" onclick="go('checks')">← Checks &amp; Forms</span>
+      <h2 class="view-title">Bike Safety Check</h2>
+      <p class="view-sub">Pre-ride check. Conditions are checked first — if bike response is grounded by weather, the rest of the check is moot.</p>
+      <div id="safetyForm"></div>
+    </section>
+
+    <!-- ===== VIDEOS ===== -->
     <section class="view" data-view="videos">
-      <h2 class="view-title">Video Tutorials</h2>
-      <p class="view-sub">How-to library. Webmaster can add videos any time — they save to the database.</p>
+      <h2 class="view-title">Videos</h2>
+      <p class="view-sub">How-to library. In Bike Manager mode you can add or remove videos at any time.</p>
       <div class="row" style="justify-content:space-between;margin-bottom:16px">
-        <span class="tag">3 videos</span>
-        <button class="btn sm solid webonly" onclick="alert('Add-video form: paste a video link + title → saves to sheet')">+ Add video</button>
+        <span class="tag" id="videoCount">0 videos</span>
+        <button class="btn sm solid webonly" onclick="addVideo()">+ Add video</button>
       </div>
-      <div class="grid cols-3">
-        <div class="video"><div class="thumb">▶ Bike Ropes Tutorial</div><div class="meta"><b>Tying Bike to Ropes</b><small>Your uploaded clip · 2:14</small></div></div>
-        <div class="video"><div class="thumb">▶ placeholder</div><div class="meta"><b>Pre-ride inspection</b><small>How to check a bike is safe</small></div></div>
-        <div class="video"><div class="thumb">▶ placeholder</div><div class="meta"><b>Fixing a dropped chain</b><small>Quick office fix</small></div></div>
+      <div class="grid cols-3" id="videoGrid"></div>
+    </section>
+
+    <!-- ===== LECTURES ===== -->
+    <section class="view" data-view="lectures">
+      <h2 class="view-title">Lectures</h2>
+      <p class="view-sub">The bike lecture, split into modules. Decks live in OneDrive / PowerPoint Online — editing happens there, so the file stays the single source of truth.</p>
+      <div class="row" style="justify-content:space-between;margin-bottom:16px">
+        <span class="tag" id="lectureCount">0 modules</span>
+        <button class="btn sm solid webonly" onclick="addLecture()">+ Add module</button>
       </div>
-      <div class="placeholder mt">Video hosting not chosen yet — see the recommendation in chat (Google Drive vs YouTube unlisted).</div>
+      <div class="grid" id="lectureList"></div>
+      <div class="placeholder" id="lectureNote"></div>
     </section>
 
     <!-- ===== REPAIRS ===== -->
     <section class="view" data-view="repairs">
       <h2 class="view-title">Repairs &amp; Fixes</h2>
-      <p class="view-sub">Where to reach out for repairs, and how to do the fixes you can handle in-office.</p>
+      <p class="view-sub">Where to reach out for repairs, and the fixes that can be handled in-office.</p>
       <div class="grid cols-2">
         <div class="card">
           <h3>Who to contact</h3>
@@ -362,7 +435,7 @@
           <div class="checkline" style="border:0;padding:6px 0"><span class="lbl">▸ Reseat a dropped chain</span></div>
           <div class="checkline" style="border:0;padding:6px 0"><span class="lbl">▸ Inflate tires to correct PSI</span></div>
           <div class="checkline" style="border:0;padding:6px 0"><span class="lbl">▸ Tighten seat &amp; handlebars</span></div>
-          <button class="btn sm mt webonly" onclick="alert('Add a how-to guide')">+ Add guide</button>
+          <button class="btn sm mt webonly" onclick="alert('Adding how-to guides comes with the Sheet backend.')">+ Add guide</button>
         </div>
       </div>
     </section>
@@ -374,21 +447,24 @@
       <div class="card">
         <table>
           <thead><tr><th>Item</th><th>Category</th><th>On hand</th><th>Status</th><th></th></tr></thead>
-          <tbody>
-            <tr><td>Kryptonite keys</td><td>Locks/Keys</td><td>2</td><td><span class="status st-ok"><span class="dot"></span>OK</span></td><td></td></tr>
-            <tr><td>Spare tubes</td><td>Parts</td><td>1</td><td><span class="status st-warn"><span class="dot"></span>Low</span></td><td><button class="btn sm ghost webonly">Order</button></td></tr>
-            <tr><td>Brake pads</td><td>Parts</td><td>0</td><td><span class="status st-oos"><span class="dot"></span>Out</span></td><td><button class="btn sm ghost webonly">Order</button></td></tr>
-            <tr><td>Bike lights</td><td>Accessories</td><td>2</td><td><span class="status st-ok"><span class="dot"></span>OK</span></td><td></td></tr>
-          </tbody>
+          <tbody id="invRows"></tbody>
         </table>
-        <button class="btn sm mt solid webonly" onclick="alert('Add inventory item')">+ Add item</button>
+        <button class="btn sm mt solid webonly" onclick="alert('Adding inventory items comes with the Sheet backend.')">+ Add item</button>
       </div>
     </section>
 
-    <!-- ===== DOCS ===== -->
+    <!-- ===== BYLAWS ===== -->
+    <section class="view" data-view="bylaws">
+      <h2 class="view-title">Bylaws</h2>
+      <p class="view-sub">What the Bike Manager role covers, by duty area. Editable in Bike Manager mode so it stays current across handoffs.</p>
+      <div id="bylawList"></div>
+      <button class="btn sm mt solid webonly" onclick="addBylaw()">+ Add section</button>
+    </section>
+
+    <!-- ===== ROLE & BOUNDARIES ===== -->
     <section class="view" data-view="docs">
-      <h2 class="view-title">Docs &amp; Bylaws</h2>
-      <p class="view-sub">Role definition, operating boundaries, and bike bylaws — editable by the webmaster so it stays current across managers.</p>
+      <h2 class="view-title">Role &amp; Boundaries</h2>
+      <p class="view-sub">Where bikes may go, who may ride, and what the role is in one line.</p>
       <div class="grid cols-2">
         <div class="card">
           <h3>Operating boundaries</h3>
@@ -396,91 +472,1070 @@
           <div class="kv"><span>General bounds</span><span>Mudge · TCS · backside Scaife</span></div>
           <div class="kv"><span>Keep between duty</span><span>confirm Ashley/Taimur (Mellon)</span></div>
           <div class="kv"><span>Red shirts</span><span>may ride · no jumpkits</span></div>
+          <div class="kv"><span>Bike jumpkit</span><span>doubles as personal jumpkit</span></div>
         </div>
         <div class="card">
           <h3>Bike Manager role</h3>
           <p style="font-size:13px;color:var(--ink-faint);margin:0 0 8px">Maintain bikes, organize supplies, monitor readiness, keep members trained. ~20 min/week.</p>
-          <button class="btn sm webonly" onclick="alert('Edit doc content')">Edit</button>
+          <button class="btn sm" onclick="go('bylaws')">See full bylaws →</button>
         </div>
       </div>
+    </section>
+
+    <!-- ===== SITE SETTINGS (manager only) ===== -->
+    <section class="view" data-view="settings">
+      <h2 class="view-title">Site Settings</h2>
+      <p class="view-sub">Bike Manager only. Connects the site to the Google Sheet backend and manages saved content.</p>
+      <div id="settingsBody"></div>
     </section>
 
   </main>
 </div>
 
 <script>
-  var PART_LABEL={brake:"Brakes",wheel:"Wheel / rim",tire:"Tire",frame:"Frame",steering:"Steering",lock:"Lock",drivetrain:"Gears / chain",light:"Light",seat:"Seat",handlebar:"Handlebar",bell:"Bell"};
-  var OOS_ITEMS=[
-    {t:"Brakes not working / won't grip",sev:"crit",parts:["brake"]},
-    {t:"Wheel bent / won't spin true",sev:"crit",parts:["wheel"]},
-    {t:"Tire flat / won't hold air",sev:"crit",parts:["tire"]},
-    {t:"Frame cracked",sev:"crit",parts:["frame"]},
-    {t:"Steering / headset loose",sev:"crit",parts:["steering"]},
-    {t:"No working lock",sev:"crit",parts:["lock"]},
-    {t:"Gears skipping",sev:"warn",parts:["drivetrain"]},
-    {t:"Brake pads worn",sev:"warn",parts:["brake"]},
-    {t:"Light not working",sev:"warn",parts:["light"]},
-    {t:"Seat / handlebars loose",sev:"warn",parts:["seat","handlebar"]},
-    {t:"Low tire pressure",sev:"warn",parts:["tire"]},
-    {t:"Bell missing / cosmetic",sev:"minor",parts:["bell"]}
-  ];
-  function renderOOS(){
-    var h="";
-    OOS_ITEMS.forEach(function(it,i){
-      var tag=it.sev==="crit"?'<span class="tag crit">Critical</span>':it.sev==="warn"?'<span class="tag warn">Warning</span>':'<span class="tag">Minor</span>';
-      h+='<label class="checkline"><input type="checkbox" data-sev="'+it.sev+'" data-parts="'+it.parts.join(',')+'" onchange="calcOOS()"><span class="lbl">'+it.t+'</span>'+tag+'</label>';
-    });
-    document.getElementById("oosList").innerHTML=h;
+/* ============================================================
+   Bike Ops — CMU EMS
+   Single-file static site. All editable content lives in DB and
+   persists to localStorage; the Google Sheet backend (Apps Script)
+   is optional and configured in Site Settings.
+   ============================================================ */
+
+/* ---------- helpers ---------- */
+function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,function(c){
+  return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];});}
+function uid(p){return (p||'id')+'-'+Math.random().toString(36).slice(2,8);}
+// Local calendar date, NOT toISOString() — that converts to UTC and returns
+// tomorrow's date any evening after 8pm EDT, which would misdate submissions.
+function todayISO(){var d=new Date();
+  return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
+function daysUntil(iso){
+  if(!iso) return null;
+  var d=new Date(iso+'T00:00:00'); if(isNaN(d.getTime())) return null;
+  var t=new Date(); t.setHours(0,0,0,0);
+  return Math.round((d-t)/86400000);
+}
+
+/* ---------- default content (seed; editable in manager mode) ---------- */
+var DEFAULTS={
+  version:3,
+  apiUrl:'',            // Apps Script Web App URL — set in Site Settings
+  bikes:[
+    {id:'curtain', name:'Curtain Bike',  status:'warn', note:'Needs air in tires; bell mounted backwards; side light uncharged.'},
+    {id:'ceiling', name:'Ceiling Bike',  status:'oos',  note:'Still on the rope/hook system. Latch will not stay unlocked — unsafe to retrieve alone.'},
+    {id:'oosbike', name:'Third Bike',    status:'oos',  note:'Front brake needs bleeding; missing rack bolt (~50mm) and spacer (~30mm).'}
+  ],
+  issues:[
+    {bike:'Ceiling Bike', problem:'Ceiling latch will not stay unlocked', sev:'crit', by:'bike manager', date:'Jul 23'},
+    {bike:'Third Bike',   problem:'Front brake needs bleeding',           sev:'crit', by:'bike manager', date:'Jul 23'},
+    {bike:'Third Bike',   problem:'Rack missing bolt + spacer',           sev:'warn', by:'bike manager', date:'Jul 23'},
+    {bike:'Curtain Bike', problem:'Tires low / need air',                 sev:'warn', by:'bike manager', date:'Jul 23'},
+    {bike:'Curtain Bike', problem:'Bell mounted backwards',               sev:'minor',by:'bike manager', date:'Jul 23'}
+  ],
+  inventory:[
+    {item:'Kryptonite keys', cat:'Locks/Keys',  qty:'2', status:'ok'},
+    {item:'Floor pump',      cat:'Tools',       qty:'0', status:'oos'},
+    {item:'29 x 2.25 presta tubes', cat:'Parts',qty:'0', status:'oos'},
+    {item:'Hand pump',       cat:'Tools',       qty:'1', status:'warn'},
+    {item:'Helmets',         cat:'Safety',      qty:'?', status:'warn'}
+  ],
+  oos:[
+    {id:'o1', t:"Brakes not working / won't grip", sev:'crit', parts:['brake']},
+    {id:'o2', t:"Wheel bent / won't spin true",    sev:'crit', parts:['wheel']},
+    {id:'o3', t:"Tire flat / won't hold air",      sev:'crit', parts:['tire']},
+    {id:'o4', t:'Frame cracked',                   sev:'crit', parts:['frame']},
+    {id:'o5', t:'Steering / headset loose',        sev:'crit', parts:['steering']},
+    {id:'o6', t:'No working lock',                 sev:'crit', parts:['lock']},
+    {id:'o7', t:'Gears skipping',                  sev:'warn', parts:['drivetrain']},
+    {id:'o8', t:'Brake pads worn',                 sev:'warn', parts:['brake']},
+    {id:'o9', t:'Light not working',               sev:'warn', parts:['light']},
+    {id:'o10',t:'Seat / handlebars loose',         sev:'warn', parts:['seat','handlebar']},
+    {id:'o11',t:'Low tire pressure',               sev:'warn', parts:['tire']},
+    {id:'o12',t:'Chain derailed / off the chainring', sev:'warn', parts:['drivetrain']},
+    {id:'o13',t:'Rear rack loose or missing hardware', sev:'warn', parts:['rack']},
+    {id:'o14',t:'Bell missing / cosmetic',         sev:'minor',parts:['bell']}
+  ],
+  weather:[
+    {id:'w1', t:'Active thunderstorm or lightning in the area', tier:'ground'},
+    {id:'w2', t:'Snow or ice on roads/sidewalks', tier:'ground'},
+    {id:'w3', t:'Sustained wind ≥30mph or gusts ≥45mph', tier:'ground'},
+    {id:'w4', t:'Air temp or wind chill ≤20°F (−6°C)', tier:'ground'},
+    {id:'w5', t:'Visibility significantly reduced (heavy fog/rain, or dark without working lights)', tier:'ground'},
+    {id:'w6', t:'Standing water or flooding on route', tier:'ground'},
+    {id:'w7', t:'Heat index ≥100°F (38°C)', tier:'caution'}
+  ],
+  bags:[
+    {id:'bag2', label:'Bag 2', active:true},
+    {id:'bag3', label:'Bag 3', active:false},
+    {id:'bag4', label:'Bag 4', active:false}
+  ],
+  forms:{
+    jumpkit:{
+      title:'Jumpkit Check',
+      sections:[
+        {id:'top', name:'Top Compartment', items:[
+          {id:'i-bpcuff',  label:'Adult BP cuff', qty:1},
+          {id:'i-emesis',  label:'Emesis bag', qty:1},
+          {id:'i-steth',   label:'Stethoscope', qty:1},
+          {id:'i-shears',  label:'Trauma shears', qty:1},
+          {id:'i-pulseox', label:'Pulse ox', qty:1},
+          {id:'i-penlight',label:'Pen light', qty:1}
+        ]},
+        {id:'main', name:'Main Compartment', items:[
+          {id:'i-clip',    label:'Clipboard — 4 refusal, 4 alcohol refusal, 3 PEMS transfer-of-care forms, 1 pen', qty:1},
+          {id:'i-bvm',     label:'Big Blue Bag — adult BVM', qty:1},
+          {id:'i-npa',     label:'Big Blue Bag — NPA set (at least 9 NPAs)', qty:1},
+          {id:'i-opa',     label:'Big Blue Bag — OPA set (at least 6 OPAs)', qty:1},
+          {id:'i-surgilube',label:'Big Blue Bag — surgilube packets', qty:2},
+          {id:'i-glucose', label:'Oral glucose', qty:1, exp:true},
+          {id:'i-tongue',  label:'Tongue depressors', qty:3},
+          {id:'i-tissues', label:'Pack of tissues', qty:1},
+          {id:'i-splinter',label:'Splinter kit', qty:1},
+          {id:'i-n95',     label:'N-95 masks', qty:2},
+          {id:'i-surgmask',label:'Surgical masks', qty:3},
+          {id:'i-strap',   label:'Bag shoulder strap', qty:1}
+        ]},
+        {id:'back', name:'Back Compartment', items:[
+          {id:'i-trash', label:'Trash bag', qty:1},
+          {id:'i-bio',   label:'Biohazard bag', qty:1}
+        ]},
+        {id:'right', name:'Right Compartment', items:[
+          {id:'i-hot',    label:'Big Red Bag — hot pack', qty:1},
+          {id:'i-cold',   label:'Big Red Bag — cold packs', qty:2},
+          {id:'i-press',  label:'6" pressure dressing', qty:1},
+          {id:'i-tri',    label:'Triangle bandages', qty:2},
+          {id:'i-tape',   label:'Roll of medical tape', qty:1},
+          {id:'i-coban',  label:'Roll of coban', qty:1},
+          {id:'i-eyewash',label:'Small bottle of eyewash', qty:1},
+          {id:'i-glasses',label:'Pair of safety glasses', qty:1},
+          {id:'i-ace4',   label:'4" ace bandage', qty:2},
+          {id:'i-ace2',   label:'2" ace bandage', qty:2}
+        ]},
+        {id:'left', name:'Left Compartment', items:[
+          {id:'i-b13',    label:'Blue pouch — 1x3 bandaids', qty:6},
+          {id:'i-b24',    label:'Blue pouch — 2x4 bandaids', qty:6},
+          {id:'i-vionex', label:'Blue pouch — VioNex wipes (equipment)', qty:6},
+          {id:'i-bzk',    label:'Blue pouch — BZK wipes (people)', qty:6},
+          {id:'i-g2r',    label:'Black pouch — 2" rolled gauze', qty:3},
+          {id:'i-g4r',    label:'Black pouch — 4" rolled gauze', qty:2},
+          {id:'i-g22',    label:'Red pouch — 2x2 gauze', qty:10},
+          {id:'i-g44',    label:'Red pouch — 4x4 gauze', qty:4},
+          {id:'i-combine',label:'Red pouch — 5x9 combine pads', qty:2},
+          {id:'i-petro',  label:'Red pouch — petroleum gauze pads', qty:2, exp:true},
+          {id:'i-cat',    label:'Combat application tourniquet', qty:1},
+          {id:'i-multi',  label:'Multi trauma dressing', qty:1}
+        ]}
+      ]
+    },
+    safety:{
+      title:'Bike Safety Check',
+      sections:[
+        {id:'mech', name:'Bike Mechanical', items:[
+          {id:'s-tires',  label:'Tires inflated, no visible damage'},
+          {id:'s-brakes', label:'Brakes grip firmly, front and rear'},
+          {id:'s-wheels', label:'Wheels spin true, no wobble or rub'},
+          {id:'s-tight',  label:'Handlebars and seat tight, no play'},
+          {id:'s-chain',  label:'Chain/gears shift cleanly, chain seated properly'},
+          {id:'s-lights', label:'Lights present and charged'},
+          {id:'s-bell',   label:'Bell/horn functional'},
+          {id:'s-lock',   label:'Lock present and functional'}
+        ]},
+        {id:'rider', name:'Rider Readiness', items:[
+          {id:'s-helmet', label:'Helmet available and worn'},
+          {id:'s-radio',  label:'Radio secured'},
+          {id:'s-kit',    label:'Jumpkit attached or available'},
+          {id:'s-trained',label:'Rider is trained/cleared for bike response'}
+        ]}
+      ]
+    }
+  },
+  videos:[
+    {id:'v1', title:'Tying a Bike to the Rope Hooks', embed:'',
+     note:'Reference only — documents the OLD ceiling rope/hook storage, which is being phased out as unsafe. Not current practice.',
+     legacy:true}
+  ],
+  // One deck can serve all six modules: PowerPoint Online's embed URL honours
+  // &wdSlideIndex=N, so each module points at the same file at a different slide.
+  // Set deck.url once and give each module its `slide`. A module may still carry
+  // its own `embed` (a separate deck), which wins over the shared one.
+  deck:{url:'', edit:''},
+  lectures:[
+    {id:'L1', title:'Bike Equipment',  embed:'', edit:'', slide:0},
+    {id:'L2', title:'Bike Safety',     embed:'', edit:'', slide:0},
+    {id:'L3', title:'Bike Technique',  embed:'', edit:'', slide:0},
+    {id:'L4', title:'Responsibility',  embed:'', edit:'', slide:0},
+    {id:'L5', title:'Bike Priority',   embed:'', edit:'', slide:0},
+    {id:'L6', title:'Practical Exam',  embed:'', edit:'', slide:0}
+  ],
+  bylaws:[
+    {id:'b1', title:'Bike Maintenance', body:'Check both bikes on a regular basis.\nCoordinate tune-ups or repairs when needed.\nKeep basic bike maintenance supplies organized and available.\nReport major repair needs to the appropriate officer before the bikes become unusable.'},
+    {id:'b2', title:'Bike Equipment Organization', body:'Keep bike storage areas clean and accessible.\nIdentify missing or low bike supplies.\nMaintain a list of bike parts or supplies that may need to be ordered.'},
+    {id:'b3', title:'Locks and Keys', body:'Make sure each bike has a working lock.\nMake sure bikes are locked properly when stored or left unattended.\nKeep track of bike lock keys; order replacement keys through Kryptonite when needed.'},
+    {id:'b4', title:'Bike Training', body:'Help organize bike training when needed.\nMake sure members understand safe bike use expectations.\nSupport updates to the bike lecture or training materials.\nIdentify areas where bike training should be improved.\nMake sure members know how to inspect bikes before use.\nMake sure members know how to report bike problems after use.'},
+    {id:'b5', title:'Bike Repair and Tune-Ups', body:'Determine when a bike needs outside repair.\nCheck whether repairs can be handled with existing office supplies first.\nFind an appropriate bike shop when professional maintenance is needed.\nPrioritize shops that are convenient but also capable of servicing public safety or operational bikes.\nTrack when tune-ups or major repairs are completed.\nMaintain notes on recurring bike problems.\nRecommend replacement if a bike becomes unreliable, unsafe, or too expensive to maintain.'},
+    {id:'b6', title:'Bike Improvement Projects', body:'Bike check forms and pre-ride inspection checklist (this site).\nImproving the bike lecture and training program.\nA bike maintenance schedule.\nLabeling bike supplies and maintenance tools.\nA better system for tracking locks and keys.\nBetter storage options for bikes and bike supplies.\nResearching bike shops better suited for public safety maintenance.\nRecommending accessories: lights, bells, bags, repair kits, reflective materials.\nRecommending replacement bikes or upgrades if current bikes are no longer reliable.'}
+  ]
+};
+
+/* ---------- store (localStorage, guarded) ---------- */
+var DB_KEY='bikeops_db_v3';
+var DB=loadDB();
+function loadDB(){
+  var base=JSON.parse(JSON.stringify(DEFAULTS));
+  var raw=null;
+  try{raw=localStorage.getItem(DB_KEY);}catch(e){return base;}
+  if(!raw) return base;
+  var saved;
+  try{saved=JSON.parse(raw);}catch(e){return base;}          // corrupt JSON -> defaults
+  if(!saved||typeof saved!=='object'||Array.isArray(saved)) return base;
+  // shallow merge: only adopt keys that exist in defaults and match the expected shape
+  Object.keys(base).forEach(function(k){
+    if(!(k in saved)) return;
+    var want=base[k], got=saved[k];
+    if(Array.isArray(want)){ if(Array.isArray(got)) base[k]=got; }
+    else if(want&&typeof want==='object'){ if(got&&typeof got==='object'&&!Array.isArray(got)) base[k]=got; }
+    else if(typeof got===typeof want){ base[k]=got; }
+  });
+  return base;
+}
+function saveDB(){
+  try{localStorage.setItem(DB_KEY,JSON.stringify(DB));}
+  catch(e){console.warn('Could not save locally:',e);}
+}
+function resetDB(){
+  if(!confirm('Reset ALL site content back to the built-in defaults? Any edits you made here will be lost.')) return;
+  try{localStorage.removeItem(DB_KEY);}catch(e){}
+  DB=JSON.parse(JSON.stringify(DEFAULTS));
+  renderAll();
+  alert('Content reset to defaults.');
+}
+
+/* ============================================================
+   ROUTER — hash-based so every form has a linkable URL for QR
+   ============================================================ */
+var VIEWS=['dash','bikes','oos','checks','jumpkit-check','safety-check','videos',
+           'lectures','repairs','inventory','bylaws','docs','settings'];
+// The two form views have no sidebar entry of their own — they're opened from
+// cards inside "Checks & Forms". Keep the parent lit so a QR deep-link doesn't
+// land with nothing highlighted in the nav.
+var NAV_PARENT={'jumpkit-check':'checks','safety-check':'checks'};
+function go(v,fromHash){
+  if(VIEWS.indexOf(v)<0) v='dash';
+  var navFor=NAV_PARENT[v]||v;
+  document.querySelectorAll('.sb-item').forEach(function(x){x.classList.toggle('active',x.dataset.view===navFor);});
+  document.querySelectorAll('.view').forEach(function(x){x.classList.toggle('active',x.dataset.view===v);});
+  // On phones the sidebar is a horizontal strip, so the active item can sit
+  // off-screen. Nudge it into view — but only when actually scrolling sideways,
+  // so the desktop vertical sidebar never yanks the page around.
+  var nav=document.getElementById('nav'), act=nav&&nav.querySelector('.sb-item.active');
+  if(act&&nav.scrollWidth>nav.clientWidth+1){
+    var a=act.getBoundingClientRect(), n=nav.getBoundingClientRect();
+    nav.scrollLeft += (a.left-n.left) - (n.width-a.width)/2;
   }
-  function calcOOS(){
-    var boxes=document.querySelectorAll('#oosList input');
-    var crit=0,warn=0,active={};
-    boxes.forEach(function(b){
-      if(!b.checked) return;
-      if(b.dataset.sev==="crit")crit++;else if(b.dataset.sev==="warn")warn++;
-      (b.dataset.parts||"").split(",").forEach(function(p){if(p)active[p]=1;});
+  try{localStorage.setItem('bikeops_view',v);}catch(e){}
+  // Keep the URL in sync without stacking history on every sidebar click.
+  if(!fromHash){
+    if(location.hash.slice(1)!==v){
+      if(history.replaceState) history.replaceState(null,'','#'+v); else location.hash=v;
+    }
+  }
+  window.scrollTo(0,0);
+}
+document.getElementById('nav').addEventListener('click',function(e){
+  var it=e.target.closest('.sb-item'); if(it) go(it.dataset.view);
+});
+window.addEventListener('hashchange',function(){
+  var v=location.hash.slice(1); if(VIEWS.indexOf(v)>=0) go(v,true);
+});
+
+/* ============================================================
+   BIKE MANAGER MODE
+   The passcode below is stored ONLY as a SHA-256 hash. That keeps the
+   passphrase out of the page source, but understand the limit: this is a
+   public static site, so anyone determined can bypass the UI gate in
+   devtools. It hides manager controls from casual visitors — it is NOT
+   what protects your data. Writes to the Google Sheet are validated
+   server-side by the Apps Script, which is the real gate.
+   ============================================================ */
+var MGR_HASH='f3d8315d346f810b25e5ce43d829de40dac84f5a2176556dd44c374579c8372d';
+function sha256Hex(str){
+  if(!(window.crypto&&crypto.subtle)) return Promise.resolve(null);
+  return crypto.subtle.digest('SHA-256',new TextEncoder().encode(str)).then(function(buf){
+    return Array.prototype.map.call(new Uint8Array(buf),function(b){
+      return b.toString(16).padStart(2,'0');}).join('');
+  });
+}
+function setWeb(on){
+  document.body.classList.toggle('is-web',on);
+  var pill=document.getElementById('rolePill');
+  pill.textContent=on?'Bike Manager':'Member view';
+  pill.className='role-pill'+(on?' web':'');
+  document.getElementById('webBtn').textContent=on?'Exit manager':'🔒 Bike Manager';
+  document.querySelector('[data-view="settings"]').style.display=on?'flex':'none';
+  if(!on&&location.hash.slice(1)==='settings') go('dash');
+  renderAll();
+}
+function toggleWeb(){
+  if(document.body.classList.contains('is-web')){setWeb(false);return;}
+  var p=prompt('Bike Manager passcode:');
+  if(p===null) return;
+  sha256Hex(p.trim()).then(function(h){
+    if(h===null){alert('This browser cannot verify the passcode (needs a secure context).');return;}
+    if(h===MGR_HASH) setWeb(true);
+    else alert('Incorrect passcode.');
+  });
+}
+
+/* ============================================================
+   BIKE DIAGRAM + OUT-OF-SERVICE TOOL
+   ============================================================ */
+var PART_LABEL={brake:'Brakes',wheel:'Wheel / rim',tire:'Tire',frame:'Frame',steering:'Steering',
+  lock:'Lock',drivetrain:'Gears / chain',light:'Light',seat:'Seat',handlebar:'Handlebar',
+  bell:'Bell',rack:'Rear rack'};
+
+function bikeSVGs(){
+  return ''+
+  '<div class="diagram-head">'+
+    '<h3 style="margin:0">Bike diagram</h3>'+
+    '<span class="diagram-legend"><span class="sw"></span>red = flagged part</span>'+
+  '</div>'+
+  '<div class="views">'+
+    '<div class="viewbox"><div class="viewlabel">Side view</div>'+
+    '<svg class="bikeviz" viewBox="0 0 340 200" role="img" aria-label="Side view of a bicycle; parts highlight when a matching problem is checked">'+
+      '<g class="part tire" data-part="tire"><circle cx="76" cy="140" r="42"/><circle cx="264" cy="140" r="42"/></g>'+
+      '<g class="part thin" data-part="wheel">'+
+        '<circle cx="76" cy="140" r="34"/><circle cx="264" cy="140" r="34"/>'+
+        '<line x1="76" y1="140" x2="76" y2="106"/><line x1="76" y1="140" x2="106" y2="157"/><line x1="76" y1="140" x2="46" y2="157"/>'+
+        '<line x1="76" y1="140" x2="100" y2="116"/><line x1="76" y1="140" x2="52" y2="116"/><line x1="76" y1="140" x2="76" y2="174"/>'+
+        '<line x1="264" y1="140" x2="264" y2="106"/><line x1="264" y1="140" x2="294" y2="157"/><line x1="264" y1="140" x2="234" y2="157"/>'+
+        '<line x1="264" y1="140" x2="288" y2="116"/><line x1="264" y1="140" x2="240" y2="116"/><line x1="264" y1="140" x2="264" y2="174"/>'+
+      '</g>'+
+      '<g class="part" data-part="drivetrain">'+
+        '<circle cx="170" cy="140" r="13"/><circle cx="76" cy="140" r="6"/>'+
+        '<line x1="82" y1="134" x2="164" y2="130"/><line x1="82" y1="146" x2="170" y2="153"/>'+
+        '<line x1="170" y1="140" x2="180" y2="156"/><line x1="176" y1="157" x2="187" y2="156"/>'+
+      '</g>'+
+      '<g class="part" data-part="frame">'+
+        '<line x1="170" y1="140" x2="140" y2="66"/><line x1="170" y1="140" x2="234" y2="90"/>'+
+        '<line x1="142" y1="68" x2="229" y2="64"/><line x1="170" y1="140" x2="76" y2="140"/>'+
+        '<line x1="142" y1="70" x2="76" y2="140"/>'+
+      '</g>'+
+      '<g class="part" data-part="rack">'+
+        '<line x1="103" y1="103" x2="150" y2="100"/><line x1="103" y1="103" x2="86" y2="122"/>'+
+        '<line x1="150" y1="100" x2="152" y2="124"/><line x1="103" y1="110" x2="148" y2="107"/>'+
+      '</g>'+
+      '<g class="part" data-part="steering">'+
+        '<line x1="228" y1="62" x2="236" y2="92"/><line x1="236" y1="92" x2="264" y2="140"/>'+
+        '<line x1="228" y1="62" x2="242" y2="56"/>'+
+      '</g>'+
+      '<g class="part" data-part="handlebar"><line x1="242" y1="56" x2="262" y2="52"/><line x1="262" y1="52" x2="266" y2="66"/></g>'+
+      '<g class="part" data-part="seat"><line x1="126" y1="60" x2="152" y2="57" stroke-width="6"/><line x1="140" y1="62" x2="140" y2="66"/></g>'+
+      '<g class="part" data-part="brake"><circle cx="76" cy="106" r="4"/><circle cx="264" cy="106" r="4"/><line x1="264" y1="106" x2="252" y2="96"/><line x1="76" y1="106" x2="88" y2="96"/></g>'+
+      '<g class="part" data-part="lock"><rect x="192" y="104" width="16" height="13" rx="2"/><path d="M195 104 v-4 a5 5 0 0 1 10 0 v4"/></g>'+
+      '<g class="part solid" data-part="light"><rect x="272" y="84" width="14" height="10" rx="1"/></g>'+
+      '<g class="part solid" data-part="bell"><circle cx="250" cy="49" r="5"/></g>'+
+    '</svg></div>'+
+    '<div class="viewbox"><div class="viewlabel">Bird\'s-eye view</div>'+
+    '<svg class="bikeviz" viewBox="0 0 210 230" role="img" aria-label="Top-down bird\'s-eye view of a bicycle; parts highlight when a matching problem is checked">'+
+      '<g class="part solid" data-part="light"><rect x="97" y="26" width="16" height="9" rx="1"/></g>'+
+      '<g class="part" data-part="handlebar"><line x1="52" y1="58" x2="158" y2="58"/><line x1="52" y1="58" x2="47" y2="72"/><line x1="158" y1="58" x2="163" y2="72"/></g>'+
+      '<g class="part" data-part="brake"><line x1="66" y1="58" x2="61" y2="48"/><circle cx="60" cy="47" r="2.8"/><line x1="144" y1="58" x2="149" y2="48"/><circle cx="150" cy="47" r="2.8"/></g>'+
+      '<g class="part solid" data-part="bell"><circle cx="82" cy="58" r="5"/></g>'+
+      '<g class="part" data-part="steering"><line x1="105" y1="58" x2="105" y2="74"/><line x1="97" y1="74" x2="113" y2="74"/></g>'+
+      '<g class="part tire" data-part="tire"><ellipse cx="105" cy="100" rx="8" ry="26"/><ellipse cx="105" cy="188" rx="8" ry="26"/></g>'+
+      '<g class="part thin" data-part="wheel"><ellipse cx="105" cy="100" rx="4" ry="21"/><circle cx="105" cy="100" r="2.5"/><ellipse cx="105" cy="188" rx="4" ry="21"/><circle cx="105" cy="188" r="2.5"/></g>'+
+      '<g class="part" data-part="frame"><line x1="105" y1="74" x2="105" y2="150"/></g>'+
+      // Lock and drivetrain also live here, not just on the side view — a criterion
+      // that highlights on only one diagram reads as "nothing is wrong" on the other.
+      '<g class="part" data-part="lock"><rect x="84" y="112" width="10" height="26" rx="2"/><line x1="86" y1="112" x2="92" y2="112"/></g>'+
+      '<g class="part" data-part="drivetrain">'+
+        '<circle cx="105" cy="142" r="6"/>'+                      /* chainring from above */
+        '<line x1="88" y1="142" x2="122" y2="142"/>'+             /* crank arms / pedal axle */
+        '<rect x="83" y="138" width="7" height="8" rx="1"/>'+     /* left pedal */
+        '<rect x="120" y="138" width="7" height="8" rx="1"/>'+    /* right pedal */
+        '<line x1="111" y1="145" x2="108" y2="186"/>'+            /* chain back to rear hub, drive side */
+      '</g>'+
+      '<g class="part solid" data-part="seat"><path d="M105 148 L96 168 L105 173 L114 168 Z"/></g>'+
+      '<g class="part" data-part="rack"><rect x="93" y="178" width="24" height="26" rx="2"/><line x1="93" y1="188" x2="117" y2="188"/></g>'+
+    '</svg></div>'+
+  '</div>'+
+  '<div id="flagList" class="flagchips"><span class="flaghint">Nothing selected — bike shown normal.</span></div>';
+}
+
+var oosEditMode=false;
+function toggleOOSEdit(){oosEditMode=!oosEditMode;renderOOS();}
+
+function renderOOS(){
+  var d=document.getElementById('bikeDiagram');
+  if(d&&!d.querySelector('.bikeviz')) d.innerHTML=bikeSVGs();
+
+  var ed=document.getElementById('oosEditor');
+  var btn=document.getElementById('oosEditBtn');
+  if(btn) btn.textContent=oosEditMode?'Done editing':'Edit criteria';
+
+  if(oosEditMode){
+    var eh='<div class="builder"><h4>Editing out-of-service criteria</h4>'+
+      '<p class="bsub">These decide the verdict. Critical = out of service. Warning = manager review. Minor = note only.</p>';
+    DB.oos.forEach(function(it,i){
+      eh+='<div class="bitem">'+
+        '<input type="text" value="'+esc(it.t)+'" oninput="DB.oos['+i+'].t=this.value;saveDB()">'+
+        '<select onchange="DB.oos['+i+'].sev=this.value;saveDB();renderOOS()" style="padding:6px 8px;font-size:13px">'+
+          '<option value="crit"'+(it.sev==='crit'?' selected':'')+'>Critical</option>'+
+          '<option value="warn"'+(it.sev==='warn'?' selected':'')+'>Warning</option>'+
+          '<option value="minor"'+(it.sev==='minor'?' selected':'')+'>Minor</option>'+
+        '</select>'+
+        '<span class="expflag">'+esc((it.parts||[]).join(', '))+'</span>'+
+        '<button class="btn xs danger" onclick="delOOS('+i+')">✕</button>'+
+      '</div>';
     });
-    document.querySelectorAll('.bikeviz [data-part]').forEach(function(el){
-      el.classList.toggle('flag',!!active[el.getAttribute('data-part')]);
+    eh+='<button class="btn sm mt" onclick="addOOS()">+ Add criterion</button> '+
+        '<button class="btn sm mt solid" onclick="toggleOOSEdit()">Done</button></div>';
+    ed.innerHTML=eh;
+  } else { ed.innerHTML=''; }
+
+  var h='';
+  DB.oos.forEach(function(it,i){
+    var tag=it.sev==='crit'?'<span class="tag crit">Critical</span>'
+           :it.sev==='warn'?'<span class="tag warn">Warning</span>'
+           :'<span class="tag">Minor</span>';
+    h+='<label class="checkline"><input type="checkbox" data-sev="'+esc(it.sev)+'" data-parts="'+esc((it.parts||[]).join(','))+'" onchange="calcOOS()"><span class="lbl">'+esc(it.t)+'</span>'+tag+'</label>';
+  });
+  document.getElementById('oosList').innerHTML=h;
+  calcOOS();
+}
+function addOOS(){
+  var t=prompt('New criterion (what is wrong with the bike)?');
+  if(!t||!t.trim()) return;
+  var parts=prompt('Which bike part does this highlight?\nOptions: '+Object.keys(PART_LABEL).join(', '),'frame');
+  DB.oos.push({id:uid('o'),t:t.trim(),sev:'warn',parts:[(parts||'frame').trim()]});
+  saveDB();renderOOS();
+}
+function delOOS(i){
+  if(!confirm('Remove "'+DB.oos[i].t+'"?')) return;
+  DB.oos.splice(i,1);saveDB();renderOOS();
+}
+function calcOOS(){
+  var boxes=document.querySelectorAll('#oosList input');
+  var crit=0,warn=0,active={};
+  boxes.forEach(function(b){
+    if(!b.checked) return;
+    if(b.dataset.sev==='crit')crit++;else if(b.dataset.sev==='warn')warn++;
+    (b.dataset.parts||'').split(',').forEach(function(p){if(p)active[p]=1;});
+  });
+  document.querySelectorAll('.bikeviz [data-part]').forEach(function(el){
+    el.classList.toggle('flag',!!active[el.getAttribute('data-part')]);
+  });
+  var keys=Object.keys(active);
+  var fl=document.getElementById('flagList');
+  if(fl) fl.innerHTML = keys.length
+    ? keys.map(function(p){return '<span class="flagchip">'+esc(PART_LABEL[p]||p)+'</span>';}).join('')
+    : '<span class="flaghint">Nothing selected — bike shown normal.</span>';
+  var v=document.getElementById('verdict');
+  if(crit>0){v.className='verdict oos';v.innerHTML='<span class="big">Out of Service ✕</span>';}
+  else if(warn>0){v.className='verdict warn';v.innerHTML='<span class="big">Needs Manager Review</span>';}
+  else{v.className='verdict ok';v.innerHTML='<span class="big">In Service ✓</span>';}
+}
+
+/* ---------- weather / conditions panel ---------- */
+var weatherEditMode=false;
+function toggleWeatherEdit(){weatherEditMode=!weatherEditMode;renderWeather();}
+function renderWeather(){
+  var el=document.getElementById('weatherPanel'); if(!el) return;
+  var h='<div class="row" style="justify-content:space-between;margin-bottom:6px">'+
+    '<h3 style="margin:0">Weather &amp; Conditions</h3>'+
+    '<button class="btn xs webonly" onclick="toggleWeatherEdit()">'+(weatherEditMode?'Done editing':'Edit conditions')+'</button></div>'+
+    '<div class="draftnote">DRAFT THRESHOLDS — pending confirmation from EMS leadership. Not yet ratified policy.</div>'+
+    '<p style="font-size:13px;color:var(--ink-faint);margin:0 0 10px">This grounds bike response as a whole — it is not a fault with any one bike.</p>';
+  if(weatherEditMode){
+    h+='<div class="builder"><h4>Editing conditions</h4><p class="bsub">Ground = hard stop. Caution = advisory only.</p>';
+    DB.weather.forEach(function(w,i){
+      h+='<div class="bitem">'+
+        '<input type="text" value="'+esc(w.t)+'" oninput="DB.weather['+i+'].t=this.value;saveDB()">'+
+        '<select onchange="DB.weather['+i+'].tier=this.value;saveDB();renderWeather();renderForm(\'safety\')" style="padding:6px 8px;font-size:13px">'+
+          '<option value="ground"'+(w.tier==='ground'?' selected':'')+'>Ground</option>'+
+          '<option value="caution"'+(w.tier==='caution'?' selected':'')+'>Caution</option>'+
+        '</select><span></span>'+
+        '<button class="btn xs danger" onclick="delWeather('+i+')">✕</button></div>';
     });
-    var keys=Object.keys(active);
-    document.getElementById('flagList').innerHTML = keys.length
-      ? keys.map(function(p){return '<span class="flagchip">'+(PART_LABEL[p]||p)+'</span>';}).join('')
-      : '<span class="flaghint">Nothing selected — bike shown normal.</span>';
-    var v=document.getElementById("verdict");
-    if(crit>0){v.className="verdict oos";v.innerHTML='<span class="big">Out of Service ✕</span>';}
-    else if(warn>0){v.className="verdict warn";v.innerHTML='<span class="big">Needs Manager Review</span>';}
-    else{v.className="verdict ok";v.innerHTML='<span class="big">In Service ✓</span>';}
+    h+='<button class="btn sm mt" onclick="addWeather()">+ Add condition</button> '+
+       '<button class="btn sm mt solid" onclick="toggleWeatherEdit()">Done</button></div>';
+  }
+  h+='<div>';
+  DB.weather.forEach(function(w){
+    h+='<div class="checkline"><span class="lbl">'+esc(w.t)+'</span>'+
+       (w.tier==='ground'?'<span class="tag crit">Ground</span>':'<span class="tag warn">Caution</span>')+'</div>';
+  });
+  h+='</div><p style="font-size:12.5px;color:var(--ink-faint);margin-top:10px">Use these live in the '+
+     '<a href="#safety-check" onclick="go(\'safety-check\');return false">Bike Safety Check</a>.</p>';
+  el.innerHTML=h;
+}
+function addWeather(){
+  var t=prompt('New condition?'); if(!t||!t.trim()) return;
+  DB.weather.push({id:uid('w'),t:t.trim(),tier:'ground'});
+  saveDB();renderWeather();renderForm('safety');
+}
+function delWeather(i){
+  if(!confirm('Remove "'+DB.weather[i].t+'"?')) return;
+  DB.weather.splice(i,1);saveDB();renderWeather();renderForm('safety');
+}
+
+/* ============================================================
+   FORM ENGINE — renders from DB.forms so the builder can reshape it
+   ============================================================ */
+var formEdit={jumpkit:false,safety:false};
+var FORM_HOST={jumpkit:'jumpkitForm',safety:'safetyForm'};
+
+function toggleFormEdit(fid){formEdit[fid]=!formEdit[fid];renderForm(fid);}
+
+function renderForm(fid){
+  var host=document.getElementById(FORM_HOST[fid]); if(!host) return;
+  var f=DB.forms[fid]; if(!f) return;
+  var h='';
+
+  h+='<div class="row" style="justify-content:space-between;margin-bottom:14px">'+
+     '<span class="tag brand">'+esc(f.title)+'</span>'+
+     '<button class="btn xs webonly" onclick="toggleFormEdit(\''+fid+'\')">'+
+     (formEdit[fid]?'Done editing':'Edit this form')+'</button></div>';
+
+  if(formEdit[fid]) h+=formBuilder(fid);
+
+  h+='<div class="card brandtop"><h3>Who is checking?</h3><div class="field-row">'+
+     '<div class="field"><label for="'+fid+'-fn">First name</label>'+
+     '<input type="text" id="'+fid+'-fn" placeholder="First" oninput="calcForm(\''+fid+'\')"></div>'+
+     '<div class="field"><label for="'+fid+'-ln">Last name</label>'+
+     '<input type="text" id="'+fid+'-ln" placeholder="Last" oninput="calcForm(\''+fid+'\')"></div>'+
+     '</div><p style="font-size:12px;color:var(--ink-faint);margin:0">Submitted date is recorded automatically.</p>';
+
+  if(fid==='jumpkit'){
+    h+='<div class="field mt"><label for="jk-bag">Which jumpkit bag?</label><select id="jk-bag">';
+    DB.bags.forEach(function(b){
+      h+='<option value="'+esc(b.id)+'"'+(b.active?' selected':'')+'>'+esc(b.label)+
+         (b.active?' — active':' — dormant, not in service')+'</option>';
+    });
+    h+='</select></div>';
+  }
+  h+='</div>';
+
+  // Conditions first on the safety form — weather grounds everything below it.
+  if(fid==='safety'){
+    h+='<div class="card mt" id="condCard"><h3>Conditions check</h3>'+
+       '<p style="font-size:13px;color:var(--ink-faint);margin:0 0 4px">Is any of this true right now?</p>'+
+       '<div class="draftnote">Draft thresholds — pending confirmation from EMS leadership.</div>';
+    DB.weather.forEach(function(w){
+      h+='<label class="checkline"><input type="checkbox" data-cond="'+esc(w.tier)+'" onchange="calcForm(\'safety\')">'+
+         '<span class="lbl">'+esc(w.t)+'</span>'+
+         (w.tier==='ground'?'<span class="tag crit">Ground</span>':'<span class="tag warn">Caution</span>')+'</label>';
+    });
+    h+='</div><div id="groundBanner"></div>';
   }
 
-  function go(v){
-    document.querySelectorAll('.sb-item').forEach(function(x){x.classList.toggle('active',x.dataset.view===v);});
-    document.querySelectorAll('.view').forEach(function(x){x.classList.toggle('active',x.dataset.view===v);});
-    try{localStorage.setItem('bikeops_view',v);}catch(e){}
-    window.scrollTo(0,0);
-  }
-  document.getElementById('nav').addEventListener('click',function(e){
-    var it=e.target.closest('.sb-item'); if(it) go(it.dataset.view);
+  h+='<div id="'+fid+'-body">';
+  (f.sections||[]).forEach(function(sec){
+    h+='<div class="card mt"><h3>'+esc(sec.name)+'</h3>';
+    (sec.items||[]).forEach(function(it){
+      h+='<label class="checkline"><input type="checkbox" data-item="'+esc(it.id)+'" data-label="'+esc(it.label)+'" onchange="calcForm(\''+fid+'\')">'+
+         '<span class="lbl">'+esc(it.label)+'</span>'+
+         (it.qty?'<span class="qty">qty '+esc(it.qty)+'</span>':'')+'</label>';
+      if(it.exp){
+        h+='<div class="expblock"><div class="exphead">Expiration date — '+esc(it.label)+'</div>'+
+           '<div class="exprow"><input type="date" data-exp="'+esc(it.id)+'" onchange="calcForm(\''+fid+'\')">'+
+           '<span class="expbadge none" data-expbadge="'+esc(it.id)+'">No date entered</span></div>'+
+           '<p style="font-size:12px;color:var(--ink-faint);margin:7px 0 0">If expired, notify the Equipment Manager.</p></div>';
+      }
+    });
+    h+='</div>';
+  });
+  h+='</div>';
+
+  h+='<div class="card mt"><h3>Anything else wrong?</h3>'+
+     '<textarea id="'+fid+'-notes" rows="3" placeholder="Optional — anything not covered above"></textarea></div>';
+
+  h+='<div id="'+fid+'-verdict"></div>'+
+     '<div class="row mt"><button class="btn solid" onclick="submitForm(\''+fid+'\')">Submit check</button>'+
+     '<button class="btn ghost" onclick="renderForm(\''+fid+'\')">Reset</button>'+
+     '<span id="'+fid+'-savemsg" style="font-size:12.5px;color:var(--ink-faint)"></span></div>';
+
+  host.innerHTML=h;
+  calcForm(fid);
+}
+
+/* ---------- live verdict ---------- */
+function calcForm(fid){
+  var host=document.getElementById(FORM_HOST[fid]); if(!host) return;
+
+  // expiry badges
+  var worstExp='ok', expiredNames=[];
+  host.querySelectorAll('[data-exp]').forEach(function(inp){
+    var id=inp.getAttribute('data-exp');
+    var badge=host.querySelector('[data-expbadge="'+id+'"]'); if(!badge) return;
+    var n=daysUntil(inp.value);
+    if(n===null){badge.className='expbadge none';badge.textContent='No date entered';
+      if(worstExp==='ok') worstExp='none'; return;}
+    if(n<0){badge.className='expbadge bad';badge.textContent='EXPIRED — notify Equipment Manager';
+      worstExp='bad';
+      var lbl=host.querySelector('[data-item="'+id+'"]');
+      expiredNames.push(lbl?lbl.getAttribute('data-label'):id);}
+    else if(n<=30){badge.className='expbadge soon';badge.textContent='Expiring soon — '+n+' day'+(n===1?'':'s');
+      if(worstExp!=='bad') worstExp='soon';}
+    else {badge.className='expbadge good';badge.textContent='OK — '+n+' days';}
   });
 
-  function setWeb(on){
-    document.body.classList.toggle('is-web',on);
-    var pill=document.getElementById('rolePill');
-    pill.textContent=on?'Bike Manager':'Member view';
-    pill.className='role-pill'+(on?' web':'');
-    document.getElementById('webBtn').textContent=on?'Exit manager':'🔒 Bike Manager';
-  }
-  function toggleWeb(){
-    var on=!document.body.classList.contains('is-web');
-    // Soft gate only — real access control comes with the backend. Public site: this is not secure.
-    if(on){var p=prompt('Bike Manager passcode:');if((p||'').trim().toLowerCase()!=='wrench'){alert('Incorrect. (demo passcode: wrench)');return;}}
-    setWeb(on);
+  // weather grounding (safety form only)
+  var grounded=false, cautions=0;
+  if(fid==='safety'){
+    host.querySelectorAll('[data-cond]').forEach(function(c){
+      if(!c.checked) return;
+      if(c.getAttribute('data-cond')==='ground') grounded=true; else cautions++;
+    });
+    var gb=document.getElementById('groundBanner');
+    if(gb) gb.innerHTML=grounded
+      ? '<div class="grounded">⚠ BIKE RESPONSE GROUNDED — use standard response.<div class="sub">A hard-stop condition is checked. The bike itself is not the problem; conditions are. Do not dispatch bike response.</div></div>'
+      : '';
+    var body=document.getElementById('safety-body');
+    if(body) body.classList.toggle('isdisabled',grounded);
   }
 
-  renderOOS();
-  // Open to everyone — restore last-viewed section on load (no login).
+  // missing items
+  var missing=[];
+  host.querySelectorAll('[data-item]').forEach(function(b){
+    b.closest('.checkline').classList.toggle('done',b.checked);
+    if(!b.checked) missing.push(b.getAttribute('data-label'));
+  });
+
+  var v=document.getElementById(fid+'-verdict'); if(!v) return;
+  var cls,big,detail;
+  if(grounded){
+    cls='oos'; big='Grounded by weather';
+    detail='Bike response is grounded by current conditions. The mechanical check below does not apply.';
+  } else if(worstExp==='bad'){
+    cls='oos'; big='Expired item — notify Equipment Manager';
+    detail='Expired: '+expiredNames.join(', ')+'.'+(missing.length?' Also missing '+missing.length+' item'+(missing.length===1?'':'s')+'.':'');
+  } else if(missing.length){
+    cls='warn';
+    big=(fid==='jumpkit')?'Bag incomplete':'Not cleared — see missing items';
+    var show=missing.slice(0,6).join(', ')+(missing.length>6?' … +'+(missing.length-6)+' more':'');
+    detail='Missing / unchecked: '+show;
+  } else if(worstExp==='soon'){
+    cls='warn'; big=(fid==='jumpkit')?'Bag ready — item expiring soon':'Cleared — item expiring soon';
+    detail='Everything is present, but something expires within 30 days.';
+  } else if(worstExp==='none'){
+    cls='warn'; big=(fid==='jumpkit')?'Bag complete — expiry dates missing':'Cleared — expiry dates missing';
+    detail='All items checked, but at least one expiration date has not been entered.';
+  } else {
+    cls='ok'; big=(fid==='jumpkit')?'Bag ready ✓':'Cleared for bike response ✓';
+    detail=(cautions?'Note: a caution-tier condition is checked — use judgement.':'Everything checked, nothing expired.');
+  }
+  v.className='verdict '+cls;
+  v.innerHTML='<div><span class="big">'+esc(big)+'</span><span class="detail">'+esc(detail)+'</span></div>';
+}
+
+/* ---------- submit ---------- */
+function submitForm(fid){
+  var host=document.getElementById(FORM_HOST[fid]);
+  var fn=(document.getElementById(fid+'-fn')||{}).value||'';
+  var ln=(document.getElementById(fid+'-ln')||{}).value||'';
+  if(!fn.trim()||!ln.trim()){alert('Please enter your first and last name before submitting.');return;}
+
+  var items={},expiries={};
+  host.querySelectorAll('[data-item]').forEach(function(b){items[b.getAttribute('data-label')]=b.checked;});
+  // Key by the human label, not the internal item id — this lands in a spreadsheet
+  // a manager reads, and "Oral glucose" is useful where "i-glucose" is not.
+  host.querySelectorAll('[data-exp]').forEach(function(i){
+    var id=i.getAttribute('data-exp');
+    var lbl=host.querySelector('[data-item="'+id+'"]');
+    expiries[(lbl&&lbl.getAttribute('data-label'))||id]=i.value||'';
+  });
+  var conds=[];
+  host.querySelectorAll('[data-cond]').forEach(function(c,i){
+    if(c.checked) conds.push(c.closest('.checkline').querySelector('.lbl').textContent);
+  });
+
+  var verdictEl=document.getElementById(fid+'-verdict');
+  var payload={
+    form:fid,
+    formTitle:DB.forms[fid].title,
+    // Selected option text ("Bag 2 — active"), not the raw id ("bag2") — this
+    // column is read by a person, and it records whether the bag was in service.
+    bag:fid==='jumpkit'?(function(){var s=document.getElementById('jk-bag');
+      return s&&s.selectedIndex>=0?s.options[s.selectedIndex].text:'';})():'',
+    firstName:fn.trim(), lastName:ln.trim(),
+    submittedAt:new Date().toISOString(),
+    verdict:verdictEl?verdictEl.querySelector('.big').textContent:'',
+    missing:Object.keys(items).filter(function(k){return !items[k];}),
+    items:items, expiries:expiries, conditions:conds,
+    notes:(document.getElementById(fid+'-notes')||{}).value||''
+  };
+
+  var msg=document.getElementById(fid+'-savemsg');
+  if(!DB.apiUrl){
+    console.log('[Bike Ops] submission (backend not connected):',payload);
+    msg.textContent='Saved locally only — Google Sheet not connected yet.';
+    alert('Check complete.\n\nVerdict: '+payload.verdict+
+          '\n\nThe Google Sheet backend is not connected yet, so this was not sent anywhere. '+
+          'A Bike Manager can connect it in Site Settings.');
+    return;
+  }
+  msg.textContent='Sending…';
+  fetch(DB.apiUrl,{method:'POST',mode:'no-cors',
+    headers:{'Content-Type':'text/plain;charset=utf-8'},
+    body:JSON.stringify(payload)})
+  .then(function(){
+    msg.textContent='Submitted ✓';
+    alert('Check submitted.\n\nVerdict: '+payload.verdict);
+  })
+  .catch(function(err){
+    console.error(err);
+    msg.textContent='Could not reach the Sheet — check the URL in Site Settings.';
+  });
+}
+
+/* ---------- form builder (manager mode) ---------- */
+function formBuilder(fid){
+  var f=DB.forms[fid];
+  var h='<div class="builder"><h4>Editing "'+esc(f.title)+'"</h4>'+
+    '<p class="bsub">Rename sections, add or remove items, set quantities, and mark which items have an expiration date. Changes save as you type.</p>';
+  (f.sections||[]).forEach(function(sec,si){
+    h+='<div class="bsection"><div class="bhead">'+
+      '<input type="text" value="'+esc(sec.name)+'" oninput="DB.forms.'+fid+'.sections['+si+'].name=this.value;saveDB()">'+
+      '<button class="btn xs danger" onclick="delSection(\''+fid+'\','+si+')">Delete section</button></div>';
+    (sec.items||[]).forEach(function(it,ii){
+      h+='<div class="bitem">'+
+        '<input type="text" value="'+esc(it.label)+'" oninput="DB.forms.'+fid+'.sections['+si+'].items['+ii+'].label=this.value;saveDB()">'+
+        '<input type="number" min="1" value="'+esc(it.qty||'')+'" placeholder="qty" oninput="DB.forms.'+fid+'.sections['+si+'].items['+ii+'].qty=this.value;saveDB()">'+
+        '<label class="expflag"><input type="checkbox"'+(it.exp?' checked':'')+
+          ' onchange="DB.forms.'+fid+'.sections['+si+'].items['+ii+'].exp=this.checked;saveDB();renderForm(\''+fid+'\')"> expires</label>'+
+        '<button class="btn xs danger" onclick="delItem(\''+fid+'\','+si+','+ii+')">✕</button>'+
+      '</div>';
+    });
+    h+='<button class="btn xs mt-sm" onclick="addItem(\''+fid+'\','+si+')">+ Add item</button></div>';
+  });
+  h+='<button class="btn sm" onclick="addSection(\''+fid+'\')">+ Add section</button> '+
+     '<button class="btn sm solid" onclick="toggleFormEdit(\''+fid+'\')">Done</button></div>';
+  return h;
+}
+function addSection(fid){
+  var n=prompt('Section name?'); if(!n||!n.trim()) return;
+  DB.forms[fid].sections.push({id:uid('sec'),name:n.trim(),items:[]});
+  saveDB();renderForm(fid);
+}
+function delSection(fid,si){
+  if(!confirm('Delete section "'+DB.forms[fid].sections[si].name+'" and all its items?')) return;
+  DB.forms[fid].sections.splice(si,1);saveDB();renderForm(fid);
+}
+function addItem(fid,si){
+  var n=prompt('Item name?'); if(!n||!n.trim()) return;
+  DB.forms[fid].sections[si].items.push({id:uid('i'),label:n.trim(),qty:1});
+  saveDB();renderForm(fid);
+}
+function delItem(fid,si,ii){
+  if(!confirm('Remove "'+DB.forms[fid].sections[si].items[ii].label+'"?')) return;
+  DB.forms[fid].sections[si].items.splice(ii,1);saveDB();renderForm(fid);
+}
+
+/* ============================================================
+   VIDEOS
+   ============================================================ */
+function renderVideos(){
+  var g=document.getElementById('videoGrid'); if(!g) return;
+  document.getElementById('videoCount').textContent=DB.videos.length+' video'+(DB.videos.length===1?'':'s');
+  if(!DB.videos.length){g.innerHTML='<div class="placeholder">No videos yet. In Bike Manager mode, use “+ Add video”.</div>';return;}
+  g.innerHTML=DB.videos.map(function(v,i){
+    var thumb=v.embed
+      ? '<iframe src="'+esc(v.embed)+'" allowfullscreen title="'+esc(v.title)+'"></iframe>'
+      : '▶ not linked yet<br><span style="font-size:10px">add an embed URL</span>';
+    return '<div class="video"><div class="thumb">'+thumb+'</div><div class="meta">'+
+      '<b>'+esc(v.title)+'</b>'+
+      (v.legacy?'<span class="tag warn" style="align-self:flex-start;margin:2px 0">Reference only</span>':'')+
+      '<small>'+esc(v.note||'')+'</small>'+
+      '<div class="acts row"><button class="btn xs webonly" onclick="editVideo('+i+')">Edit</button>'+
+      '<button class="btn xs danger webonly" onclick="delVideo('+i+')">Remove</button></div>'+
+      '</div></div>';
+  }).join('');
+}
+function addVideo(){
+  var t=prompt('Video title?'); if(!t||!t.trim()) return;
+  var u=prompt('Embed URL (YouTube "embed" link or Google Drive preview link).\nLeave blank to add it later:')||'';
+  var n=prompt('Short description?')||'';
+  DB.videos.push({id:uid('v'),title:t.trim(),embed:u.trim(),note:n.trim()});
+  saveDB();renderVideos();
+}
+function editVideo(i){
+  var v=DB.videos[i];
+  var t=prompt('Video title?',v.title); if(t===null) return;
+  var u=prompt('Embed URL:',v.embed); if(u===null) return;
+  var n=prompt('Short description?',v.note); if(n===null) return;
+  v.title=t.trim();v.embed=u.trim();v.note=n.trim();
+  saveDB();renderVideos();
+}
+function delVideo(i){
+  if(!confirm('Remove "'+DB.videos[i].title+'"?')) return;
+  DB.videos.splice(i,1);saveDB();renderVideos();
+}
+
+/* ============================================================
+   LECTURES — PowerPoint Online / OneDrive embeds
+   ============================================================ */
+/* Appends/replaces &wdSlideIndex=N on a PowerPoint Online embed URL. */
+function deckSrc(url,slide){
+  if(!url) return '';
+  var n=parseInt(slide,10);
+  if(!n||n<1) return url;
+  var clean=url.replace(/([?&])wdSlideIndex=\d+/i,'$1').replace(/[?&]$/,'');
+  return clean+(clean.indexOf('?')>=0?'&':'?')+'wdSlideIndex='+n;
+}
+/* A module shows its own deck if it has one, otherwise the shared deck at its slide. */
+function lectureSrc(L){
+  if(L.embed) return L.embed;
+  if(DB.deck&&DB.deck.url&&L.slide>0) return deckSrc(DB.deck.url,L.slide);
+  return '';
+}
+function renderLectures(){
+  var el=document.getElementById('lectureList'); if(!el) return;
+  document.getElementById('lectureCount').textContent=DB.lectures.length+' module'+(DB.lectures.length===1?'':'s');
+  el.innerHTML=DB.lectures.map(function(L,i){
+    var src=lectureSrc(L);
+    var editUrl=L.edit||((DB.deck&&DB.deck.edit)||'');
+    var body=src
+      ? '<div class="embed"><iframe src="'+esc(src)+'" allowfullscreen title="'+esc(L.title)+'"></iframe></div>'
+      : '<div class="noembed">Deck not yet linked.<br>Link one deck for every module below, or give this module its own embed URL.</div>';
+    return '<div class="module" id="mod-'+esc(L.id)+'">'+
+      '<div class="mhead" onclick="toggleModule(\''+esc(L.id)+'\')">'+
+        '<span class="mnum">'+(i+1)+'</span><span class="mtitle">'+esc(L.title)+'</span>'+
+        (src?(L.embed?'':'<span class="tag ok">Slide '+esc(L.slide)+'</span>'):'<span class="tag warn">Not linked</span>')+
+        '<span style="font-family:var(--font-mono);color:var(--ink-faint)">▸</span></div>'+
+      '<div class="mbody">'+body+
+        '<div class="row mt">'+
+          (editUrl?'<a class="btn xs webonly" href="'+esc(editUrl)+'" target="_blank" rel="noopener">Edit in PowerPoint ↗</a>':'')+
+          '<button class="btn xs webonly" onclick="editLecture('+i+')">Set links</button>'+
+          '<button class="btn xs danger webonly" onclick="delLecture('+i+')">Remove</button>'+
+        '</div>'+
+      '</div></div>';
+  }).join('');
+  var shared=DB.deck&&DB.deck.url;
+  var anyLinked=DB.lectures.some(function(L){return lectureSrc(L);});
+  document.getElementById('lectureNote').innerHTML=
+    '<div class="row" style="justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap">'+
+      '<span>'+(anyLinked
+        ? 'Editing happens in PowerPoint Online — this site only embeds the deck, so the OneDrive file stays the single source of truth.'
+        : 'No deck linked yet. Re-save the old .ppt as .pptx and upload it to the CMU EMS OneDrive, then link it once below.')+'</span>'+
+      '<button class="btn xs webonly" onclick="editDeck()">'+(shared?'Change shared deck':'Link one deck for all modules')+'</button>'+
+    '</div>'+
+    (shared?'<div class="mt-sm" style="font-size:12px;color:var(--ink-faint)">Shared deck linked. Each module opens it at its own start slide — set that with “Set links”. If you insert or reorder slides in PowerPoint, update the slide numbers here to match.</div>':'');
+}
+/* Shared deck: one upload, six modules, each starting at its own slide. */
+function editDeck(){
+  DB.deck=DB.deck||{url:'',edit:''};
+  var u=prompt('PowerPoint Online EMBED url for the whole deck.\n'+
+    'In PowerPoint Online: File ▸ Share ▸ Embed, then copy just the src="…" value.\n\n'+
+    'Leave blank to unlink.',DB.deck.url); if(u===null) return;
+  var e=prompt('EDIT url — the normal OneDrive link to the same deck.\n'+
+    'Opens PowerPoint Online in edit mode for whoever OneDrive has granted access.',DB.deck.edit); if(e===null) return;
+  DB.deck.url=u.trim(); DB.deck.edit=e.trim();
+  if(DB.deck.url&&!DB.lectures.some(function(L){return L.slide>0;})){
+    // Nothing has a start slide yet — seed 1..N so the deck is visible immediately
+    // rather than silently staying "Not linked" after a successful link.
+    DB.lectures.forEach(function(L,i){L.slide=i+1;});
+  }
+  saveDB();renderLectures();
+}
+function toggleModule(id){
+  var m=document.getElementById('mod-'+id); if(m) m.classList.toggle('open');
+}
+function addLecture(){
+  var t=prompt('Module title?'); if(!t||!t.trim()) return;
+  DB.lectures.push({id:uid('L'),title:t.trim(),embed:'',edit:'',slide:0});
+  saveDB();renderLectures();
+}
+function editLecture(i){
+  var L=DB.lectures[i];
+  var t=prompt('Module title?',L.title); if(t===null) return;
+  var s=prompt('Which slide does this module start on in the shared deck?\n'+
+    'Enter a slide number, or 0 if this module uses its own separate deck.',L.slide||0); if(s===null) return;
+  var e=prompt('Optional — a SEPARATE embed url just for this module.\n'+
+    'Leave blank to use the shared deck at the slide above.',L.embed); if(e===null) return;
+  var ed=prompt('Optional — a separate EDIT url for this module.\n'+
+    'Leave blank to use the shared deck’s edit link.',L.edit); if(ed===null) return;
+  L.title=t.trim();L.slide=Math.max(0,parseInt(s,10)||0);L.embed=e.trim();L.edit=ed.trim();
+  saveDB();renderLectures();
+}
+function delLecture(i){
+  if(!confirm('Remove module "'+DB.lectures[i].title+'"?')) return;
+  DB.lectures.splice(i,1);saveDB();renderLectures();
+}
+
+/* ============================================================
+   BYLAWS
+   ============================================================ */
+var bylawEdit={};
+function renderBylaws(){
+  var el=document.getElementById('bylawList'); if(!el) return;
+  el.innerHTML=DB.bylaws.map(function(b,i){
+    var open=bylawEdit[b.id]?' open':'';
+    var body=bylawEdit[b.id]
+      ? '<textarea oninput="DB.bylaws['+i+'].body=this.value;saveDB()">'+esc(b.body)+'</textarea>'+
+        '<div class="row mt"><button class="btn xs solid" onclick="toggleBylawEdit(\''+esc(b.id)+'\')">Done</button>'+
+        '<button class="btn xs danger" onclick="delBylaw('+i+')">Delete section</button></div>'
+      : '<ul>'+String(b.body||'').split('\n').filter(function(l){return l.trim();})
+          .map(function(l){return '<li>'+esc(l)+'</li>';}).join('')+'</ul>'+
+        '<button class="btn xs webonly mt-sm" onclick="toggleBylawEdit(\''+esc(b.id)+'\')">Edit</button>';
+    return '<div class="acc'+open+'" id="by-'+esc(b.id)+'">'+
+      '<div class="acchead" onclick="toggleAcc(event,\''+esc(b.id)+'\')">'+
+        '<span class="num">'+(i+1)+'</span><span>'+esc(b.title)+'</span><span class="chev">▸</span></div>'+
+      '<div class="accbody">'+body+'</div></div>';
+  }).join('');
+}
+function toggleAcc(e,id){
+  if(e.target.closest('button')||e.target.closest('textarea')) return;
+  var el=document.getElementById('by-'+id); if(el) el.classList.toggle('open');
+}
+function toggleBylawEdit(id){
+  bylawEdit[id]=!bylawEdit[id];
+  renderBylaws();
+  var el=document.getElementById('by-'+id); if(el) el.classList.add('open');
+}
+function addBylaw(){
+  var t=prompt('Section title?'); if(!t||!t.trim()) return;
+  DB.bylaws.push({id:uid('b'),title:t.trim(),body:'New section — click Edit to fill this in.'});
+  saveDB();renderBylaws();
+}
+function delBylaw(i){
+  if(!confirm('Delete "'+DB.bylaws[i].title+'"?')) return;
+  DB.bylaws.splice(i,1);saveDB();renderBylaws();
+}
+
+/* ============================================================
+   DASHBOARD / TABLES / CHECKS
+   ============================================================ */
+function renderDash(){
+  var el=document.getElementById('bikeCards'); if(!el) return;
+  var map={ok:['st-ok','In Service'],warn:['st-warn','Needs Review'],oos:['st-oos','Out of Service']};
+  el.innerHTML=DB.bikes.map(function(b){
+    var m=map[b.status]||map.warn;
+    return '<div class="card"><div class="bike-head"><b>'+esc(b.name)+'</b>'+
+      '<span class="status '+m[0]+'"><span class="dot"></span>'+m[1]+'</span></div>'+
+      '<p style="font-size:13px;color:var(--ink-faint);margin:0">'+esc(b.note)+'</p></div>';
+  }).join('');
+
+  var rows=document.getElementById('issueRows');
+  if(rows) rows.innerHTML=DB.issues.map(function(i){
+    var tag=i.sev==='crit'?'<span class="tag crit">Critical</span>'
+           :i.sev==='warn'?'<span class="tag warn">Warning</span>':'<span class="tag">Minor</span>';
+    return '<tr><td>'+esc(i.bike)+'</td><td>'+esc(i.problem)+'</td><td>'+tag+'</td>'+
+      '<td>'+esc(i.by)+'</td><td>'+esc(i.date)+'</td>'+
+      '<td><button class="btn xs ghost webonly">Resolve</button></td></tr>';
+  }).join('');
+
+  var inv=document.getElementById('invRows');
+  var smap={ok:['st-ok','OK'],warn:['st-warn','Low'],oos:['st-oos','Out']};
+  if(inv) inv.innerHTML=DB.inventory.map(function(r){
+    var m=smap[r.status]||smap.warn;
+    return '<tr><td>'+esc(r.item)+'</td><td>'+esc(r.cat)+'</td><td>'+esc(r.qty)+'</td>'+
+      '<td><span class="status '+m[0]+'"><span class="dot"></span>'+m[1]+'</span></td>'+
+      '<td>'+(r.status==='ok'?'':'<button class="btn xs ghost webonly">Order</button>')+'</td></tr>';
+  }).join('');
+}
+
+function renderChecks(){
+  var el=document.getElementById('checkCards'); if(!el) return;
+  var cards=[
+    {v:'jumpkit-check',t:'Jumpkit Check',d:'Confirm the equipment bag is complete, stocked, and nothing is expired.',qr:'jumpkit form'},
+    {v:'safety-check', t:'Bike Safety Check',d:'Pre-ride check: bike mechanical, rider readiness, and weather conditions.',qr:'safety form'}
+  ];
+  el.innerHTML=cards.map(function(c){
+    return '<div class="card brandtop"><h3>'+esc(c.t)+'</h3>'+
+      '<p style="font-size:13px;color:var(--ink-faint)">'+esc(c.d)+'</p>'+
+      '<div class="qr mt">QR →<br>'+esc(c.qr)+'</div>'+
+      '<button class="btn sm mt block solid" onclick="go(\''+c.v+'\')">Open form</button></div>';
+  }).join('')+
+  '<div class="card"><h3>Weekly Readiness</h3>'+
+  '<p style="font-size:13px;color:var(--ink-faint)">Bike-manager-only, once a week before the meeting.</p>'+
+  '<div class="qr mt">QR →<br>weekly check</div>'+
+  '<button class="btn sm mt block webonly" onclick="alert(\'The weekly readiness check still needs its field list defined.\')">Start (manager)</button>'+
+  '<div class="placeholder">Fields not defined yet.</div></div>';
+
+  // Deep-link URLs — these are exactly what a QR code should encode, and they get
+  // printed onto physical stickers. Emit the canonical form: drop any query string
+  // the visitor happened to arrive with, and drop a trailing "index.html".
+  var base=location.origin+location.pathname.replace(/index\.html?$/i,'');
+  var q=document.getElementById('qrUrls');
+  if(q) q.innerHTML=['jumpkit-check','safety-check'].map(function(v){
+    return '<div class="kv"><span>'+esc(v)+'</span><span class="mono" style="font-size:12px;word-break:break-all">'+esc(base+'#'+v)+'</span></div>';
+  }).join('');
+}
+
+/* ============================================================
+   SITE SETTINGS (manager only)
+   ============================================================ */
+function renderSettings(){
+  var el=document.getElementById('settingsBody'); if(!el) return;
+  el.innerHTML=
+   '<div class="card brandtop"><h3>Google Sheet backend</h3>'+
+   '<p style="font-size:13px;color:var(--ink-faint);margin:0 0 12px">Paste the Apps Script <b>Web App URL</b> from the CMU EMS bike Google account. '+
+   'The script runs inside that account and appends form submissions to the Sheet — no password is ever stored in this site.</p>'+
+   '<div class="field"><label for="apiUrl">Apps Script Web App URL</label>'+
+   '<input type="url" id="apiUrl" placeholder="https://script.google.com/macros/s/…/exec" value="'+esc(DB.apiUrl||'')+'"></div>'+
+   '<button class="btn sm solid" onclick="saveApi()">Save URL</button> '+
+   '<button class="btn sm ghost" onclick="clearApi()">Disconnect</button>'+
+   '<div class="'+(DB.apiUrl?'':'placeholder')+'" style="margin-top:12px">'+
+     (DB.apiUrl?'<span class="tag ok">Connected</span> Submissions will POST to the Sheet.'
+              :'Not connected — submissions are logged to the browser console only.')+'</div>'+
+   '<p style="font-size:12.5px;color:var(--ink-faint);margin-top:12px">Setup steps are in <b>SETUP-BACKEND.md</b> in the project folder.</p>'+
+   '</div>'+
+
+   '<div class="card mt"><h3>Saved content</h3>'+
+   '<p style="font-size:13px;color:var(--ink-faint);margin:0 0 10px">Form layouts, criteria, videos, lectures and bylaws you edit are saved in <b>this browser only</b> until the backend is connected. '+
+   'They will not appear for other people yet.</p>'+
+   '<button class="btn sm" onclick="exportDB()">Export content (JSON)</button> '+
+   '<button class="btn sm danger" onclick="resetDB()">Reset to defaults</button></div>'+
+
+   '<div class="card mt"><h3>Passcode</h3>'+
+   '<p style="font-size:13px;color:var(--ink-faint);margin:0">The Bike Manager passcode is stored as a SHA-256 hash, not as text. '+
+   'Because this is a public site, treat it as a way to keep manager controls out of the way — not as real security. '+
+   'What actually protects submitted data is the Apps Script running server-side in the EMS Google account.</p></div>';
+}
+function saveApi(){
+  var u=(document.getElementById('apiUrl').value||'').trim();
+  if(u&&!/^https:\/\/script\.google\.com\//.test(u)){
+    if(!confirm('That does not look like an Apps Script URL. Save anyway?')) return;
+  }
+  DB.apiUrl=u;saveDB();renderSettings();renderBanner();
+}
+function clearApi(){DB.apiUrl='';saveDB();renderSettings();renderBanner();}
+function exportDB(){
+  var blob=new Blob([JSON.stringify(DB,null,2)],{type:'application/json'});
+  var a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);a.download='bike-ops-content.json';a.click();
+  setTimeout(function(){URL.revokeObjectURL(a.href);},1000);
+}
+function renderBanner(){
+  var b=document.getElementById('topBanner');
+  var n=document.getElementById('sbNote');
+  if(DB.apiUrl){
+    b.innerHTML='Connected to the CMU EMS Google Sheet. Submitted checks are recorded with the submitter\'s name and date.';
+    n.innerHTML='LIVE<br>Sheet connected';
+  }else{
+    b.innerHTML='DRAFT — bike data and out-of-service rules are still being finalized. Forms save locally until the Google Sheet backend is connected (Site Settings).';
+    n.innerHTML='DRAFT TEMPLATE<br>Backend not yet connected';
+  }
+}
+
+/* ============================================================
+   INIT
+   ============================================================ */
+function renderAll(){
+  renderDash();renderChecks();renderOOS();renderWeather();
+  renderForm('jumpkit');renderForm('safety');
+  renderVideos();renderLectures();renderBylaws();renderSettings();renderBanner();
+}
+renderAll();
+
+// Open to everyone. Hash wins (so QR deep-links land correctly), then last view, then dashboard.
+(function(){
+  var h=location.hash.slice(1);
+  if(VIEWS.indexOf(h)>=0){go(h,true);return;}
   var last='dash'; try{last=localStorage.getItem('bikeops_view')||'dash';}catch(e){}
+  if(last==='settings') last='dash';   // settings is manager-only
   go(last);
+})();
 </script>
 </body>
 </html>
