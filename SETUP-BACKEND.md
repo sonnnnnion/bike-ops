@@ -81,22 +81,33 @@ Work through Steps 1–3 completely for **Bike Jumpkit Check**, then repeat them
 2. Go to **Site Settings** in the sidebar.
 3. There are **two** fields, labelled with the spreadsheet names. Paste each URL into
    its matching field and save.
-4. The banner stops saying the backend is unconnected. If you fill in only one, the
+4. The banner stops saying the sheets are unconnected. If you fill in only one, the
    banner says **"Partly connected"** and names which half is live — that is deliberate,
    so nobody assumes the other form is being recorded.
 
-## Step 5 — Test both before trusting either
+## Step 5 — Press "Test connection"
 
-Submit one real Jumpkit check with a deliberately unchecked item, and one Safety check.
+The button is right next to Save. It asks each URL what it is and reports back:
+
+| What it says | What it means |
+|---|---|
+| **Live** — expecting `jumpkit` checks, N rows | Working. |
+| **Swapped** | Both URLs are real, but they are in each other's fields. Swap them. |
+| **Wrong URL** | Something answered, but not this script. Usually the spreadsheet's own link was pasted instead of the Apps Script Web App URL, or the script was edited but not re-deployed as a **new version**. |
+| **Unreachable** | Nothing answered. Usually "Who has access" is not set to **Anyone**, or the URL is wrong. |
+
+This is the check that actually proves it works, and it is worth doing before you
+trust a single submission — see [How locked down is this?](#how-locked-down-is-this)
+for why a submitted form can look successful when nothing was written.
+
+## Step 6 — Then send one real check through each
+
+Submit one Jumpkit check with a deliberately unchecked item, and one Safety check.
 Confirm three things:
 
 - a row appears in **Bike Jumpkit Check**, and a row appears in **Bike Safety Check**,
 - neither row landed in the *other* spreadsheet, and
 - the `Missing Items` column actually lists the item you left unchecked.
-
-**Do not skip this.** Because of how the browser sends the data, the site says
-"Sent ✓" even if the script rejected it — see the warning in
-[How locked down is this?](#how-locked-down-is-this).
 
 ---
 
@@ -125,17 +136,44 @@ var EXPECTED_FORM = 'jumpkit';
 var SHEETS = {
   jumpkit: {
     name: 'Jumpkit Checks',
-    headers: ['Submitted At', 'First Name', 'Last Name', 'Bag', 'Verdict',
+    headers: ['Submitted At', 'First Name', 'Last Name', 'Andrew ID', 'Bag', 'Verdict',
               'Anything Missing?', 'Missing Items', 'Expiring / Expired',
               'Expiration Dates', 'Notes']
   },
   safety: {
     name: 'Bike Checks',
-    headers: ['Submitted At', 'First Name', 'Last Name', 'Verdict',
+    headers: ['Submitted At', 'First Name', 'Last Name', 'Andrew ID', 'Verdict',
               'Anything Missing?', 'Missing Items', 'Grounded By Weather?',
               'Conditions Flagged', 'Notes']
   }
 };
+
+// Answers the "Test connection" button in Site Settings.
+//
+// A GET is readable cross-origin where the POST is not, so this is the only way
+// the site can tell a working deployment from a dead URL. It reports which form
+// this copy expects, which is what catches the two Web App URLs being swapped.
+function doGet(e) {
+  var conf = SHEETS[EXPECTED_FORM] || {};
+  var rows = 0;
+  try {
+    var sh = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(conf.name);
+    if (sh) rows = Math.max(0, sh.getLastRow() - 1);   // minus the header row
+  } catch (err) {
+    rows = -1;
+  }
+  return ok2({
+    ok: true,
+    expects: EXPECTED_FORM,
+    sheet: conf.name || '',
+    rows: rows
+  });
+}
+
+function ok2(obj) {
+  return ContentService.createTextOutput(JSON.stringify(obj))
+                       .setMimeType(ContentService.MimeType.JSON);
+}
 
 function doPost(e) {
   try {
@@ -164,7 +202,7 @@ function doPost(e) {
     var row;
     if (p.form === 'jumpkit') {
       row = [
-        when, p.firstName || '', p.lastName || '', p.bag || '', p.verdict || '',
+        when, p.firstName || '', p.lastName || '', p.andrewId || '', p.bag || '', p.verdict || '',
         missing.length ? 'YES — ' + missing.length + ' missing' : 'no',
         missing.join(', '),
         expiryFlag(p.expiries),
@@ -173,7 +211,7 @@ function doPost(e) {
       ];
     } else {
       row = [
-        when, p.firstName || '', p.lastName || '', p.verdict || '',
+        when, p.firstName || '', p.lastName || '', p.andrewId || '', p.verdict || '',
         missing.length ? 'YES — ' + missing.length + ' missing' : 'no',
         missing.join(', '),
         conditions.length ? 'YES' : 'no',
@@ -327,6 +365,16 @@ Apps Script editor → **Executions** (left sidebar). If there are no entries, t
 request never landed — recheck the URL in Site Settings ends in `/exec`, and that
 you re-deployed as a **new version** after editing. If entries show "Failed", open
 one; `console.error` logs the reason and the raw body.
+
+**Rows arrive but the Andrew ID column is missing.** The header row is written once,
+the first time a tab is created, so a tab that already exists keeps its original
+headers and the new value lands one column out of step. Fix it by deleting the tab
+(right-click the tab → Delete) and submitting again — the script recreates it with the
+current headers. Export anything you want to keep first.
+
+**"Test connection" says Wrong URL even though the script is right.** The `doGet`
+function is new. A deployment made before it existed does not have it — re-copy the
+script and **Deploy → Manage deployments → edit → New version**.
 
 **Apps Script says `SyntaxError: Unexpected token '*'` on line 1.** The paste started
 one line too late and dropped the opening `/**` of the header comment, which turned the

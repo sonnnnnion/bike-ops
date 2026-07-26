@@ -459,6 +459,25 @@
   .rideprompt li{font-size:14px;color:var(--ink-soft);margin-bottom:4px}
   .rideprompt p{font-size:13px;color:var(--ink-mute);margin:10px 0 0}
 
+  /* Post-submit panel. Replaces the form entirely so a completed check cannot be
+     mistaken for one still waiting to be sent. */
+  .donecard{background:var(--card);border:1.5px solid var(--rule);border-radius:var(--r-lg);
+    box-shadow:var(--shadow-md);padding:34px 28px;text-align:center;max-width:560px;margin:0 auto}
+  .donecard.ok{border-color:var(--ok)}
+  .donecard.warn{border-color:var(--warn)}
+  .donecard.oos{border-color:var(--oos)}
+  .donetick{width:52px;height:52px;border-radius:50%;display:grid;place-items:center;margin:0 auto 16px;
+    font-size:25px;font-weight:700;color:#fff;background:var(--ok)}
+  .donecard.warn .donetick{background:var(--warn)}
+  .donecard.oos .donetick{background:var(--oos)}
+  .donecard h3{font-family:var(--font-display);font-size:23px;margin:0 0 10px;color:var(--ink)}
+  .doneverdict{font-size:16px;font-weight:600;color:var(--ink-soft);margin:0 0 8px}
+  .donetail{font-size:14px;color:var(--ink-mute);margin:0 0 8px}
+  .donewhere{font-size:13px;color:var(--ink-faint);margin:0}
+  /* Shown when a half-finished check is restored on this device. */
+  .resumed{border:1px solid var(--rule-strong);border-radius:var(--radius);background:var(--bg-2);
+    color:var(--ink-mute);font-size:13px;padding:10px 14px;margin-bottom:16px}
+
   /* ---------- per-bike issue list on the fleet cards ---------- */
   .isslist{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:9px}
   .isslist li{display:flex;align-items:flex-start;gap:9px;font-size:13.5px;
@@ -572,24 +591,22 @@
     <div class="sb-item" data-view="videos"><span class="ic">▶</span>Videos</div>
     <div class="sb-item" data-view="lectures"><span class="ic">▤</span>Lectures</div>
     <div class="sb-label">Reference</div>
-    <div class="sb-item" data-view="repairs"><span class="ic">✱</span>Repairs &amp; Fixes</div>
-    <div class="sb-item" data-view="inventory"><span class="ic">▦</span>Inventory</div>
+    <div class="sb-item webonly" data-view="repairs"><span class="ic">✱</span>Repairs &amp; Fixes</div>
+    <div class="sb-item webonly" data-view="inventory"><span class="ic">▦</span>Inventory</div>
     <div class="sb-item" data-view="bylaws"><span class="ic">§</span>Bylaws</div>
     <div class="sb-item" data-view="docs"><span class="ic">◈</span>Role &amp; Boundaries</div>
     <div class="sb-item" data-view="checks"><span class="ic">▩</span>QR Codes</div>
     <div class="sb-item webonly" data-view="settings"><span class="ic">⚙</span>Site Settings</div>
-    <div class="sb-note" id="sbNote">Sheets not connected</div>
   </nav>
 
   <main>
-    <div class="banner" id="topBanner">Checks are saving on this device only — the Google Sheets are not connected yet (Site Settings).</div>
 
     <!-- ===== FLEET STATUS =====
          Secondary to the pre-ride check. A bike's status is derived from its
          last completed check rather than hand-set, so this view is a readout. -->
     <section class="view" data-view="dash">
       <h2 class="view-title">Fleet <em>status</em></h2>
-      <p class="view-sub">What the last check found on each bike. Status is the result of a pre-ride check — nobody sets it by hand.</p>
+      <p class="view-sub">What the last check found on each bike.</p>
       <div id="fleetSummary"></div>
       <div class="legend">
         <span class="item"><span class="dot" style="background:var(--ok)"></span>In service</span>
@@ -602,24 +619,26 @@
     <!-- ===== BIKES & ISSUES ===== -->
     <section class="view" data-view="bikes">
       <h2 class="view-title">Bikes &amp; Issues</h2>
-      <p class="view-sub">The running log of what's wrong with each bike. Members report; the Bike Manager resolves. Feeds each bike's service status.</p>
+      <p class="view-sub">What is currently wrong with each bike.</p>
       <div class="card">
         <div class="row" style="justify-content:space-between">
           <h3 style="margin:0">Open issues</h3>
-          <button class="btn sm solid" onclick="go('safety-check')">+ Report via safety check</button>
+          <span class="row" style="gap:8px">
+            <button class="btn sm webonly" onclick="addIssue()">+ Log an issue</button>
+            <button class="btn sm solid" onclick="go('safety-check')">Report a problem</button>
+          </span>
         </div>
         <table class="mt">
           <thead><tr><th>Bike</th><th>Problem</th><th>Severity</th><th>Reported by</th><th>Date</th><th></th></tr></thead>
           <tbody id="issueRows"></tbody>
         </table>
-        <div class="placeholder">Issue list is placeholder until the Sheet backend is connected — real reports will land here.</div>
       </div>
     </section>
 
     <!-- ===== OUT OF SERVICE TOOL ===== -->
     <section class="view" data-view="oos">
       <h2 class="view-title">Out-of-Service Decision Tool</h2>
-      <p class="view-sub">Check off what's wrong — the matching part lights up on the bike so you can confirm you're flagging the right thing, and the tool gives a consistent verdict.</p>
+      <p class="view-sub">Check off what is wrong to see whether the bike can stay in service. The affected part lights up on the diagram.</p>
 
       <div class="card bike-diagram" id="bikeDiagram"></div>
 
@@ -637,7 +656,6 @@
             <h3>Verdict</h3>
             <div id="verdict" class="verdict ok"><span class="big">In Service ✓</span></div>
             <p class="mt-sm" style="font-size:12.5px;color:var(--ink-faint)">Any <b>critical</b> item → Out of Service. Any <b>warning</b> only → Needs manager review. Nothing → In Service.</p>
-            <button class="btn sm mt webonly" onclick="uiAlert('Applying a verdict to a specific bike needs the Sheet backend — see Site Settings.')">Apply to a bike</button>
           </div>
         </div>
       </div>
@@ -648,7 +666,7 @@
     <!-- ===== CHECKS & FORMS ===== -->
     <section class="view" data-view="checks">
       <h2 class="view-title">Checks &amp; Forms</h2>
-      <p class="view-sub">Each check is its own page with its own link, so a QR code can point straight at it.</p>
+      <p class="view-sub">Printable codes that open each check directly.</p>
       <div class="grid cols-3" id="checkCards"></div>
       <div class="card mt">
         <h3>QR codes</h3>
@@ -660,7 +678,7 @@
     <!-- ===== JUMPKIT CHECK (own nav entry + QR deep-link) ===== -->
     <section class="view" data-view="jumpkit-check">
       <h2 class="view-title">Jumpkit <em>check</em></h2>
-      <p class="view-sub">Work top to bottom through the bag. Expiration dates are checked for you — you don't have to do the math.</p>
+      <p class="view-sub">Work top to bottom through the bag.</p>
       <div id="expiryAlert"></div>
       <div id="jumpkitForm"></div>
     </section>
@@ -668,7 +686,7 @@
     <!-- ===== PRE-RIDE CHECK — the home view (own nav entry + QR deep-link) ===== -->
     <section class="view active" data-view="safety-check">
       <h2 class="view-title">Pre-ride <em>check</em></h2>
-      <p class="view-sub">Conditions first — if weather grounds bike response, the rest is moot. Then the bike itself. The verdict at the end is what sets that bike's status.</p>
+      <p class="view-sub">Conditions first, then the bike itself.</p>
       <div id="bikePicker"></div>
       <div id="safetyForm"></div>
     </section>
@@ -676,7 +694,7 @@
     <!-- ===== VIDEOS ===== -->
     <section class="view" data-view="videos">
       <h2 class="view-title">Videos</h2>
-      <p class="view-sub">How-to library. In Bike Manager mode you can add or remove videos at any time.</p>
+      <p class="view-sub">How-to library.</p>
       <div class="sharenote webonly blockonly">
         <b>Paste the Share link — it gets converted automatically.</b>
         Google Drive, Google Slides and YouTube share links don't embed as-pasted; the site
@@ -695,7 +713,7 @@
     <!-- ===== LECTURES ===== -->
     <section class="view" data-view="lectures">
       <h2 class="view-title">Lectures</h2>
-      <p class="view-sub">The bike lecture, split into modules. The deck lives in Google Slides — editing happens there, so the file stays the single source of truth.</p>
+      <p class="view-sub">The bike lecture, by module.</p>
       <div class="sharenote webonly blockonly">
         <b>One deck, six modules.</b>
         Link the deck once below and each module opens it at its own slide. Paste the normal
@@ -728,7 +746,6 @@
           <div class="checkline" style="border:0;padding:6px 0"><span class="lbl">▸ Reseat a dropped chain</span></div>
           <div class="checkline" style="border:0;padding:6px 0"><span class="lbl">▸ Inflate tires to correct PSI</span></div>
           <div class="checkline" style="border:0;padding:6px 0"><span class="lbl">▸ Tighten seat &amp; handlebars</span></div>
-          <button class="btn sm mt webonly" onclick="uiAlert('Adding how-to guides comes with the Sheet backend.')">+ Add guide</button>
         </div>
       </div>
     </section>
@@ -744,12 +761,18 @@
         </table>
         <button class="btn sm mt solid webonly" onclick="addInv()">+ Add item</button>
       </div>
+
+      <div class="card mt">
+        <h3>Jumpkit bags</h3>
+        <p style="font-size:13px;color:var(--ink-faint);margin:0 0 12px">Only bags in service are offered on the Jumpkit Check.</p>
+        <div id="bagList"></div>
+      </div>
     </section>
 
     <!-- ===== BYLAWS ===== -->
     <section class="view" data-view="bylaws">
       <h2 class="view-title">Bylaws</h2>
-      <p class="view-sub">The standing duties of each bike role, by article. Amendable in Bike Manager mode so the document stays current across handoffs.</p>
+      <p class="view-sub">The standing duties of each bike role, by article.</p>
 
       <h3 class="bylawhead">Part I · Bike Manager</h3>
       <p class="bylawsub">The member responsible for keeping the fleet serviceable.</p>
@@ -789,7 +812,7 @@
     <!-- ===== SITE SETTINGS (manager only) ===== -->
     <section class="view" data-view="settings">
       <h2 class="view-title">Site Settings</h2>
-      <p class="view-sub">Bike Manager only. Connects the site to the Google Sheet backend and manages saved content.</p>
+      <p class="view-sub">Connects each check to its Google Sheet.</p>
       <div id="settingsBody"></div>
     </section>
 
@@ -909,10 +932,16 @@ function uiForm(title,message,fields,opts){
     if(f.type==='textarea') input='<textarea id="'+id+'" rows="'+(f.rows||3)+'">'+esc(f.value||'')+'</textarea>';
     else if(f.type==='select') input='<select id="'+id+'">'+(f.options||[]).map(function(o){
       return '<option value="'+esc(o.v)+'"'+(String(o.v)===String(f.value)?' selected':'')+'>'+esc(o.t)+'</option>';}).join('')+'</select>';
-    else input='<input type="'+(f.type||'text')+'" id="'+id+'" value="'+esc(f.value==null?'':f.value)+'">';
+    else input='<input type="'+(f.type||'text')+'" id="'+id+'"'+
+      (f.datalist?' list="'+f.datalist+'" autocomplete="off"':'')+
+      ' value="'+esc(f.value==null?'':f.value)+'">';
     return '<div class="field"><label for="'+id+'">'+esc(f.label)+(f.required?'':' <span style="text-transform:none;letter-spacing:0;font-weight:500">(optional)</span>')+'</label>'+
       input+(f.hint?'<p class="hint">'+esc(f.hint)+'</p>':'')+'</div>';
   }).join('');
+  // A <datalist> has to be in the document for `list=` to resolve, and the modal
+  // is built fresh each time, so it ships inside the modal body.
+  if(fields.some(function(f){return f.datalist==='itemsug-modal';}))
+    body=itemDatalist('itemsug-modal')+body;
   return openModal({title:title,message:message,body:body,
     okText:opts.okText||'Save',cancelText:'Cancel',focus:'#mf-'+fields[0].key,
     onOk:function(w){
@@ -1217,12 +1246,14 @@ var DEFAULTS={
   ],
   // `bike` is a bike ID, never a name — renaming a bike must not orphan its
   // issues. issuesFor() still accepts a stored name for rows saved before this.
+  // `id` so a row can be edited or resolved without relying on its position, which
+  // shifts the moment anything above it is removed.
   issues:[
-    {bike:'ceiling', problem:'Ceiling latch will not stay unlocked', sev:'crit', by:'bike manager', date:'Jul 23'},
-    {bike:'oosbike', problem:'Front brake needs bleeding',           sev:'crit', by:'bike manager', date:'Jul 23'},
-    {bike:'oosbike', problem:'Rack missing bolt + spacer',           sev:'warn', by:'bike manager', date:'Jul 23'},
-    {bike:'curtain', problem:'Tires low / need air',                 sev:'warn', by:'bike manager', date:'Jul 23'},
-    {bike:'curtain', problem:'Bell mounted backwards',               sev:'minor',by:'bike manager', date:'Jul 23'}
+    {id:'is1', bike:'ceiling', problem:'Ceiling latch will not stay unlocked', sev:'crit', by:'bike manager', date:'Jul 23'},
+    {id:'is2', bike:'oosbike', problem:'Front brake needs bleeding',           sev:'crit', by:'bike manager', date:'Jul 23'},
+    {id:'is3', bike:'oosbike', problem:'Rack missing bolt + spacer',           sev:'warn', by:'bike manager', date:'Jul 23'},
+    {id:'is4', bike:'curtain', problem:'Tires low / need air',                 sev:'warn', by:'bike manager', date:'Jul 23'},
+    {id:'is5', bike:'curtain', problem:'Bell mounted backwards',               sev:'minor',by:'bike manager', date:'Jul 23'}
   ],
   inventory:[
     {item:'Kryptonite keys', cat:'Locks/Keys',  qty:'2', status:'ok'},
@@ -1510,8 +1541,14 @@ var NAV_PARENT={};
 // The pre-ride check is the front door: status is the OUTPUT of a check, not a
 // separate screen you visit first.
 var HOME='safety-check';
+// Views a member has no business in. Hiding the nav item is not enough on its own —
+// these are hash-addressable, so a stale bookmark or a shared link would walk
+// straight past the sidebar into the page.
+var MANAGER_VIEWS=['settings','inventory','repairs'];
+function isManager(){ return document.body.classList.contains('is-web'); }
 function go(v,fromHash){
   if(VIEWS.indexOf(v)<0) v=HOME;
+  if(MANAGER_VIEWS.indexOf(v)>=0&&!isManager()) v=HOME;
   var navFor=NAV_PARENT[v]||v;
   document.querySelectorAll('.sb-item').forEach(function(x){x.classList.toggle('active',x.dataset.view===navFor);});
   document.querySelectorAll('.view').forEach(function(x){x.classList.toggle('active',x.dataset.view===v);});
@@ -1564,7 +1601,9 @@ function setWeb(on){
   document.getElementById('webBtn').textContent=on?'Exit manager':'🔒 Bike Manager';
   // The Site Settings nav item is gated purely by `.is-web` in CSS — see the
   // rule next to .webonly. Nothing to set here.
-  if(!on&&location.hash.slice(1)==='settings') go(HOME);
+  // Leaving manager mode while standing in a manager-only view must not leave the
+  // page sitting there — Settings, Inventory and Repairs all drop back to home.
+  if(!on&&MANAGER_VIEWS.indexOf(location.hash.slice(1))>=0) go(HOME);
   renderAll();
 }
 function toggleWeb(){
@@ -1840,9 +1879,16 @@ var BIKE_ORIGIN={curtain:'The curtain bike',ceiling:'The ceiling bike',oosbike:'
 
 function toggleFormEdit(fid){formEdit[fid]=!formEdit[fid];renderForm(fid);}
 
+// Whether a check was just submitted in THIS session. Deliberately in memory and
+// not persisted: reopening the site should always present a fresh form, so this
+// resets on load while an unsubmitted draft survives.
+var formDone={jumpkit:false,safety:false};
+var lastResult={};
+
 function renderForm(fid){
   var host=document.getElementById(FORM_HOST[fid]); if(!host) return;
   var f=DB.forms[fid]; if(!f) return;
+  if(formDone[fid]){ host.innerHTML=donePanel(fid); return; }
   var h='';
 
   // The form's own title chip is dropped — the view heading above already names
@@ -1854,20 +1900,38 @@ function renderForm(fid){
 
   if(formEdit[fid]) h+=formBuilder(fid);
 
+  h+='<div id="'+fid+'-draftnote"></div>';
+
   h+='<div class="card brandtop"><h3>Who is checking?</h3><div class="field-row">'+
      '<div class="field"><label for="'+fid+'-fn">First name</label>'+
-     '<input type="text" id="'+fid+'-fn" placeholder="First" oninput="calcForm(\''+fid+'\')"></div>'+
+     '<input type="text" id="'+fid+'-fn" placeholder="First" oninput="onFormInput(\''+fid+'\')"></div>'+
      '<div class="field"><label for="'+fid+'-ln">Last name</label>'+
-     '<input type="text" id="'+fid+'-ln" placeholder="Last" oninput="calcForm(\''+fid+'\')"></div>'+
-     '</div><p style="font-size:12px;color:var(--ink-faint);margin:0">Submitted date is recorded automatically.</p>';
+     '<input type="text" id="'+fid+'-ln" placeholder="Last" oninput="onFormInput(\''+fid+'\')"></div>'+
+     '</div>'+
+     // Andrew ID is the identifier that actually resolves to a person across EMS
+     // records; two members can share a first and last name.
+     '<div class="field"><label for="'+fid+'-aid">Andrew ID</label>'+
+     '<input type="text" id="'+fid+'-aid" placeholder="e.g. abockst" autocapitalize="none" '+
+     'autocorrect="off" spellcheck="false" oninput="onFormInput(\''+fid+'\')"></div>'+
+     '<p style="font-size:12px;color:var(--ink-faint);margin:0">Submitted date is recorded automatically.</p>';
 
   if(fid==='jumpkit'){
-    h+='<div class="field mt"><label for="jk-bag">Which jumpkit bag?</label><select id="jk-bag">';
-    DB.bags.forEach(function(b){
-      h+='<option value="'+esc(b.id)+'"'+(b.active?' selected':'')+'>'+esc(b.label)+
-         (b.active?' — active':' — dormant, not in service')+'</option>';
-    });
-    h+='</select></div>';
+    // Only bags actually in service are offered. A dormant bag used to be
+    // selectable, which meant a check could be filed against a bag nobody carries.
+    // Which bags are in service is set in Inventory.
+    var live=DB.bags.filter(function(b){return b.active;});
+    h+='<div class="field mt"><label for="jk-bag">Which jumpkit bag?</label>'+
+       '<select id="jk-bag" onchange="onFormInput(\'jumpkit\')">';
+    if(live.length){
+      live.forEach(function(b,i){
+        h+='<option value="'+esc(b.id)+'"'+(i===0?' selected':'')+'>'+esc(b.label)+'</option>';
+      });
+    }else{
+      h+='<option value="">No bag is in service</option>';
+    }
+    h+='</select>'+
+       (live.length>1?'<p class="hint">Pick the bag you actually checked.</p>':'')+
+       '</div>';
   }
   h+='</div>';
 
@@ -1876,7 +1940,7 @@ function renderForm(fid){
     h+='<div class="card mt" id="condCard"><h3>Conditions check</h3>'+
        '<p style="font-size:13px;color:var(--ink-faint);margin:0 0 8px">Is any of this true right now?</p>';
     DB.weather.forEach(function(w){
-      h+='<label class="checkline"><input type="checkbox" data-cond="'+esc(w.tier)+'" onchange="calcForm(\'safety\')">'+
+      h+='<label class="checkline"><input type="checkbox" data-cond="'+esc(w.tier)+'" onchange="onFormInput(\'safety\')">'+
          '<span class="lbl">'+esc(w.t)+'</span>'+
          (w.tier==='ground'?'<span class="tag crit">Ground</span>':'<span class="tag warn">Caution</span>')+'</label>';
     });
@@ -1887,7 +1951,7 @@ function renderForm(fid){
   (f.sections||[]).forEach(function(sec){
     h+='<div class="card mt"><h3>'+esc(sec.name)+'</h3>';
     (sec.items||[]).forEach(function(it){
-      h+='<label class="checkline"><input type="checkbox" data-item="'+esc(it.id)+'" data-label="'+esc(it.label)+'" onchange="calcForm(\''+fid+'\')">'+
+      h+='<label class="checkline"><input type="checkbox" data-item="'+esc(it.id)+'" data-label="'+esc(it.label)+'" onchange="onFormInput(\''+fid+'\')">'+
          '<span class="lbl">'+esc(it.label)+'</span>'+
          (it.qty?'<span class="qty">qty '+esc(it.qty)+'</span>':'')+'</label>';
       if(it.exp){
@@ -1895,7 +1959,7 @@ function renderForm(fid){
         var known=DB.expiry[it.id]||'';
         h+='<div class="expblock"><div class="exphead">Expiration date — '+esc(it.label)+'</div>'+
            '<div class="exprow"><input type="date" data-exp="'+esc(it.id)+'" value="'+esc(known)+'"'+
-           ' onchange="setExpiry(\''+esc(it.id)+'\',this.value);calcForm(\''+fid+'\')">'+
+           ' onchange="setExpiry(\''+esc(it.id)+'\',this.value);onFormInput(\''+fid+'\')">'+
            '<span class="expbadge none" data-expbadge="'+esc(it.id)+'">No date entered</span></div>'+
            '<p style="font-size:12px;color:var(--ink-faint);margin:7px 0 0">Recorded for next time. If expired, notify the Equipment Manager.</p></div>';
       }
@@ -1906,7 +1970,8 @@ function renderForm(fid){
 
   h+='<div class="card mt"><h3>Is there anything else to note?</h3>'+
      '<p style="font-size:13px;color:var(--ink-mute);margin:0 0 10px">Optional. Anything the checklist above does not cover.</p>'+
-     '<textarea id="'+fid+'-notes" rows="3" placeholder="Leave blank if nothing"></textarea></div>';
+     '<textarea id="'+fid+'-notes" rows="3" placeholder="Leave blank if nothing" oninput="onFormInput(\''+fid+'\')"></textarea>'+
+     '<p class="hint">Anything written here is added to the issue list for the Bike Manager.</p></div>';
 
   // The jumpkit check is about the bag, so it is the one place a rider can finish
   // a check feeling done without ever having touched the bike. This is the
@@ -1922,11 +1987,114 @@ function renderForm(fid){
 
   h+='<div id="'+fid+'-verdict"></div>'+
      '<div class="row mt"><button class="btn solid" onclick="submitForm(\''+fid+'\')">Submit check</button>'+
-     '<button class="btn ghost" onclick="renderForm(\''+fid+'\')">Reset</button>'+
+     '<button class="btn ghost" onclick="discardForm(\''+fid+'\')">Clear</button>'+
      '<span id="'+fid+'-savemsg" style="font-size:12.5px;color:var(--ink-faint)"></span></div>';
 
   host.innerHTML=h;
+  restoreDraft(fid);
   calcForm(fid);
+}
+
+/* ---------- what you see after submitting ----------
+   A submitted check used to leave the filled-in form on screen with a small note
+   under the button, which reads as "nothing happened" — so people submitted
+   twice. This replaces the form outright: what the check concluded, where it
+   went, and one button to start another. */
+function donePanel(fid){
+  var r=lastResult[fid]||{};
+  var cls=r.cls==='ok'?'ok':(r.cls==='oos'?'oos':'warn');
+  return '<div class="donecard '+cls+'">'+
+    '<div class="donetick">'+(cls==='ok'?'✓':'!')+'</div>'+
+    '<h3>'+esc(SHEET_LABEL[fid])+' complete</h3>'+
+    '<p class="doneverdict">'+esc(r.verdict||'')+'</p>'+
+    (r.tail?'<p class="donetail">'+esc(r.tail)+'</p>':'')+
+    '<p class="donewhere">'+esc(r.where||'')+'</p>'+
+    '<div class="row" style="justify-content:center;margin-top:18px">'+
+      '<button class="btn solid" onclick="startNewCheck(\''+fid+'\')">Start another check</button>'+
+      '<button class="btn ghost" onclick="go(\'bikes\')">See bike status</button>'+
+    '</div></div>';
+}
+function startNewCheck(fid){
+  formDone[fid]=false;
+  if(fid==='safety'){ activeBike=null; renderBikePicker(); }
+  renderForm(fid);
+  var host=document.getElementById(FORM_HOST[fid]);
+  if(host&&host.scrollIntoView) host.scrollIntoView({behavior:'smooth',block:'start'});
+}
+
+/* ---------- in-progress answers ----------
+   A check gets filled in on a phone, in a bike room, one-handed. Backgrounding
+   the tab or a stray reload used to lose every box already ticked, which is the
+   kind of thing that stops people finishing the check at all.
+
+   So answers persist while a run is UNSUBMITTED, and are cleared on submit —
+   reopening mid-run continues where you were, reopening after a submitted run
+   starts clean. Kept out of DB: this is one person's half-finished form on one
+   device, not site content, and it must never end up in an export. */
+var DRAFT_KEY='bikeops_draft_v1';
+function readDrafts(){
+  try{ return JSON.parse(localStorage.getItem(DRAFT_KEY))||{}; }catch(e){ return {}; }
+}
+function writeDrafts(d){
+  try{ localStorage.setItem(DRAFT_KEY,JSON.stringify(d)); }catch(e){}
+}
+function onFormInput(fid){ calcForm(fid); saveDraft(fid); }
+function saveDraft(fid){
+  var host=document.getElementById(FORM_HOST[fid]); if(!host) return;
+  var val=function(id){var e=document.getElementById(id);return e?e.value:'';};
+  var d=readDrafts();
+  var items={},conds=[];
+  host.querySelectorAll('[data-item]').forEach(function(b){ if(b.checked) items[b.getAttribute('data-item')]=1; });
+  host.querySelectorAll('[data-cond]').forEach(function(c,i){ if(c.checked) conds.push(i); });
+  var entry={fn:val(fid+'-fn'),ln:val(fid+'-ln'),aid:val(fid+'-aid'),
+             notes:val(fid+'-notes'),items:items,conds:conds,at:Date.now()};
+  if(fid==='jumpkit') entry.bag=val('jk-bag');
+  if(fid==='safety')  entry.bike=activeBike||'';
+  // An untouched form is not a draft — storing one would make every visit look
+  // like a resumed run and show the "picked up where you left off" note forever.
+  var touched=entry.fn||entry.ln||entry.aid||entry.notes||conds.length||Object.keys(items).length||entry.bike;
+  if(touched) d[fid]=entry; else delete d[fid];
+  writeDrafts(d);
+  renderDraftNote(fid);
+}
+function restoreDraft(fid){
+  var d=readDrafts()[fid]; if(!d) return;
+  var host=document.getElementById(FORM_HOST[fid]); if(!host) return;
+  var set=function(id,v){var e=document.getElementById(id);if(e&&v) e.value=v;};
+  set(fid+'-fn',d.fn); set(fid+'-ln',d.ln); set(fid+'-aid',d.aid); set(fid+'-notes',d.notes);
+  if(fid==='jumpkit') set('jk-bag',d.bag);
+  host.querySelectorAll('[data-item]').forEach(function(b){
+    if(d.items&&d.items[b.getAttribute('data-item')]) b.checked=true; });
+  host.querySelectorAll('[data-cond]').forEach(function(c,i){
+    if((d.conds||[]).indexOf(i)>=0) c.checked=true; });
+  // The bike belongs to the picker, which lives outside the form host.
+  if(fid==='safety'&&d.bike&&!activeBike&&DB.bikes.some(function(b){return b.id===d.bike;})){
+    activeBike=d.bike; renderBikePicker();
+  }
+  renderDraftNote(fid);
+}
+function clearDraft(fid){
+  var d=readDrafts(); delete d[fid]; writeDrafts(d);
+}
+function renderDraftNote(fid){
+  var el=document.getElementById(fid+'-draftnote'); if(!el) return;
+  el.innerHTML=readDrafts()[fid]
+    ? '<div class="resumed">Picked up where you left off. Answers stay on this device until you submit.</div>'
+    : '';
+}
+// "Clear" throws away the run rather than just repainting the DOM — otherwise the
+// saved draft would refill the form on the next render and the button would look
+// broken.
+function discardForm(fid){
+  if(!readDrafts()[fid]){ formDone[fid]=false; renderForm(fid); return; }
+  uiConfirm('Everything filled in on this check will be cleared.','Clear this check?',
+            {okText:'Clear',danger:true}).then(function(yes){
+    if(!yes) return;
+    clearDraft(fid);
+    if(fid==='safety'){ activeBike=null; renderBikePicker(); }
+    formDone[fid]=false;
+    renderForm(fid);
+  });
 }
 
 /* ---------- live verdict ---------- */
@@ -2048,6 +2216,7 @@ function submitForm(fid){
     bag:fid==='jumpkit'?(function(){var s=document.getElementById('jk-bag');
       return s&&s.selectedIndex>=0?s.options[s.selectedIndex].text:'';})():'',
     firstName:fn.trim(), lastName:ln.trim(),
+    andrewId:(document.getElementById(fid+'-aid')||{}).value.trim().toLowerCase(),
     submittedAt:new Date().toISOString(),
     verdict:res.big||'',
     missing:Object.keys(items).filter(function(k){return !items[k];}),
@@ -2059,43 +2228,102 @@ function submitForm(fid){
   // this log, and whether the Sheet is reachable has no bearing on whether the
   // bike was just checked — a failed POST must not leave the fleet view stale.
   var logged=recordSafetyCheck(fid,res,fn.trim()+' '+ln.trim());
+  // Anything written in "Is there anything else to note?" is a problem report —
+  // file it where the manager actually reads, not only into the payload.
+  issueFromCheckNote(fid,payload.notes,fn.trim()+' '+ln.trim(),activeBike,payload.bag);
   var tail=logged
-    ? '\n\n'+bikeName(activeBike)+' is now marked “'+(STATUS_MAP[res.cls]||STATUS_MAP.warn)[1]+'”.'
-    : (res.grounded?'\n\nNo bike status was changed — this verdict is about conditions, not the bike.':'');
+    ? bikeName(activeBike)+' is now marked “'+(STATUS_MAP[res.cls]||STATUS_MAP.warn)[1]+'”.'
+    : (res.grounded?'No bike status was changed — this verdict is about conditions, not the bike.':'');
 
   // Each form goes to its OWN spreadsheet, so a missing safety endpoint must not
   // silently send safety checks into the jumpkit sheet.
   var endpoint=(DB.api||{})[fid]||'';
   var sheetName=SHEET_LABEL[fid];
-  var msg=document.getElementById(fid+'-savemsg');
+
+  // The run is over the moment it is submitted: drop the saved answers so the
+  // next visit is a clean form, and swap the page to the completion panel.
+  var finish=function(where){
+    lastResult[fid]={cls:res.cls,verdict:payload.verdict,tail:tail,where:where};
+    clearDraft(fid);
+    formDone[fid]=true;
+    renderForm(fid);
+    var hostEl=document.getElementById(FORM_HOST[fid]);
+    if(hostEl&&hostEl.scrollIntoView) hostEl.scrollIntoView({behavior:'smooth',block:'start'});
+  };
+
   if(!endpoint){
     console.log('[Bike Ops] submission (backend not connected):',payload);
-    msg.textContent=(logged?'Recorded on this device':'Saved locally only')+' — the '+sheetName+' sheet is not connected yet.';
-    uiAlert('Verdict: '+payload.verdict+tail+
-          '\n\nThe “'+sheetName+'” Google Sheet is not connected yet, so this was not sent anywhere. '+
-          'A Bike Manager can connect it in Site Settings.','Check complete');
+    finish((logged?'Recorded on this device. ':'')+
+           'The “'+sheetName+'” sheet is not connected, so this was not sent anywhere.');
     return;
   }
-  msg.textContent='Sending…';
+  var msg=document.getElementById(fid+'-savemsg');
+  if(msg) msg.textContent='Sending…';
   fetch(endpoint,{method:'POST',mode:'no-cors',
     headers:{'Content-Type':'text/plain;charset=utf-8'},
     body:JSON.stringify(payload)})
   .then(function(){
-    // no-cors means this resolves even if the script errored — say "sent", not
-    // "saved", so nobody reads this as proof a row landed.
-    msg.textContent='Sent to '+sheetName+' ✓';
-    uiAlert('Verdict: '+payload.verdict+tail+'\n\nSent to the “'+sheetName+'” sheet.','Check complete');
+    // no-cors means this resolves even if the script errored, so this says "sent"
+    // and not "saved". Site Settings ▸ Test connection is what actually proves the
+    // endpoint is live.
+    finish('Sent to “'+sheetName+'”.');
   })
   .catch(function(err){
     console.error(err);
-    msg.textContent='Could not reach the '+sheetName+' sheet — check its URL in Site Settings.';
+    finish('Could not reach the “'+sheetName+'” sheet. The check is recorded on this device.');
   });
+}
+
+/* ---------- item name suggestions ----------
+   Rearranging the bag means deleting an item from one compartment and adding it
+   to another, and retyping "Big Blue Bag — NPA set (at least 9 NPAs)" by hand
+   invites a near-miss spelling that reads as a different item in the Sheet.
+
+   The catalogue below is every item the bag held when this was written. It is a
+   fixed floor, not a mirror of the current form: an item deleted from a
+   compartment must still be suggestable, or it disappears from the list exactly
+   when you are halfway through moving it. Anything added since is unioned on top. */
+var ITEM_CATALOG=[
+  'Adult BP cuff','Emesis bag','Stethoscope','Trauma shears','Pulse ox','Pen light',
+  'Clipboard — 4 refusal, 4 alcohol refusal, 3 PEMS transfer-of-care forms, 1 pen',
+  'Big Blue Bag — adult BVM','Big Blue Bag — NPA set (at least 9 NPAs)',
+  'Big Blue Bag — OPA set (at least 6 OPAs)','Big Blue Bag — surgilube packets',
+  'Oral glucose','Tongue depressors','Pack of tissues','Splinter kit','N-95 masks',
+  'Surgical masks','Bag shoulder strap','Trash bag','Biohazard bag',
+  'Big Red Bag — hot pack','Big Red Bag — cold packs','6" pressure dressing',
+  'Triangle bandages','Roll of medical tape','Roll of coban','Small bottle of eyewash',
+  'Pair of safety glasses','4" ace bandage','2" ace bandage',
+  'Blue pouch — 1x3 bandaids','Blue pouch — 2x4 bandaids',
+  'Blue pouch — VioNex wipes (equipment)','Blue pouch — BZK wipes (people)',
+  'Black pouch — 2" rolled gauze','Black pouch — 4" rolled gauze',
+  'Red pouch — 2x2 gauze','Red pouch — 4x4 gauze','Red pouch — 5x9 combine pads',
+  'Red pouch — petroleum gauze pads','Combat application tourniquet',
+  'Multi trauma dressing'
+];
+function itemSuggestions(){
+  var seen={},out=[];
+  var add=function(v){ v=String(v||'').trim();
+    if(v&&!seen[v.toLowerCase()]){seen[v.toLowerCase()]=1;out.push(v);} };
+  ITEM_CATALOG.forEach(add);
+  Object.keys(DB.forms||{}).forEach(function(f){
+    (DB.forms[f].sections||[]).forEach(function(sec){
+      (sec.items||[]).forEach(function(it){ add(it.label); });
+    });
+  });
+  out.sort(function(a,b){return a.localeCompare(b);});
+  return out;
+}
+function itemDatalist(id){
+  return '<datalist id="'+id+'">'+
+    itemSuggestions().map(function(v){return '<option value="'+esc(v)+'"></option>';}).join('')+
+    '</datalist>';
 }
 
 /* ---------- form builder (manager mode) ---------- */
 function formBuilder(fid){
   var f=DB.forms[fid];
-  var h='<div class="builder"><h4>Editing "'+esc(f.title)+'"</h4>'+
+  var dl='itemsug-'+fid;
+  var h=itemDatalist(dl)+'<div class="builder"><h4>Editing "'+esc(f.title)+'"</h4>'+
     '<p class="bsub">Rename sections, add or remove items, set quantities, reorder with ↑ ↓, and mark which items have an expiration date. Changes save as you type.</p>';
   var nsec=(f.sections||[]).length;
   (f.sections||[]).forEach(function(sec,si){
@@ -2107,7 +2335,7 @@ function formBuilder(fid){
       '<button class="btn xs danger" onclick="delSection(\''+fid+'\','+si+')">Delete section</button></div>';
     (sec.items||[]).forEach(function(it,ii){
       h+='<div class="bitem">'+
-        '<input type="text" value="'+esc(it.label)+'" oninput="DB.forms.'+fid+'.sections['+si+'].items['+ii+'].label=this.value;saveDB()">'+
+        '<input type="text" list="'+dl+'" value="'+esc(it.label)+'" oninput="DB.forms.'+fid+'.sections['+si+'].items['+ii+'].label=this.value;saveDB()">'+
         '<input type="number" min="1" value="'+esc(it.qty||'')+'" placeholder="qty" oninput="DB.forms.'+fid+'.sections['+si+'].items['+ii+'].qty=this.value;saveDB()">'+
         '<label class="expflag"><input type="checkbox"'+(it.exp?' checked':'')+
           ' onchange="DB.forms.'+fid+'.sections['+si+'].items['+ii+'].exp=this.checked;saveDB();renderForm(\''+fid+'\')"> expires</label>'+
@@ -2140,8 +2368,8 @@ function delSection(fid,si){
   });
 }
 function addItem(fid,si){
-  uiForm('Add an item','This becomes a line on the check.',[
-    {key:'label',label:'Item',required:true,value:''},
+  uiForm('Add an item','Start typing — anything the bag has held is suggested.',[
+    {key:'label',label:'Item',required:true,value:'',datalist:'itemsug-modal'},
     {key:'qty',label:'Quantity expected',type:'number',value:1},
     {key:'exp',label:'Has an expiration date',type:'select',value:'no',
       options:[{v:'no',t:'No'},{v:'yes',t:'Yes — ask for a date at each check'}]}
@@ -2198,7 +2426,7 @@ function aspectOf(o){
 function renderVideos(){
   var g=document.getElementById('videoGrid'); if(!g) return;
   document.getElementById('videoCount').textContent=DB.videos.length+' video'+(DB.videos.length===1?'':'s');
-  if(!DB.videos.length){g.innerHTML='<div class="placeholder">No videos yet. In Bike Manager mode, use “+ Add video”.</div>';return;}
+  if(!DB.videos.length){g.innerHTML='<div class="placeholder">No videos yet.</div>';return;}
   g.innerHTML=DB.videos.map(function(v,i){
     var vsrc=embedSrc(v.embed);
     var thumb=vsrc
@@ -2328,14 +2556,16 @@ function renderLectures(){
   }).join('');
   var shared=DB.deck&&DB.deck.url;
   var anyLinked=DB.lectures.some(function(L){return lectureSrc(L);});
+  // Entirely manager-facing: it is setup instruction, not something a member
+  // reading the lecture needs. `.row.webonly` is the already-correct gate.
   document.getElementById('lectureNote').innerHTML=
-    '<div class="row" style="justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap">'+
+    '<div class="row webonly" style="justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap">'+
       '<span>'+(anyLinked
-        ? 'Editing happens in Google Slides — this site only embeds the deck, so the Drive file stays the single source of truth.'
-        : 'No deck linked yet. Upload the deck to Google Slides, set it to “Anyone with the link → Viewer”, then link it once below.')+'</span>'+
-      '<button class="btn xs webonly" onclick="editDeck()">'+(shared?'Change shared deck':'Link one deck for all modules')+'</button>'+
+        ? 'Slides are edited in Google Slides.'
+        : 'No deck linked yet. Upload it to Google Slides, set it to “Anyone with the link → Viewer”, then link it below.')+'</span>'+
+      '<button class="btn xs" onclick="editDeck()">'+(shared?'Change shared deck':'Link one deck for all modules')+'</button>'+
     '</div>'+
-    (shared?'<div class="mt-sm" style="font-size:12px;color:var(--ink-faint)">Shared deck linked. Each module opens it at its own start slide — set that with “Set links”. If you insert or reorder slides, update the slide numbers here to match.</div>':'');
+    (shared?'<div class="sharenote webonly mt-sm">Each module opens the deck at its own start slide. If you insert or reorder slides, update the slide numbers to match.</div>':'');
 }
 /* Shared deck: one upload, six modules, each starting at its own slide. */
 function editDeck(){
@@ -2702,17 +2932,93 @@ function markBikeOOS(id){
     saveDB();renderDash();
   });
 }
+// Clears a bike to be ridden. Offered whatever the bike's current status is, not
+// just out-of-service: a bike sitting at "needs review" over something already
+// dealt with is the common case, and there was previously no way to clear it
+// short of running a whole check.
 function returnToService(id){
   var open=issuesFor({id:id,name:bikeName(id)}).length;
   uiConfirm(bikeName(id)+' will show as ready to ride'+
             (open?', and its '+open+' open issue'+(open===1?'':'s')+' will be cleared':'')+
             '. Do this once the bike has actually been fixed and ridden.',
-            'Return this bike to service?',{okText:'Return to service'}).then(function(yes){
+            'Clear '+bikeName(id)+' to ride?',{okText:'Clear to ride'}).then(function(yes){
     if(!yes) return;
     DB.issues=DB.issues.filter(function(i){return i.bike!==id&&i.bike!==bikeName(id);});
-    setBikeStatus(id,'ok','Returned to service by the bike manager.');
+    setBikeStatus(id,'ok','Cleared to ride by the bike manager.');
   });
 }
+/* ---------- the issue log ----------
+   Two ways in: the Bike Manager writing one directly, and the free-text note at
+   the bottom of either check. A member finishing a check and typing "chain keeps
+   slipping" has reported a problem — it used to land in the submission payload
+   and nowhere a manager would ever look. */
+function issueSubject(i){
+  if(i.bike) return bikeName(i.bike);
+  if(i.bag)  return 'Jumpkit — '+i.bag;
+  return '—';
+}
+function issueById(id){ return DB.issues.filter(function(i){return i.id===id;})[0]; }
+function issueFields(i){
+  i=i||{};
+  return [
+    {key:'bike',label:'Which bike',type:'select',value:i.bike||'',
+     options:[{v:'',t:'Not about a specific bike'}].concat(
+       DB.bikes.map(function(b){return {v:b.id,t:b.name};}))},
+    {key:'problem',label:'Problem',required:true,value:i.problem||''},
+    {key:'sev',label:'Severity',type:'select',value:i.sev||'warn',options:[
+      {v:'crit',t:'Critical — bike is out of service'},
+      {v:'warn',t:'Warning — needs attention'},
+      {v:'minor',t:'Minor — note it'}]},
+    {key:'by',label:'Reported by',value:i.by||'bike manager'}
+  ];
+}
+function addIssue(){
+  uiForm('Log an issue','',issueFields(),{okText:'Add issue'}).then(function(r){
+    if(!r) return;
+    DB.issues.push({id:uid('is'),bike:r.bike,problem:r.problem.trim(),
+                    sev:r.sev,by:(r.by||'bike manager').trim(),date:shortToday()});
+    saveDB();renderDash();
+  });
+}
+function editIssue(id){
+  var i=issueById(id); if(!i) return;
+  uiForm('Edit issue','',issueFields(i)).then(function(r){
+    if(!r) return;
+    i.bike=r.bike; i.problem=r.problem.trim(); i.sev=r.sev; i.by=(r.by||'').trim();
+    saveDB();renderDash();
+  });
+}
+// Resolving removes the row. It does NOT touch bike status: status is derived
+// from the check log, and clearing the last complaint about a bike is not the
+// same as someone having ridden it and found it sound. "Clear to ride" is the
+// deliberate, separate act.
+function resolveIssue(id){
+  var i=issueById(id); if(!i) return;
+  uiConfirm('“'+i.problem+'” will be removed from the open list. '+
+            (i.bike?bikeName(i.bike)+'’s status is unchanged — use “Clear to ride” once it has actually been fixed and ridden.':''),
+            'Mark this resolved?',{okText:'Resolve'}).then(function(yes){
+    if(!yes) return;
+    DB.issues=DB.issues.filter(function(x){return x.id!==id;});
+    saveDB();renderDash();
+  });
+}
+// Called from submitForm. A note is only a report if somebody wrote something.
+function issueFromCheckNote(fid,note,who,bikeId,bagLabel){
+  var t=String(note||'').trim(); if(!t) return;
+  DB.issues.push({
+    id:uid('is'),
+    bike:fid==='safety'?(bikeId||''):'',
+    bag:fid==='jumpkit'?(bagLabel||''):'',
+    problem:t,
+    // Severity is a judgement the manager makes when they read it. Free text from
+    // a check is filed as Minor so it never silently grounds a bike on its own.
+    sev:'minor',
+    by:who||'',
+    date:shortToday()
+  });
+  saveDB();
+}
+
 // "Jul 23" style, matching the seeded issue rows.
 function shortToday(){
   var d=new Date();
@@ -2773,16 +3079,14 @@ function renderDash(){
     // .row.webonly needs the specificity bump noted in the architecture comment —
     // a bare .webonly here would be out-ranked by .row's own display rule and
     // leak these controls into member view.
-    // "Return to service" is offered only for a bike that is actually OUT of it.
-    // A `warn` bike is still rideable, so the useful action there is still to
-    // pull it, not to "return" something that never left.
-    var isOut=statusOf(b)==='oos';
+    // Clear-to-ride is offered on any bike that is not already cleared — a bike at
+    // "needs review" is the common case for it, not just one fully out of service.
+    var isReady=statusOf(b)==='ok';
     var acts='<div class="row mt bikeacts webonly">'+
       '<button class="btn xs" onclick="renameBike(\''+esc(b.id)+'\')">Rename</button>'+
-      (isOut
-        ? '<button class="btn xs" onclick="returnToService(\''+esc(b.id)+'\')">Return to service</button>'+
-          '<button class="btn xs danger" onclick="markBikeOOS(\''+esc(b.id)+'\')">Update problems</button>'
-        : '<button class="btn xs danger" onclick="markBikeOOS(\''+esc(b.id)+'\')">Mark out of service</button>')+
+      (isReady?'':'<button class="btn xs" onclick="returnToService(\''+esc(b.id)+'\')">Clear to ride</button>')+
+      '<button class="btn xs danger" onclick="markBikeOOS(\''+esc(b.id)+'\')">'+
+        (isReady?'Mark out of service':'Update problems')+'</button>'+
       '</div>';
     return '<div class="card"><div class="bike-head"><b>'+esc(b.name)+'</b>'+
       '<span class="status '+m[0]+'"><span class="dot"></span>'+m[1]+'</span></div>'+
@@ -2790,13 +3094,18 @@ function renderDash(){
   }).join('');
 
   var rows=document.getElementById('issueRows');
-  if(rows) rows.innerHTML=DB.issues.map(function(i){
-    var tag=i.sev==='crit'?'<span class="tag crit">Critical</span>'
-           :i.sev==='warn'?'<span class="tag warn">Warning</span>':'<span class="tag">Minor</span>';
-    return '<tr><td>'+esc(bikeName(i.bike))+'</td><td>'+esc(i.problem)+'</td><td>'+tag+'</td>'+
-      '<td>'+esc(i.by)+'</td><td>'+esc(i.date)+'</td>'+
-      '<td><button class="btn xs ghost webonly">Resolve</button></td></tr>';
-  }).join('');
+  if(rows){
+    rows.innerHTML=DB.issues.length
+      ? DB.issues.map(function(i){
+          return '<tr><td>'+esc(issueSubject(i))+'</td><td>'+esc(i.problem)+'</td><td>'+sevTag(i.sev)+'</td>'+
+            '<td>'+esc(i.by)+'</td><td>'+esc(i.date)+'</td>'+
+            '<td><span class="row webonly" style="gap:6px;justify-content:flex-end">'+
+              '<button class="btn xs" onclick="editIssue(\''+esc(i.id)+'\')">Edit</button>'+
+              '<button class="btn xs solid" onclick="resolveIssue(\''+esc(i.id)+'\')">Resolve</button>'+
+            '</span></td></tr>';
+        }).join('')
+      : '<tr><td colspan="6"><span class="noissues">Nothing open right now.</span></td></tr>';
+  }
 
   var inv=document.getElementById('invRows');
   if(inv) inv.innerHTML=DB.inventory.map(function(r,i){
@@ -2809,6 +3118,44 @@ function renderDash(){
   }).join('');
 }
 var INV_STATUS={ok:['st-ok','OK'],warn:['st-warn','Low'],oos:['st-oos','Out']};
+
+/* ---------- jumpkit bags ----------
+   `active` decides which bags the Jumpkit Check offers. Bag 2 is the one in
+   service; 3 and 4 are dormant. Putting a bag back into operation was previously
+   only possible by editing the source, which is not something a future Bike
+   Manager can be expected to do. */
+function renderBags(){
+  var el=document.getElementById('bagList'); if(!el) return;
+  var live=DB.bags.filter(function(b){return b.active;}).length;
+  el.innerHTML=DB.bags.map(function(b,i){
+    return '<div class="kv"><span>'+esc(b.label)+'</span>'+
+      '<span class="kvval">'+
+        '<span class="status '+(b.active?'ok':'oos')+'"><span class="dot"></span>'+
+          (b.active?'In service':'Dormant')+'</span>'+
+        '<span class="row kvacts webonly">'+
+          '<button class="btn xs" onclick="toggleBag('+i+')">'+(b.active?'Take out of service':'Put in service')+'</button>'+
+          '<button class="btn xs" onclick="renameBag('+i+')">Rename</button>'+
+        '</span></span></div>';
+  }).join('')+
+  (live?'':'<div class="sharenote">No bag is in service, so the Jumpkit Check has nothing to select. Put one back in service above.</div>');
+}
+function toggleBag(i){
+  var b=DB.bags[i];
+  var go=function(){ b.active=!b.active; saveDB(); renderBags(); renderForm('jumpkit'); };
+  if(!b.active) return go();
+  // Taking the last one out leaves the jumpkit check with an empty selector.
+  if(DB.bags.filter(function(x){return x.active;}).length>1) return go();
+  uiConfirm(b.label+' is the only bag in service. With none in service the Jumpkit Check has no bag to record against.',
+            'Take the last bag out of service?',{okText:'Take it out',danger:true})
+    .then(function(yes){ if(yes) go(); });
+}
+function renameBag(i){
+  var b=DB.bags[i];
+  uiPrompt('This is the name shown on the Jumpkit Check.',b.label,'Rename '+b.label,{okText:'Rename'}).then(function(n){
+    if(!n) return;
+    b.label=n.trim(); saveDB(); renderBags(); renderForm('jumpkit');
+  });
+}
 // Quantity is free text on purpose — "?" is a real and honest answer for the
 // helmets, and forcing a number there would mean inventing one.
 function invFields(r){
@@ -2865,9 +3212,12 @@ function weeklyCard(){
   }else{
     tone='ok'; body='Every bike has been checked in the last 7 days.';
   }
-  return '<div class="card noprint"><h3>Weekly check</h3>'+
-    '<p style="font-size:13px;color:var(--ink-mute)">The weekly rider check <b>is</b> the Bike Safety Check — same form, same questions. '+
-    'Riders run it before a ride; the Bike Manager runs it once a week for every bike, whether or not anyone rode.</p>'+
+  // Manager-only: a rider has no use for the weekly cadence, and showing it
+  // alongside the two checks they DO need made it look like a third one to fill in.
+  // `.card` sets no display property, so `.webonly` gates this cleanly.
+  return '<div class="card noprint webonly"><h3>Weekly check</h3>'+
+    '<p style="font-size:13px;color:var(--ink-mute)">Once a week, every bike, whether or not anyone rode. '+
+    'This is the Bike Safety Check — same form.</p>'+
     '<div class="kv" style="margin-top:12px"><span>Status</span>'+
       '<span class="status '+tone+'"><span class="dot"></span>'+(tone==='ok'?'Up to date':'Due')+'</span></div>'+
     '<p style="font-size:13px;color:var(--ink-soft);margin:10px 0 0">'+esc(body)+'</p>'+
@@ -2930,7 +3280,9 @@ function renderSettings(){
                            :'Not connected — these submissions are logged to the browser console only.')+'</p></div>';
    }).join('')+
    '<button class="btn sm solid" onclick="saveApi()">Save URLs</button> '+
+   '<button class="btn sm" onclick="testApi()">Test connection</button> '+
    '<button class="btn sm ghost" onclick="clearApi()">Disconnect both</button>'+
+   '<div id="apiTestOut"></div>'+
    '<p style="font-size:12.5px;color:var(--ink-faint);margin-top:12px">Setup steps are in <b>SETUP-BACKEND.md</b> in the project folder.</p>'+
    '</div>'+
 
@@ -2969,19 +3321,67 @@ function saveApi(){
   // here, and it fails silently at submit time, so it is worth one question.
   var go=function(){
     DB.api=vals; DB.apiUrl='';
-    saveDB();renderSettings();renderBanner();
+    saveDB();renderSettings();
   };
   if(!odd.length) return go();
   uiConfirm('The URL for '+odd.join(' and ')+' does not look like an Apps Script Web App URL '+
             '(those start with https://script.google.com/). Pasting the spreadsheet’s own link here will not work.',
             'Save anyway?',{okText:'Save anyway'}).then(function(yes){ if(yes) go(); });
 }
+/* ---------- proving the connection actually works ----------
+   Submissions POST with mode:'no-cors' because Apps Script does not answer the
+   CORS preflight a normal cross-origin POST triggers. That makes every POST
+   fire-and-forget: the browser cannot read the reply, so "Sent ✓" has never been
+   evidence a row landed. That is exactly how a check can vanish silently.
+
+   A GET to the same /exec is readable — Apps Script redirects it to
+   googleusercontent.com, which does send permissive CORS headers. So the script
+   answers GET with its identity, and this button reports what came back:
+   whether the URL is live, and which form that deployment expects. A swapped
+   pair of URLs shows up here as a mismatch instead of as missing rows later. */
+function testApi(){
+  var out=document.getElementById('apiTestOut'); if(!out) return;
+  var keys=['jumpkit','safety'];
+  out.innerHTML='<p class="hint" style="margin-top:12px">Testing…</p>';
+  Promise.all(keys.map(function(k){
+    var url=(DB.api||{})[k]||'';
+    if(!url) return Promise.resolve({k:k,state:'blank'});
+    // cache-bust so a previous result cannot be served from cache
+    var probe=url+(url.indexOf('?')>=0?'&':'?')+'ping=1&t='+Date.now();
+    return fetch(probe,{method:'GET'})
+      .then(function(r){ return r.text(); })
+      .then(function(t){
+        var j=null; try{ j=JSON.parse(t); }catch(e){}
+        if(!j||!j.ok) return {k:k,state:'notscript',raw:t.slice(0,120)};
+        return {k:k,state:j.expects===k?'good':'swapped',expects:j.expects,rows:j.rows,sheet:j.sheet};
+      })
+      .catch(function(e){ return {k:k,state:'unreachable',msg:String(e.message||e)}; });
+  })).then(function(res){
+    out.innerHTML='<div style="margin-top:14px">'+res.map(function(r){
+      var name=esc(SHEET_LABEL[r.k]);
+      if(r.state==='blank')
+        return '<p class="hint"><b>'+name+'</b> — no URL saved.</p>';
+      if(r.state==='good')
+        return '<p class="hint"><span class="tag ok">Live</span> <b>'+name+'</b> — reachable, expecting '+
+               esc(r.expects)+' checks, '+esc(String(r.rows))+' row'+(r.rows===1?'':'s')+' in “'+esc(r.sheet)+'”.</p>';
+      if(r.state==='swapped')
+        return '<p class="hint"><span class="tag crit">Swapped</span> <b>'+name+'</b> — this deployment expects <b>'+
+               esc(r.expects)+'</b> checks. The two URLs are in the wrong fields.</p>';
+      if(r.state==='notscript')
+        return '<p class="hint"><span class="tag crit">Wrong URL</span> <b>'+name+'</b> — answered, but not with the Bike Ops script. '+
+               'Check you pasted the Apps Script <b>Web App URL</b> ending in /exec, redeployed after editing, '+
+               'and that the script has the doGet function from SETUP-BACKEND.md.</p>';
+      return '<p class="hint"><span class="tag crit">Unreachable</span> <b>'+name+'</b> — '+esc(r.msg)+'. '+
+             'Usually means the deployment is not set to “Anyone”, or the URL is wrong.</p>';
+    }).join('')+'</div>';
+  });
+}
 function clearApi(){
   uiConfirm('Both checks will go back to saving on this device only.','Disconnect both sheets?',
             {okText:'Disconnect'}).then(function(yes){
     if(!yes) return;
     DB.api={jumpkit:'',safety:''}; DB.apiUrl='';
-    saveDB();renderSettings();renderBanner();
+    saveDB();renderSettings();
   });
 }
 function exportDB(){
@@ -2990,28 +3390,11 @@ function exportDB(){
   a.href=URL.createObjectURL(blob);a.download='bike-ops-content.json';a.click();
   setTimeout(function(){URL.revokeObjectURL(a.href);},1000);
 }
-function renderBanner(){
-  var b=document.getElementById('topBanner');
-  var n=document.getElementById('sbNote');
-  var api=DB.api||{};
-  var on=['jumpkit','safety'].filter(function(k){return !!api[k];});
-  if(on.length===2){
-    b.innerHTML='Connected to both CMU EMS Google Sheets. Submitted checks are recorded with the submitter\'s name and date.';
-    n.innerHTML='LIVE<br>Both sheets connected';
-  }else if(on.length===1){
-    // Naming the half that is live matters — otherwise a member submits the
-    // other form, sees "Submitted", and assumes it landed somewhere.
-    var off=on[0]==='jumpkit'?'safety':'jumpkit';
-    b.innerHTML='Partly connected — '+esc(SHEET_LABEL[on[0]])+' is live. '+
-                esc(SHEET_LABEL[off])+' submissions still save on this device only (Site Settings).';
-    n.innerHTML='PARTLY LIVE<br>1 of 2 sheets connected';
-  }else{
-    // Not a draft disclaimer — this is the one thing standing between a member
-    // and believing a submission was filed. It stays until a sheet is connected.
-    b.innerHTML='Checks are saving on this device only — the Google Sheets are not connected yet (Site Settings).';
-    n.innerHTML='Sheets not connected';
-  }
-}
+// The site-wide connection banner and the sidebar badge are deliberately gone.
+// A member does not need to be told about a spreadsheet, and the message that
+// actually matters is on the completion panel, which names per submission exactly
+// where that check went. Connection state lives in Site Settings, where the only
+// person who can act on it is already standing.
 
 /* ============================================================
    INIT
@@ -3019,8 +3402,8 @@ function renderBanner(){
 function renderAll(){
   renderDash();renderBikePicker();renderChecks();renderOOS();renderWeather();
   renderForm('jumpkit');renderForm('safety');renderExpiryAlert();
-  renderVideos();renderLectures();renderBylaws();renderKVSets();
-  renderSettings();renderBanner();
+  renderVideos();renderLectures();renderBylaws();renderKVSets();renderBags();
+  renderSettings();
 }
 renderAll();
 
