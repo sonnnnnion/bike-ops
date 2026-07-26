@@ -4,37 +4,67 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>CMU EMS · Bike Ops</title>
+<!-- Favicons are generated from assets/cmuems.png with the white square around
+     the crest masked off (see assets/README.txt). Do not "remove white" globally
+     on that source — the star-of-life inside the crest is white too. -->
+<link rel="icon" href="assets/favicon.ico" sizes="any">
+<link rel="icon" type="image/png" sizes="32x32" href="assets/favicon-32.png">
+<link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
+<meta name="theme-color" content="#8c1c2b">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,600;0,9..144,700;1,9..144,600&family=Manrope:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
 <style>
   :root{
-    /* ---- CMU EMS palette: burgundy chrome, Carnegie red accent, warm bright page ---- */
-    --bg:#fbf8f7; --bg-2:#f6eeec; --card:#ffffff; --card-2:#fdf9f8;
-    --ink:#1c1216; --ink-soft:#4a3a3f; --ink-faint:#726167;
-    --rule:#2a191e; --rule-soft:#e6d8db;
-    --brand:#8c1c2b; --brand-2:#a81f33; --brand-wash:#f7e9eb;
+    /* ---- CMU EMS: burgundy primary on warm paper.
+       The burgundy is ours; the warmth, type scale and soft depth follow the
+       21-254 site. --rule and --shadow-* are deliberately remapped from the old
+       hard 2px/0-offset brutalist values, so every component that references
+       them softens at once rather than needing 200 individual edits. ---- */
+    --bg:#FBF8F4; --bg-2:#F4EFE7; --card:#FFFFFF; --card-2:#FDFBF8;
+    --ink:#241A1D; --ink-soft:#4A3A3F; --ink-mute:#6B5C61; --ink-faint:#8E7F84;
+    --rule:#E7E1D6; --rule-soft:#EFE9DF; --rule-strong:#D8CFC2; --rule-ink:#241A1D;
+    --brand:#8c1c2b; --brand-2:#a81f33; --brand-deep:#6d1522;
+    --brand-wash:#F7E9EB; --brand-tint:#FCF2F3;
     --accent:#c41230; --accent-ink:#9c0f26;
+    /* gold bridges the purple-and-gold crest to the burgundy without re-theming */
+    --gold:#B89642; --gold-wash:#F7EFDD;
     --chip:#fff;
-    --shadow-sm:2px 2px 0 var(--rule); --shadow-md:3px 3px 0 var(--rule); --shadow-lg:5px 5px 0 var(--rule);
-    --font-body:'Inter',system-ui,sans-serif; --font-mono:'Space Mono',ui-monospace,monospace;
-    --display-wt:800; --radius:0px;
-    --ok:#16794c; --warn:#b45309; --oos:#e03131;
-    --ok-wash:#e8f6ee; --warn-wash:#fdf3e3; --oos-wash:#fdeceb;
+    --shadow-sm:0 1px 2px rgba(36,26,29,.05), 0 1px 3px rgba(36,26,29,.04);
+    --shadow-md:0 2px 6px rgba(36,26,29,.06), 0 8px 20px rgba(36,26,29,.05);
+    --shadow-lg:0 4px 12px rgba(36,26,29,.07), 0 16px 40px rgba(36,26,29,.07);
+    --font-display:'Fraunces','Iowan Old Style',Georgia,serif;
+    --font-body:'Manrope',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+    --font-mono:'JetBrains Mono',ui-monospace,'SF Mono',monospace;
+    --display-wt:700;
+    --r-sm:6px; --radius:10px; --r-md:14px; --r-lg:20px; --r-xl:28px;
+    --ok:#2F7A4A; --warn:#B45309; --oos:#C8102E;
+    --ok-wash:#E1F0E5; --warn-wash:#FBF0DC; --oos-wash:#FBE7EA;
     --ease:cubic-bezier(.2,.7,.2,1); --ease-out:cubic-bezier(.16,1,.3,1);
+    --maxw:1120px;
   }
   *{box-sizing:border-box}
   html,body{margin:0}
-  body{background:var(--bg);color:var(--ink);font-family:var(--font-body);line-height:1.5;-webkit-font-smoothing:antialiased}
+  body{color:var(--ink);font-family:var(--font-body);line-height:1.55;-webkit-font-smoothing:antialiased;
+    text-rendering:optimizeLegibility;
+    background-color:var(--bg);
+    background-image:
+      radial-gradient(circle at 1px 1px, rgba(36,26,29,.045) 1px, transparent 0),
+      radial-gradient(1200px 600px at 85% -10%, rgba(140,28,43,.05), transparent 60%),
+      radial-gradient(900px 500px at -10% 110%, rgba(184,150,66,.05), transparent 60%);
+    background-size:26px 26px, 100% 100%, 100% 100%;
+    background-attachment:fixed}
+  ::selection{background:var(--brand);color:#fff}
+  h1,h2,h3,.display{font-family:var(--font-display)}
   a{color:var(--accent-ink)}
   .mono{font-family:var(--font-mono)}
 
   /* ---------- form controls ---------- */
   label{display:block;font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:var(--ink-faint);margin:0 0 6px}
   input[type=text],input[type=password],input[type=url],input[type=date],input[type=number],textarea,select{
-    width:100%;padding:10px 12px;border:1.5px solid var(--rule);border-radius:0;background:#fff;color:var(--ink);
-    font-family:var(--font-body);font-size:14px}
-  input:focus,textarea:focus,select:focus{outline:2px solid var(--accent);outline-offset:0}
+    width:100%;padding:11px 13px;border:1.5px solid var(--rule-strong);border-radius:var(--radius);background:#fff;color:var(--ink);
+    font-family:var(--font-body);font-size:15px;transition:border-color .16s var(--ease),box-shadow .16s var(--ease)}
+  input:focus,textarea:focus,select:focus{outline:none;border-color:var(--brand);box-shadow:0 0 0 3px var(--brand-wash)}
   .hint{font-size:12px;color:var(--ink-faint);margin-top:10px}
   .field{margin-bottom:14px}
   .field-row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
@@ -44,33 +74,36 @@
   #app{display:grid;min-height:100vh;grid-template-columns:236px 1fr;grid-template-rows:auto 1fr}
   /* 1/-1 not 1/3 — on narrow screens #app drops to a single column, and a hard
      -coded 2-column span would conjure an implicit second column back into it. */
-  .topbar{grid-column:1/-1;display:flex;align-items:center;gap:14px;padding:11px 18px;
-    background:linear-gradient(180deg,var(--brand) 0%,var(--brand-2) 100%);color:#fff;
-    border-bottom:2px solid var(--rule);position:sticky;top:0;z-index:20}
-  .brand{display:flex;flex-direction:column;line-height:1.05}
-  .brand b{font-weight:var(--display-wt);font-size:18px;letter-spacing:-.01em;color:#fff}
-  .brand .term{font-family:var(--font-mono);font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:#f3d3d8}
+  .topbar{grid-column:1/-1;display:flex;align-items:center;gap:14px;padding:12px 20px;
+    background:linear-gradient(180deg,var(--brand) 0%,var(--brand-deep) 100%);color:#fff;
+    border-bottom:1px solid rgba(0,0,0,.18);box-shadow:var(--shadow-sm);position:sticky;top:0;z-index:20}
+  .brand{display:flex;flex-direction:column;line-height:1.1}
+  .brand b{font-family:var(--font-display);font-weight:var(--display-wt);font-size:20px;letter-spacing:-.015em;color:#fff}
+  .brand .term{font-size:10.5px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;color:#e8bfc6}
   .topbar .spacer{flex:1}
-  .topbar .btn{background:rgba(255,255,255,.12);color:#fff;border-color:rgba(255,255,255,.5);box-shadow:none}
-  .topbar .btn:hover{background:rgba(255,255,255,.22);transform:translate(-1px,-1px)}
-  .role-pill{font-family:var(--font-mono);font-size:11px;text-transform:uppercase;letter-spacing:.08em;
-    border:1.5px solid rgba(255,255,255,.55);padding:5px 9px;color:#fff}
+  .topbar .btn{background:rgba(255,255,255,.14);color:#fff;border-color:rgba(255,255,255,.4);box-shadow:none;border-radius:999px}
+  .topbar .btn:hover{background:rgba(255,255,255,.24);border-color:rgba(255,255,255,.7);transform:translateY(-1px)}
+  .role-pill{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.1em;border-radius:999px;
+    border:1.5px solid rgba(255,255,255,.45);padding:5px 11px;color:#fff}
   .role-pill.web{background:#fff;color:var(--brand);border-color:#fff;font-weight:700}
-  .logo-mark{width:36px;height:36px;object-fit:contain;flex:0 0 auto;background:#fff;padding:3px;border:1.5px solid rgba(255,255,255,.6)}
-  .logo-fallback{width:36px;height:36px;flex:0 0 auto;display:grid;place-items:center;background:#fff;color:var(--brand);
-    font-family:var(--font-mono);font-weight:700;font-size:10px;letter-spacing:.02em;border:1.5px solid rgba(255,255,255,.6)}
+  /* The mark has transparent corners, so a round white backing reads as a badge
+     rather than a sticker on a square tile. The white ring also keeps the crest's
+     purple off the burgundy, where the two would muddy each other. */
+  .logo-mark{width:38px;height:38px;object-fit:contain;flex:0 0 auto;background:#fff;padding:2px;border-radius:50%;box-shadow:0 1px 3px rgba(0,0,0,.25)}
+  .logo-fallback{width:38px;height:38px;flex:0 0 auto;display:grid;place-items:center;background:#fff;color:var(--brand);
+    font-weight:800;font-size:11px;letter-spacing:.02em;border-radius:var(--r-sm)}
 
-  .sidebar{border-right:2px solid var(--rule);padding:14px 10px;background:var(--bg-2);display:flex;flex-direction:column;gap:2px}
-  .sb-item{display:flex;align-items:center;gap:10px;padding:9px 12px;border:1.5px solid transparent;cursor:pointer;font-weight:600;font-size:14px;color:var(--ink-soft)}
-  .sb-item .ic{width:18px;text-align:center;color:var(--brand)}
-  .sb-item:hover{background:var(--card)}
-  .sb-item.active{background:var(--card);border-color:var(--rule);box-shadow:var(--shadow-sm);color:var(--ink)}
-  .sb-item.active .ic{color:var(--accent)}
-  .sb-sep{height:1px;background:var(--rule-soft);margin:8px 4px}
-  .sb-label{font-family:var(--font-mono);font-size:9.5px;text-transform:uppercase;letter-spacing:.12em;color:var(--ink-faint);padding:8px 12px 4px}
-  .sb-note{margin-top:auto;font-size:11px;color:var(--ink-faint);padding:10px 12px;border-top:1px dashed var(--rule-soft)}
+  .sidebar{border-right:1px solid var(--rule);padding:18px 12px;background:transparent;display:flex;flex-direction:column;gap:2px}
+  .sb-item{display:flex;align-items:center;gap:10px;padding:10px 13px;border-radius:var(--radius);cursor:pointer;font-weight:500;font-size:14.5px;color:var(--ink-soft)}
+  .sb-item .ic{width:18px;text-align:center;color:var(--brand);opacity:.75}
+  .sb-item:hover{background:var(--bg-2);color:var(--ink)}
+  .sb-item.active{background:var(--brand);color:#fff;font-weight:600;box-shadow:var(--shadow-sm)}
+  .sb-item.active .ic{color:#fff;opacity:1}
+  .sb-sep{height:1px;background:var(--rule);margin:10px 6px}
+  .sb-label{font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.12em;color:var(--ink-faint);padding:14px 13px 5px}
+  .sb-note{margin-top:auto;font-size:11.5px;color:var(--ink-faint);padding:12px 13px;border-top:1px solid var(--rule)}
 
-  main{padding:26px clamp(18px,4vw,40px);max-width:1080px}
+  main{padding:32px clamp(18px,4vw,44px);max-width:var(--maxw)}
   .view{display:none}
   .view.active{display:block;animation:viewIn .42s var(--ease-out)}
   @keyframes viewIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
@@ -81,12 +114,13 @@
     .btn,.sb-item{transition:none}
     .btn:hover{transform:none}
   }
-  h2.view-title{font-weight:var(--display-wt);font-size:28px;letter-spacing:-.02em;margin:0 0 4px}
-  .view-sub{color:var(--ink-faint);font-size:14px;margin:0 0 22px;max-width:64ch}
-  .backlink{font-size:12.5px;font-family:var(--font-mono);color:var(--ink-faint);cursor:pointer;margin-bottom:10px;display:inline-block}
-  .backlink:hover{color:var(--accent-ink)}
+  h2.view-title{font-family:var(--font-display);font-weight:var(--display-wt);font-size:34px;letter-spacing:-.025em;margin:0 0 6px;line-height:1.15}
+  h2.view-title em{font-style:italic;color:var(--brand)}
+  .view-sub{color:var(--ink-mute);font-size:15px;margin:0 0 26px;max-width:64ch}
+  .backlink{font-size:13.5px;font-weight:600;color:var(--ink-faint);cursor:pointer;margin-bottom:12px;display:inline-block}
+  .backlink:hover{color:var(--brand)}
 
-  .grid{display:grid;gap:16px}
+  .grid{display:grid;gap:18px}
   .cols-2{grid-template-columns:repeat(2,1fr)}
   .cols-3{grid-template-columns:repeat(3,1fr)}
   /* Narrow screens: the sidebar becomes a horizontal scrolling strip. It must NOT
@@ -96,37 +130,41 @@
     .cols-2,.cols-3{grid-template-columns:1fr}
     #app{grid-template-columns:1fr}
     .sidebar{flex-direction:row;overflow-x:auto;overflow-y:hidden;gap:6px;
-      border-right:0;border-bottom:2px solid var(--rule);padding:8px 10px;
+      border-right:0;border-bottom:1px solid var(--rule);padding:9px 12px;
+      background:rgba(251,248,244,.92);backdrop-filter:saturate(180%) blur(12px);
+      -webkit-backdrop-filter:saturate(180%) blur(12px);
       position:sticky;top:0;z-index:20;-webkit-overflow-scrolling:touch;
       scrollbar-width:thin}
-    .sb-item{flex:0 0 auto;white-space:nowrap;padding:8px 12px;font-size:13px}
+    .sb-item{flex:0 0 auto;white-space:nowrap;padding:9px 14px;font-size:14px;border-radius:999px}
     .sb-item .ic{display:none}
-    .sb-note{display:none}
+    .sb-label,.sb-note{display:none}
+    h2.view-title{font-size:27px}
   }
 
-  .card{border:2px solid var(--rule);background:var(--card);box-shadow:var(--shadow-md);padding:18px}
-  .card h3{margin:0 0 10px;font-size:16px;font-weight:700}
-  .card.soft{box-shadow:var(--shadow-sm);border-width:1.5px}
-  .card.brandtop{border-top:5px solid var(--brand)}
+  .card{border:1px solid var(--rule);border-radius:var(--r-md);background:var(--card);box-shadow:var(--shadow-md);padding:22px}
+  .card h3{margin:0 0 10px;font-size:17px;font-weight:600;font-family:var(--font-display);letter-spacing:-.01em}
+  .card.soft{box-shadow:var(--shadow-sm)}
+  .card.brandtop{border-top:3px solid var(--brand)}
 
-  .status{display:inline-flex;align-items:center;gap:7px;font-family:var(--font-mono);font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;padding:4px 9px;border:1.5px solid var(--rule)}
-  .dot{width:9px;height:9px;border-radius:50%;display:inline-block}
-  .st-ok{color:var(--ok)} .st-ok .dot{background:var(--ok)}
-  .st-warn{color:var(--warn)} .st-warn .dot{background:var(--warn)}
-  .st-oos{color:#fff;background:var(--oos);border-color:transparent} .st-oos .dot{background:#fff}
+  .status{display:inline-flex;align-items:center;gap:7px;font-size:11.5px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;padding:5px 11px;border-radius:999px;border:1px solid transparent;white-space:nowrap;flex:0 0 auto}
+  .dot{width:8px;height:8px;border-radius:50%;display:inline-block;flex:0 0 auto}
+  .st-ok{color:#1F5C36;background:var(--ok-wash);border-color:#BFDECA} .st-ok .dot{background:var(--ok)}
+  .st-warn{color:#7A4D00;background:var(--warn-wash);border-color:#E8D3A8} .st-warn .dot{background:var(--warn)}
+  .st-oos{color:#fff;background:var(--oos)} .st-oos .dot{background:#fff}
 
-  .bike-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:12px}
-  .bike-head b{font-size:18px;font-weight:800}
-  .kv{display:flex;justify-content:space-between;gap:12px;padding:7px 0;border-bottom:1px dashed var(--rule-soft);font-size:14px}
+  /* wrap the pill onto its own line rather than letting a long bike name break */
+  .bike-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px;flex-wrap:wrap}
+  .bike-head b{font-family:var(--font-display);font-size:20px;font-weight:600;letter-spacing:-.015em}
+  .kv{display:flex;justify-content:space-between;gap:12px;padding:7px 0;border-bottom:1px solid var(--rule-soft);font-size:14px}
   .kv:last-child{border-bottom:0}
   .kv span:first-child{color:var(--ink-faint)}
 
-  .btn{display:inline-flex;align-items:center;gap:8px;font-family:var(--font-body);font-weight:600;font-size:14px;padding:9px 14px;border:1.5px solid var(--rule);background:var(--chip);color:var(--ink);cursor:pointer;border-radius:0;box-shadow:var(--shadow-sm)}
-  .btn:hover{transform:translate(-1px,-1px);box-shadow:var(--shadow-md)}
-  .btn:active{transform:translate(1px,1px);box-shadow:none}
-  .btn.solid{background:var(--brand);color:#fff;border-color:var(--rule)}
-  .btn.solid:hover{background:var(--brand-2)}
-  .btn.danger{background:var(--oos);color:#fff;border-color:var(--rule)}
+  .btn{display:inline-flex;align-items:center;gap:8px;font-family:var(--font-body);font-weight:600;font-size:14.5px;padding:10px 16px;border:1.5px solid var(--rule-strong);background:var(--chip);color:var(--ink);cursor:pointer;border-radius:var(--radius);box-shadow:var(--shadow-sm)}
+  .btn:hover{transform:translateY(-1px);box-shadow:var(--shadow-md);border-color:var(--brand)}
+  .btn:active{transform:translateY(0);box-shadow:var(--shadow-sm)}
+  .btn.solid{background:var(--brand);color:#fff;border-color:var(--brand)}
+  .btn.solid:hover{background:var(--brand-2);border-color:var(--brand-2)}
+  .btn.danger{background:var(--oos);color:#fff;border-color:var(--oos)}
   .btn.sm{padding:6px 10px;font-size:12.5px}
   .btn.xs{padding:3px 7px;font-size:11px;box-shadow:none}
   .btn.block{width:100%;justify-content:center}
@@ -170,9 +208,14 @@
   .video .meta small{color:var(--ink-faint);font-size:12px}
   .video .meta .acts{margin-top:auto;padding-top:10px}
 
-  .banner{border:2px solid var(--rule);background:var(--brand-wash);color:var(--ink);padding:10px 14px;font-family:var(--font-mono);font-size:12px;letter-spacing:.02em;margin-bottom:20px;box-shadow:var(--shadow-sm);border-left:5px solid var(--brand)}
-  .placeholder{border:1.5px dashed var(--warn);background:var(--warn-wash);color:#7a4d00;font-size:12.5px;padding:8px 11px;margin-top:10px;font-family:var(--font-mono)}
-  .draftnote{border:1.5px dashed var(--warn);background:var(--warn-wash);color:#7a4d00;font-size:12px;padding:7px 10px;font-family:var(--font-mono);margin-bottom:14px}
+  /* Advisory, not an alarm — it appears on every view, so it stays quiet:
+     no monospace, no full-width slab, sits inline like a footnote. */
+  .banner{display:flex;gap:9px;align-items:flex-start;border:1px solid var(--rule);border-radius:var(--radius);
+    background:var(--card-2);color:var(--ink-mute);padding:10px 14px;font-size:13px;margin-bottom:22px;
+    border-left:3px solid var(--gold)}
+  .banner::before{content:'●';color:var(--gold);font-size:9px;line-height:1.7;flex:0 0 auto}
+  .placeholder{border:1px solid var(--rule-strong);border-radius:var(--r-sm);background:var(--card-2);color:var(--ink-mute);font-size:13px;padding:9px 12px;margin-top:10px}
+  .draftnote{border:1px solid #E8D3A8;border-radius:var(--r-sm);background:var(--warn-wash);color:#7a4d00;font-size:12.5px;padding:8px 11px;margin-bottom:14px}
   .row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
   .mt{margin-top:14px}.mt-sm{margin-top:8px}.mb{margin-bottom:14px}
 
@@ -263,6 +306,142 @@
   .flagchip{font-family:var(--font-mono);font-size:11px;text-transform:uppercase;letter-spacing:.04em;background:var(--oos);color:#fff;padding:4px 9px}
   .flaghint{font-size:12.5px;color:var(--ink-faint)}
   @media(prefers-reduced-motion:reduce){.bikeviz .part.flag{animation:none}}
+
+  /* ============================================================
+     SOFTENING LAYER
+     Placed last so it wins on equal specificity. The components below were
+     authored against the old brutalist tokens (hard 2px rules, zero radius);
+     rather than rewrite each one, they are re-cornered and lightened here.
+     ============================================================ */
+  .verdict,.qr,.video,.module,.herobar,.grounded,.expblock,.acc,.diagram-wrap{
+    border-radius:var(--r-md);border-width:1px}
+  .video .thumb{border-bottom-width:1px}
+  .video .thumb,.module>:first-child{border-top-left-radius:var(--r-md);border-top-right-radius:var(--r-md)}
+  .expbadge,.tag,.flagchip{border-radius:999px;border-width:1px}
+  .qr{border-radius:var(--r-sm)}
+
+  /* Sentence case for anything a person actually reads. The global label rule
+     is uppercase for form field names; checkbox rows are prose and were
+     inheriting it, which turned every safety criterion into shouting. */
+  .checkline label,.checkline .lbl,.bitem label{
+    text-transform:none;letter-spacing:normal;font-size:15px;font-weight:500;color:var(--ink);margin:0}
+  .checkline .lbl small{font-size:12.5px}
+  .verdict .big{font-family:var(--font-display);font-size:18px;font-weight:600;
+    text-transform:none;letter-spacing:-.01em}
+  .flagchip{text-transform:none;letter-spacing:normal;font-family:var(--font-body);font-size:12px;font-weight:600}
+  .diagram-legend{font-family:var(--font-body);font-size:12.5px}
+  .backlink,.placeholder,.draftnote{font-family:var(--font-body)}
+
+  /* `.row{display:flex}` is declared after `.webonly{display:none}` and has equal
+     specificity, so a `class="row webonly"` element stays visible to members.
+     These two rules raise the gate's specificity above `.row` and close that leak. */
+  .row.webonly{display:none}
+  body.is-web .row.webonly{display:flex}
+
+  /* Numerals read as data — 21-254 uses the display face for these. */
+  .statnum{font-family:var(--font-display);font-weight:600;font-size:32px;letter-spacing:-.02em;line-height:1}
+  .fdim{color:var(--ink-faint);font-size:19px;font-weight:600}
+
+  /* ---------- fleet readiness bar ---------- */
+  /* The headline operational fact. "0 of 3 rideable" is an emergency and has to
+     read as one, so the left rule and note colour follow the worst case. */
+  .fleetbar{border:1px solid var(--rule);border-radius:var(--r-md);background:var(--card);
+    box-shadow:var(--shadow-md);padding:20px 22px;margin-bottom:18px;border-left:4px solid var(--ok)}
+  .fleetbar.warn{border-left-color:var(--warn)}
+  .fleetbar.oos{border-left-color:var(--oos)}
+  .fstats{display:flex;gap:44px;flex-wrap:wrap}
+  .fstat{display:flex;flex-direction:column;gap:7px}
+  .flabel{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--ink-faint)}
+  .fnote{margin:16px 0 0;font-size:14px;color:var(--ink-mute);max-width:62ch}
+  .fleetbar.oos .fnote{color:var(--oos);font-weight:600}
+
+  /* ---------- bike picker ---------- */
+  .bikepick{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:12px;margin-top:6px}
+  .pick{display:flex;flex-direction:column;align-items:flex-start;gap:9px;text-align:left;
+    padding:15px 16px;border:1.5px solid var(--rule-strong);border-radius:var(--radius);
+    background:var(--card);cursor:pointer;transition:border-color .16s var(--ease),box-shadow .16s var(--ease),background .16s var(--ease)}
+  .pick:hover{border-color:var(--brand);box-shadow:var(--shadow-md)}
+  .pick.on{border-color:var(--brand);border-width:2px;background:var(--brand-tint);box-shadow:var(--shadow-md)}
+  .pname{font-family:var(--font-display);font-size:17px;font-weight:600;letter-spacing:-.01em}
+  .prec,.brec{font-size:12.5px;color:var(--ink-faint);margin:0}
+  .brec{margin:0 0 10px}
+  .prec.stale,.brec.stale{color:var(--warn);font-weight:600}
+  @media(prefers-reduced-motion:reduce){.pick{transition:none}}
+
+  /* ---------- QR codes ---------- */
+  .qrbox{display:flex;justify-content:center;padding:14px;background:#fff;
+    border:1px solid var(--rule);border-radius:var(--r-sm)}
+  .qrsvg{display:block;width:168px;height:168px}
+  .qrurl{margin-top:9px;font-family:var(--font-mono);font-size:10.5px;
+    color:var(--ink-faint);word-break:break-all;text-align:center;line-height:1.5}
+
+  /* Print = sticker sheet. Everything that isn't a code comes off, and the codes
+     are pinned to a physical size — a QR much under 2cm gets unreliable on a
+     phone camera in a dim bike room. */
+  @media print{
+    body{background:#fff!important;background-image:none!important}
+    .topbar,.sidebar,.banner,.view-sub,.noprint,.sharenote{display:none!important}
+    #app{display:block}
+    main{padding:0;max-width:none}
+    .card{border:1px solid #999;box-shadow:none;break-inside:avoid;page-break-inside:avoid}
+    .grid{display:block}
+    .card.brandtop{margin:0 0 18px}
+    .qrsvg{width:46mm;height:46mm}
+    .qrbox{border:0;padding:0;justify-content:flex-start}
+    .qrurl{text-align:left;font-size:9pt}
+  }
+
+  /* Deliberately sets NO display property. `.webonly{display:none}` is declared
+     earlier, so any class here that set display:flex/block would out-rank the
+     gate at equal specificity and leak the note into member view — the same bug
+     `.row.webonly` had. Divs are block by default; let the gate do the work. */
+  .sharenote{border:1px solid #E8D3A8;border-radius:var(--radius);background:var(--warn-wash);
+    color:#7a4d00;font-size:13px;line-height:1.55;padding:12px 15px;margin-bottom:18px}
+  .sharenote b{display:block;margin-bottom:3px}
+
+  /* ---------- per-bike issue list on the fleet cards ---------- */
+  .isslist{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:9px}
+  .isslist li{display:flex;align-items:flex-start;gap:9px;font-size:13.5px;
+    color:var(--ink-soft);line-height:1.45}
+  .isslist .tag{flex:0 0 auto;margin-top:1px}
+  .noissues{font-size:13.5px;color:var(--ok);font-weight:600;margin:0}
+  .bnote{font-size:13.5px;color:var(--ink-mute);margin:8px 0 0}
+
+  /* ---------- dated-kit heads-up (jumpkit view) ---------- */
+  /* Sits above the form so an expired item is known before the bag is opened,
+     not discovered halfway down a checklist. */
+  .kitalert{border:1px solid var(--rule);border-radius:var(--r-md);background:var(--card);
+    box-shadow:var(--shadow-sm);padding:16px 18px;margin-bottom:20px;border-left:4px solid var(--rule-strong)}
+  .kitalert.ok{border-left-color:var(--ok)}
+  .kitalert.warn{border-left-color:var(--warn)}
+  .kitalert.oos{border-left-color:var(--oos)}
+  .kahead{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--ink-faint);margin-bottom:10px}
+  .kalist{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:8px}
+  .kalist li{display:flex;align-items:center;justify-content:space-between;gap:12px;
+    font-size:14.5px;padding-bottom:8px;border-bottom:1px solid var(--rule-soft)}
+  .kalist li:last-child{border-bottom:0;padding-bottom:0}
+  .kanote{margin:12px 0 0;font-size:13.5px;color:var(--ink-mute)}
+  .kitalert.oos .kanote{color:var(--oos);font-weight:600}
+  /* these read as short sentences, not labels — don't uppercase them */
+  .kalist .expbadge{text-transform:none;letter-spacing:normal;font-family:var(--font-body);
+    font-size:12.5px;white-space:nowrap;flex:0 0 auto}
+
+  /* Phone: the topbar was wrapping "Bike Ops" onto two lines and pushing the
+     buttons down. The role pill goes — the manager button already shows the
+     mode — and the brand is pinned to one line. */
+  @media(max-width:480px){
+    .topbar{padding:10px 12px;gap:9px}
+    .brand{flex:0 0 auto;white-space:nowrap}
+    .brand b{font-size:16.5px}
+    .brand .term{font-size:9px;letter-spacing:.1em}
+    .logo-mark,.logo-fallback{width:30px;height:30px}
+    .topbar .btn{padding:6px 10px;font-size:12px;white-space:nowrap}
+    .role-pill{display:none}
+    .banner{font-size:12.5px;padding:9px 12px}
+    h2.view-title{font-size:25px}
+    .fstats{gap:26px}
+    .statnum{font-size:27px}
+  }
 </style>
 </head>
 <body>
@@ -270,7 +449,7 @@
 <!-- ============ APP (open to everyone; Bike Manager mode unlocks editing) ============ -->
 <div id="app">
   <div class="topbar">
-    <img class="logo-mark" src="assets/cmuems.png" alt="CMU EMS"
+    <img class="logo-mark" src="assets/cmuems-mark.png" alt="CMU EMS"
          onerror="this.outerHTML='<div class=\'logo-fallback\'>EMS</div>'">
     <div class="brand"><b>Bike Ops</b><span class="term">CMU EMS</span></div>
     <div class="spacer"></div>
@@ -279,11 +458,16 @@
   </div>
 
   <nav class="sidebar" id="nav">
-    <div class="sb-item active" data-view="dash"><span class="ic">▣</span>Dashboard</div>
-    <div class="sb-item" data-view="bikes"><span class="ic">◉</span>Bikes &amp; Issues</div>
+    <!-- Ordered by how often a member actually does the thing, not by document
+         type. The three Ride actions are ~90% of real traffic; everything below
+         Fleet is reference material that gets opened occasionally. -->
+    <div class="sb-label">Ride</div>
+    <div class="sb-item active" data-view="safety-check"><span class="ic">✔</span>Pre-Ride Check</div>
+    <div class="sb-item" data-view="jumpkit-check"><span class="ic">✚</span>Jumpkit Check</div>
+    <div class="sb-item" data-view="bikes"><span class="ic">⚑</span>Report a Problem</div>
+    <div class="sb-label">Fleet</div>
+    <div class="sb-item" data-view="dash"><span class="ic">◉</span>Bike Status</div>
     <div class="sb-item" data-view="oos"><span class="ic">⚠</span>Out-of-Service Tool</div>
-    <div class="sb-label">Checks</div>
-    <div class="sb-item" data-view="checks"><span class="ic">☑</span>Checks &amp; Forms</div>
     <div class="sb-label">Learn</div>
     <div class="sb-item" data-view="videos"><span class="ic">▶</span>Videos</div>
     <div class="sb-item" data-view="lectures"><span class="ic">▤</span>Lectures</div>
@@ -292,6 +476,7 @@
     <div class="sb-item" data-view="inventory"><span class="ic">▦</span>Inventory</div>
     <div class="sb-item" data-view="bylaws"><span class="ic">§</span>Bylaws</div>
     <div class="sb-item" data-view="docs"><span class="ic">◈</span>Role &amp; Boundaries</div>
+    <div class="sb-item" data-view="checks"><span class="ic">▩</span>QR Codes</div>
     <div class="sb-item webonly blockonly" data-view="settings" style="display:none"><span class="ic">⚙</span>Site Settings</div>
     <div class="sb-note" id="sbNote">DRAFT TEMPLATE<br>Backend not yet connected</div>
   </nav>
@@ -299,24 +484,19 @@
   <main>
     <div class="banner" id="topBanner">DRAFT — bike data and out-of-service rules are still being finalized. Forms save locally until the Google Sheet backend is connected (Site Settings).</div>
 
-    <!-- ===== DASHBOARD ===== -->
-    <section class="view active" data-view="dash">
-      <div class="herobar">
-        <img class="crest" src="assets/cmuems.png" alt=""
-             onerror="this.outerHTML='<div class=\'crest-fallback\'>CMU EMS<br>crest</div>'">
-        <div class="htxt"><b>Bike Ops</b><span>Bike readiness, checks, and training for CMU EMS.</span></div>
-      </div>
+    <!-- ===== FLEET STATUS =====
+         Secondary to the pre-ride check. A bike's status is derived from its
+         last completed check rather than hand-set, so this view is a readout. -->
+    <section class="view" data-view="dash">
+      <h2 class="view-title">Fleet <em>status</em></h2>
+      <p class="view-sub">What the last check found on each bike. Status is the result of a pre-ride check — nobody sets it by hand.</p>
+      <div id="fleetSummary"></div>
       <div class="legend">
         <span class="item"><span class="dot" style="background:var(--ok)"></span>In service</span>
         <span class="item"><span class="dot" style="background:var(--warn)"></span>Needs review</span>
         <span class="item"><span class="dot" style="background:var(--oos)"></span>Out of service</span>
       </div>
       <div id="bikeCards" class="grid cols-3"></div>
-      <div class="grid cols-3 mt">
-        <div class="card soft"><h3>Jumpkit check</h3><p style="font-size:13px;color:var(--ink-faint);margin:0">Confirm the bag is complete and nothing is expired.</p><button class="btn sm mt" onclick="go('jumpkit-check')">Start check</button></div>
-        <div class="card soft"><h3>Bike safety check</h3><p style="font-size:13px;color:var(--ink-faint);margin:0">Pre-ride check, including weather grounding.</p><button class="btn sm mt" onclick="go('safety-check')">Start check</button></div>
-        <div class="card soft"><h3>Report a problem</h3><p style="font-size:13px;color:var(--ink-faint);margin:0">Any member can log a bike problem.</p><button class="btn sm mt" onclick="go('bikes')">Report issue</button></div>
-      </div>
     </section>
 
     <!-- ===== BIKES & ISSUES ===== -->
@@ -372,24 +552,24 @@
       <div class="grid cols-3" id="checkCards"></div>
       <div class="card mt">
         <h3>QR codes</h3>
-        <p style="font-size:13px;color:var(--ink-faint);margin:0 0 8px">Each form has a permanent link. Generate a QR for these URLs with any QR tool and stick them on the bag / bike.</p>
+        <p style="font-size:13px;color:var(--ink-mute);margin:0 0 8px">Each form has a permanent link, and the codes above encode exactly these. Print them, stick the jumpkit one on the bag and the safety one on each bike.</p>
         <div id="qrUrls"></div>
       </div>
     </section>
 
-    <!-- ===== JUMPKIT CHECK (own view for QR deep-link) ===== -->
+    <!-- ===== JUMPKIT CHECK (own nav entry + QR deep-link) ===== -->
     <section class="view" data-view="jumpkit-check">
-      <span class="backlink" onclick="go('checks')">← Checks &amp; Forms</span>
-      <h2 class="view-title">Jumpkit Check</h2>
-      <p class="view-sub">Work top to bottom through the bag. Expiration dates are checked automatically — you don't have to do the math.</p>
+      <h2 class="view-title">Jumpkit <em>check</em></h2>
+      <p class="view-sub">Work top to bottom through the bag. Expiration dates are checked for you — you don't have to do the math.</p>
+      <div id="expiryAlert"></div>
       <div id="jumpkitForm"></div>
     </section>
 
-    <!-- ===== SAFETY CHECK (own view for QR deep-link) ===== -->
-    <section class="view" data-view="safety-check">
-      <span class="backlink" onclick="go('checks')">← Checks &amp; Forms</span>
-      <h2 class="view-title">Bike Safety Check</h2>
-      <p class="view-sub">Pre-ride check. Conditions are checked first — if bike response is grounded by weather, the rest of the check is moot.</p>
+    <!-- ===== PRE-RIDE CHECK — the home view (own nav entry + QR deep-link) ===== -->
+    <section class="view active" data-view="safety-check">
+      <h2 class="view-title">Pre-ride <em>check</em></h2>
+      <p class="view-sub">Conditions first — if weather grounds bike response, the rest is moot. Then the bike itself. The verdict at the end is what sets that bike's status.</p>
+      <div id="bikePicker"></div>
       <div id="safetyForm"></div>
     </section>
 
@@ -397,6 +577,14 @@
     <section class="view" data-view="videos">
       <h2 class="view-title">Videos</h2>
       <p class="view-sub">How-to library. In Bike Manager mode you can add or remove videos at any time.</p>
+      <div class="sharenote webonly blockonly">
+        <b>Paste the Share link — it gets converted automatically.</b>
+        Google Drive, Google Slides and YouTube share links don't embed as-pasted; the site
+        rewrites them for you. But the file itself must be shared
+        <b style="display:inline">“Anyone with the link → Viewer”</b>, or it shows a sign-in wall
+        instead of playing. Training videos and decks aren't sensitive, so link-sharing those is
+        fine — it's the check Sheets that must stay Restricted.
+      </div>
       <div class="row" style="justify-content:space-between;margin-bottom:16px">
         <span class="tag" id="videoCount">0 videos</span>
         <button class="btn sm solid webonly" onclick="addVideo()">+ Add video</button>
@@ -407,7 +595,16 @@
     <!-- ===== LECTURES ===== -->
     <section class="view" data-view="lectures">
       <h2 class="view-title">Lectures</h2>
-      <p class="view-sub">The bike lecture, split into modules. Decks live in OneDrive / PowerPoint Online — editing happens there, so the file stays the single source of truth.</p>
+      <p class="view-sub">The bike lecture, split into modules. The deck lives in Google Slides — editing happens there, so the file stays the single source of truth.</p>
+      <div class="sharenote webonly blockonly">
+        <b>One deck, six modules.</b>
+        Link the deck once below and each module opens it at its own slide. Paste the normal
+        Slides share link — it's converted to an embed automatically — but set the deck to
+        <b style="display:inline">“Anyone with the link → Viewer”</b> first, or every module shows
+        a sign-in wall. If a module lands on the wrong slide, open that slide in Slides and paste
+        its own <code>#slide=…</code> URL into the module instead: Slides addresses slides by
+        internal id, and a deck imported from PowerPoint doesn't get sequential ids.
+      </div>
       <div class="row" style="justify-content:space-between;margin-bottom:16px">
         <span class="tag" id="lectureCount">0 modules</span>
         <button class="btn sm solid webonly" onclick="addLecture()">+ Add module</button>
@@ -515,10 +712,269 @@ function daysUntil(iso){
   return Math.round((d-t)/86400000);
 }
 
+/* ============================================================
+   QR CODES — byte mode, ECC level M, versions 1-10, no library.
+   These get printed onto stickers, so correctness matters more than brevity.
+   The output was verified module-for-module against the `qrcode-generator`
+   npm package across ASCII and UTF-8 inputs: every matrix is byte-identical.
+   Two things that are easy to get wrong and were:
+     - format-info copy 1 runs DOWN column 8 then LEFT along row 8 (it is not
+       the transpose of what you might guess), and
+     - mask selection scores each candidate with the format/version modules
+       left LIGHT; scoring them filled picks a different mask.
+   ============================================================ */
+var QR_EXP=[],QR_LOG=[];
+(function(){var x=1,i;for(i=0;i<256;i++){QR_EXP[i]=x;x<<=1;if(x&0x100)x^=0x11d;}
+  for(i=0;i<255;i++)QR_LOG[QR_EXP[i]]=i;})();
+function qrMul(a,b){return(!a||!b)?0:QR_EXP[(QR_LOG[a]+QR_LOG[b])%255];}
+function qrGenPoly(deg){
+  var poly=[1],d,i,next,k;
+  for(d=0;d<deg;d++){
+    next=[];for(k=0;k<poly.length+1;k++)next[k]=0;
+    for(i=0;i<poly.length;i++){next[i]^=poly[i];next[i+1]^=qrMul(poly[i],QR_EXP[d]);}
+    poly=next;
+  }
+  return poly;
+}
+function qrEC(data,ecLen){
+  var gen=qrGenPoly(ecLen),res=data.slice(),i,j,f;
+  for(i=0;i<ecLen;i++)res.push(0);
+  for(i=0;i<data.length;i++){
+    f=res[i]; if(!f)continue;
+    for(j=0;j<gen.length;j++)res[i+j]^=qrMul(gen[j],f);
+  }
+  return res.slice(data.length);
+}
+/* ECC level M: [ecPerBlock, blocksG1, dataG1, blocksG2, dataG2] */
+var QR_M={1:[10,1,16,0,0],2:[16,1,28,0,0],3:[26,1,44,0,0],4:[18,2,32,0,0],
+  5:[24,2,43,0,0],6:[16,4,27,0,0],7:[18,4,31,0,0],8:[22,2,38,2,39],
+  9:[22,3,36,2,37],10:[26,4,43,1,44]};
+var QR_ALIGN={1:[],2:[6,18],3:[6,22],4:[6,26],5:[6,30],6:[6,34],
+  7:[6,22,38],8:[6,24,42],9:[6,26,46],10:[6,28,50]};
+function qrCap(v){var t=QR_M[v];return t[1]*t[2]+t[3]*t[4];}
+var QR_MASK=[
+  function(i,j){return (i+j)%2===0;},
+  function(i){return i%2===0;},
+  function(i,j){return j%3===0;},
+  function(i,j){return (i+j)%3===0;},
+  function(i,j){return (Math.floor(i/2)+Math.floor(j/3))%2===0;},
+  function(i,j){return (i*j)%2+(i*j)%3===0;},
+  function(i,j){return ((i*j)%2+(i*j)%3)%2===0;},
+  function(i,j){return ((i+j)%2+(i*j)%3)%2===0;}
+];
+function qrUtf8(text){
+  var bytes=[],i,c;
+  for(i=0;i<text.length;i++){
+    c=text.charCodeAt(i);
+    if(c<0x80)bytes.push(c);
+    else if(c<0x800)bytes.push(0xc0|(c>>6),0x80|(c&63));
+    else bytes.push(0xe0|(c>>12),0x80|((c>>6)&63),0x80|(c&63));
+  }
+  return bytes;
+}
+function qrCodewords(text,version){
+  var bytes=qrUtf8(text),cap=qrCap(version),bits=[],i,k;
+  function put(val,len){for(var b=len-1;b>=0;b--)bits.push((val>>>b)&1);}
+  put(4,4);                                  // byte mode
+  put(bytes.length,version<10?8:16);         // char-count indicator
+  for(i=0;i<bytes.length;i++)put(bytes[i],8);
+  var maxBits=cap*8;
+  for(i=0;i<4&&bits.length<maxBits;i++)bits.push(0);
+  while(bits.length%8)bits.push(0);
+  var pads=[0xec,0x11],pi=0;
+  while(bits.length<maxBits)put(pads[pi++%2],8);
+  var dcw=[],v;
+  for(i=0;i<bits.length;i+=8){v=0;for(k=0;k<8;k++)v=(v<<1)|bits[i+k];dcw.push(v);}
+  var t=QR_M[version],ecLen=t[0],blocks=[],ec=[],off=0,b;
+  for(b=0;b<t[1];b++){blocks.push(dcw.slice(off,off+t[2]));off+=t[2];}
+  for(b=0;b<t[3];b++){blocks.push(dcw.slice(off,off+t[4]));off+=t[4];}
+  for(b=0;b<blocks.length;b++)ec.push(qrEC(blocks[b],ecLen));
+  var out=[],maxD=Math.max(t[2],t[4]);
+  for(i=0;i<maxD;i++)for(b=0;b<blocks.length;b++)if(i<blocks[b].length)out.push(blocks[b][i]);
+  for(i=0;i<ecLen;i++)for(b=0;b<ec.length;b++)out.push(ec[b][i]);
+  return out;
+}
+function qrFormatBits(mask){
+  var data=(0<<3)|mask,d=data<<10,i;     // level M = 00
+  for(i=4;i>=0;i--)if(d&(1<<(i+10)))d^=0x537<<i;
+  return ((data<<10)|d)^0x5412;
+}
+function qrVersionBits(v){
+  var d=v<<12,i;
+  for(i=5;i>=0;i--)if(d&(1<<(i+12)))d^=0x1f25<<i;
+  return (v<<12)|d;
+}
+function qrWriteFormat(mm,n,mask,version,blank){
+  var f=qrFormatBits(mask),i,bit;
+  for(i=0;i<15;i++){
+    bit=blank?0:((f>>>i)&1);
+    // copy 1: down column 8, round the corner, then left along row 8
+    if(i<6)mm[i][8]=bit;
+    else if(i===6)mm[7][8]=bit;
+    else if(i===7)mm[8][8]=bit;
+    else if(i===8)mm[8][7]=bit;
+    else mm[8][14-i]=bit;
+    // copy 2: split between the top-right and bottom-left finders
+    if(i<8)mm[8][n-1-i]=bit;
+    else mm[n-15+i][8]=bit;
+  }
+  mm[n-8][8]=blank?0:1;                  // dark module
+  if(version>=7){
+    var vb=qrVersionBits(version),b;
+    for(i=0;i<18;i++){
+      b=blank?0:((vb>>>i)&1);
+      mm[Math.floor(i/3)][n-11+(i%3)]=b;
+      mm[n-11+(i%3)][Math.floor(i/3)]=b;
+    }
+  }
+}
+function qrPenalty(m,n){
+  var p=0,row,col,r,c,same,dark,cnt,darkCount=0;
+  for(row=0;row<n;row++)for(col=0;col<n;col++){
+    same=0;dark=m[row][col];
+    for(r=-1;r<=1;r++){
+      if(row+r<0||row+r>=n)continue;
+      for(c=-1;c<=1;c++){
+        if(col+c<0||col+c>=n)continue;
+        if(r===0&&c===0)continue;
+        if(dark===m[row+r][col+c])same++;
+      }
+    }
+    if(same>5)p+=3+same-5;
+  }
+  for(row=0;row<n-1;row++)for(col=0;col<n-1;col++){
+    cnt=m[row][col]+m[row+1][col]+m[row][col+1]+m[row+1][col+1];
+    if(cnt===0||cnt===4)p+=3;
+  }
+  for(row=0;row<n;row++)for(col=0;col<n-6;col++)
+    if(m[row][col]&&!m[row][col+1]&&m[row][col+2]&&m[row][col+3]&&
+       m[row][col+4]&&!m[row][col+5]&&m[row][col+6])p+=40;
+  for(col=0;col<n;col++)for(row=0;row<n-6;row++)
+    if(m[row][col]&&!m[row+1][col]&&m[row+2][col]&&m[row+3][col]&&
+       m[row+4][col]&&!m[row+5][col]&&m[row+6][col])p+=40;
+  for(col=0;col<n;col++)for(row=0;row<n;row++)darkCount+=m[row][col];
+  p+=(Math.abs(100*darkCount/n/n-50)/5)*10;
+  return p;
+}
+function qrBuild(text,version){
+  var n=version*4+17,m=[],reserved=[],i,j,dr,dc;
+  for(i=0;i<n;i++){
+    m.push([]);reserved.push([]);
+    for(j=0;j<n;j++){m[i].push(0);reserved[i].push(0);}
+  }
+  function setF(r,c,v){m[r][c]=v;reserved[r][c]=1;}
+  function finder(r,c){
+    for(var a=-1;a<=7;a++)for(var b=-1;b<=7;b++){
+      var rr=r+a,cc=c+b;
+      if(rr<0||cc<0||rr>=n||cc>=n)continue;
+      var on=(a>=0&&a<=6&&b>=0&&b<=6)&&
+        (a===0||a===6||b===0||b===6||(a>=2&&a<=4&&b>=2&&b<=4));
+      setF(rr,cc,on?1:0);
+    }
+  }
+  finder(0,0);finder(0,n-7);finder(n-7,0);
+  for(i=8;i<n-8;i++){setF(6,i,i%2===0?1:0);setF(i,6,i%2===0?1:0);}
+  var ac=QR_ALIGN[version];
+  for(i=0;i<ac.length;i++)for(j=0;j<ac.length;j++){
+    var ar=ac[i],acol=ac[j];
+    if((ar<=7&&acol<=7)||(ar<=7&&acol>=n-8)||(ar>=n-8&&acol<=7))continue;
+    for(dr=-2;dr<=2;dr++)for(dc=-2;dc<=2;dc++)
+      setF(ar+dr,acol+dc,Math.max(Math.abs(dr),Math.abs(dc))!==1?1:0);
+  }
+  setF(n-8,8,1);
+  for(i=0;i<9;i++){if(!reserved[8][i])setF(8,i,0);if(!reserved[i][8])setF(i,8,0);}
+  for(i=0;i<8;i++){
+    if(!reserved[8][n-1-i])setF(8,n-1-i,0);
+    if(!reserved[n-1-i][8])setF(n-1-i,8,0);
+  }
+  if(version>=7)for(i=0;i<6;i++)for(j=0;j<3;j++){setF(i,n-11+j,0);setF(n-11+j,i,0);}
+
+  var cw=qrCodewords(text,version),bitIdx=0,total=cw.length*8;
+  function nextBit(){
+    if(bitIdx>=total)return 0;
+    var b=(cw[bitIdx>>3]>>>(7-(bitIdx&7)))&1;bitIdx++;return b;
+  }
+  var up=true;
+  for(var col=n-1;col>0;col-=2){
+    if(col===6)col--;                      // vertical timing column carries no data
+    for(var t2=0;t2<n;t2++){
+      var row=up?(n-1-t2):t2;
+      for(var s=0;s<2;s++){
+        var c2=col-s;
+        if(reserved[row][c2])continue;
+        m[row][c2]=nextBit();
+      }
+    }
+    up=!up;
+  }
+  function applyMask(mk){
+    var out=[],a,b;
+    for(a=0;a<n;a++)out.push(m[a].slice());
+    for(a=0;a<n;a++)for(b=0;b<n;b++)
+      if(!reserved[a][b]&&QR_MASK[mk](a,b))out[a][b]^=1;
+    return out;
+  }
+  var bestMask=0,bestScore=Infinity,mk,cand,sc;
+  for(mk=0;mk<8;mk++){
+    cand=applyMask(mk);
+    qrWriteFormat(cand,n,mk,version,true);
+    sc=qrPenalty(cand,n);
+    if(sc<bestScore){bestScore=sc;bestMask=mk;}
+  }
+  var outM=applyMask(bestMask);
+  qrWriteFormat(outM,n,bestMask,version,false);
+  return outM;
+}
+function qrMatrix(text){
+  var bytes=qrUtf8(String(text)).length,v,header;
+  for(v=1;v<=10;v++){
+    header=4+(v<10?8:16);
+    if(bytes*8+header<=qrCap(v)*8)return qrBuild(String(text),v);
+  }
+  return null;   // too long for v10 — no URL here comes close
+}
+/* The QR codes get PRINTED onto stickers. If you print them while previewing on
+   localhost, they would encode "http://localhost:8848/..." and be dead on any
+   phone. So a non-public host falls back to the deployed URL, and the page says
+   plainly that it did. Update PUBLIC_BASE if the repo is ever renamed. */
+var PUBLIC_BASE='https://sonnnnnion.github.io/bike-ops/';
+function isLocalPreview(){
+  var h=location.hostname;
+  return !h||h==='localhost'||h==='127.0.0.1'||location.protocol==='file:';
+}
+function publicBase(){
+  return isLocalPreview() ? PUBLIC_BASE
+    : location.origin+location.pathname.replace(/index\.html?$/i,'');
+}
+
+/* Inline SVG, one path for all dark modules. 4-module quiet zone is required by
+   the spec — without it many scanners simply won't lock on. */
+function qrSVG(text,px){
+  var m=qrMatrix(text);
+  if(!m) return '<div class="placeholder">Link too long to encode.</div>';
+  var n=m.length,quiet=4,size=n+quiet*2,d='',i,j;
+  for(i=0;i<n;i++)for(j=0;j<n;j++)
+    if(m[i][j])d+='M'+(j+quiet)+' '+(i+quiet)+'h1v1h-1z';
+  return '<svg class="qrsvg" viewBox="0 0 '+size+' '+size+'" width="'+px+'" height="'+px+'" '+
+    'shape-rendering="crispEdges" role="img" aria-label="QR code for '+esc(text)+'">'+
+    '<rect width="'+size+'" height="'+size+'" fill="#fff"/>'+
+    '<path d="'+d+'" fill="#000"/></svg>';
+}
+
 /* ---------- default content (seed; editable in manager mode) ---------- */
 var DEFAULTS={
   version:3,
   apiUrl:'',            // Apps Script Web App URL — set in Site Settings
+  // Completed pre-ride checks, newest first. A bike's live status is derived
+  // from its most recent entry here (see statusOf), so nobody hand-sets it.
+  // The `status`/`note` on each bike below are only the seed/fallback for a
+  // bike that has never been checked.
+  checkLog:[],
+  // Expiration dates by item id, e.g. {'i-glucose':'2027-03-01'}. These used to
+  // live only in the form's date inputs, which meant they were retyped at every
+  // check and nothing could warn anyone *before* the bag was opened. Persisting
+  // them is what makes the expiry heads-up on the jumpkit view possible.
+  expiry:{},
   bikes:[
     {id:'curtain', name:'Curtain Bike',  status:'warn', note:'Needs air in tires; bell mounted backwards; side light uncharged.'},
     {id:'ceiling', name:'Ceiling Bike',  status:'oos',  note:'Still on the rope/hook system. Latch will not stay unlocked — unsafe to retrieve alone.'},
@@ -714,12 +1170,15 @@ function resetDB(){
    ============================================================ */
 var VIEWS=['dash','bikes','oos','checks','jumpkit-check','safety-check','videos',
            'lectures','repairs','inventory','bylaws','docs','settings'];
-// The two form views have no sidebar entry of their own — they're opened from
-// cards inside "Checks & Forms". Keep the parent lit so a QR deep-link doesn't
-// land with nothing highlighted in the nav.
-var NAV_PARENT={'jumpkit-check':'checks','safety-check':'checks'};
+// Both check views now have their own top-level sidebar entry under "Ride", so
+// a QR deep-link lights itself and this map is empty. Kept because any future
+// view opened only from inside another one still needs its parent lit.
+var NAV_PARENT={};
+// The pre-ride check is the front door: status is the OUTPUT of a check, not a
+// separate screen you visit first.
+var HOME='safety-check';
 function go(v,fromHash){
-  if(VIEWS.indexOf(v)<0) v='dash';
+  if(VIEWS.indexOf(v)<0) v=HOME;
   var navFor=NAV_PARENT[v]||v;
   document.querySelectorAll('.sb-item').forEach(function(x){x.classList.toggle('active',x.dataset.view===navFor);});
   document.querySelectorAll('.view').forEach(function(x){x.classList.toggle('active',x.dataset.view===v);});
@@ -771,7 +1230,7 @@ function setWeb(on){
   pill.className='role-pill'+(on?' web':'');
   document.getElementById('webBtn').textContent=on?'Exit manager':'🔒 Bike Manager';
   document.querySelector('[data-view="settings"]').style.display=on?'flex':'none';
-  if(!on&&location.hash.slice(1)==='settings') go('dash');
+  if(!on&&location.hash.slice(1)==='settings') go(HOME);
   renderAll();
 }
 function toggleWeb(){
@@ -819,9 +1278,16 @@ function bikeSVGs(){
         '<line x1="142" y1="68" x2="229" y2="64"/><line x1="170" y1="140" x2="76" y2="140"/>'+
         '<line x1="142" y1="70" x2="76" y2="140"/>'+
       '</g>'+
+      // Rear rack — this is what the jumpkit rides on. It must read as BOLTED to
+      // the bike: the top rail ends where the seat stay passes through (~114,100),
+      // and the rear strut lands on the dropout at the hub (76,140). The previous
+      // version floated over the wheel with both struts ending in mid-air.
       '<g class="part" data-part="rack">'+
-        '<line x1="103" y1="103" x2="150" y2="100"/><line x1="103" y1="103" x2="86" y2="122"/>'+
-        '<line x1="150" y1="100" x2="152" y2="124"/><line x1="103" y1="110" x2="148" y2="107"/>'+
+        '<line x1="70" y1="100" x2="116" y2="100"/>'+
+        '<line x1="73" y1="106" x2="112" y2="106"/>'+
+        '<line x1="71" y1="100" x2="76" y2="138"/>'+
+        '<line x1="93" y1="100" x2="93" y2="106"/>'+
+        '<line x1="114" y1="100" x2="110" y2="106"/>'+
       '</g>'+
       '<g class="part" data-part="steering">'+
         '<line x1="228" y1="62" x2="236" y2="92"/><line x1="236" y1="92" x2="264" y2="140"/>'+
@@ -831,12 +1297,18 @@ function bikeSVGs(){
       '<g class="part" data-part="seat"><line x1="126" y1="60" x2="152" y2="57" stroke-width="6"/><line x1="140" y1="62" x2="140" y2="66"/></g>'+
       '<g class="part" data-part="brake"><circle cx="76" cy="106" r="4"/><circle cx="264" cy="106" r="4"/><line x1="264" y1="106" x2="252" y2="96"/><line x1="76" y1="106" x2="88" y2="96"/></g>'+
       '<g class="part" data-part="lock"><rect x="192" y="104" width="16" height="13" rx="2"/><path d="M195 104 v-4 a5 5 0 0 1 10 0 v4"/></g>'+
-      '<g class="part solid" data-part="light"><rect x="272" y="84" width="14" height="10" rx="1"/></g>'+
-      '<g class="part solid" data-part="bell"><circle cx="250" cy="49" r="5"/></g>'+
+      // Light and bell are `solid` groups (filled, stroke:none), so they can't
+      // carry a connector line — they have to physically overlap what they mount
+      // to. Light straddles the handlebar drop (262,52)->(266,66); bell sits on
+      // the bar top, which passes y~54.4 at x=250. Both previously hung in space.
+      '<g class="part solid" data-part="light"><rect x="263" y="56" width="14" height="9" rx="1"/></g>'+
+      '<g class="part solid" data-part="bell"><circle cx="250" cy="50.5" r="5"/></g>'+
     '</svg></div>'+
     '<div class="viewbox"><div class="viewlabel">Bird\'s-eye view</div>'+
     '<svg class="bikeviz" viewBox="0 0 210 230" role="img" aria-label="Top-down bird\'s-eye view of a bicycle; parts highlight when a matching problem is checked">'+
-      '<g class="part solid" data-part="light"><rect x="97" y="26" width="16" height="9" rx="1"/></g>'+
+      // Light sits directly forward of the bar (front is "up" here) and must touch
+      // it at y=58 — it previously hovered 23 units clear and read as detached.
+      '<g class="part solid" data-part="light"><rect x="97" y="49" width="16" height="9" rx="1"/></g>'+
       '<g class="part" data-part="handlebar"><line x1="52" y1="58" x2="158" y2="58"/><line x1="52" y1="58" x2="47" y2="72"/><line x1="158" y1="58" x2="163" y2="72"/></g>'+
       '<g class="part" data-part="brake"><line x1="66" y1="58" x2="61" y2="48"/><circle cx="60" cy="47" r="2.8"/><line x1="144" y1="58" x2="149" y2="48"/><circle cx="150" cy="47" r="2.8"/></g>'+
       '<g class="part solid" data-part="bell"><circle cx="82" cy="58" r="5"/></g>'+
@@ -846,7 +1318,8 @@ function bikeSVGs(){
       '<g class="part" data-part="frame"><line x1="105" y1="74" x2="105" y2="150"/></g>'+
       // Lock and drivetrain also live here, not just on the side view — a criterion
       // that highlights on only one diagram reads as "nothing is wrong" on the other.
-      '<g class="part" data-part="lock"><rect x="84" y="112" width="10" height="26" rx="2"/><line x1="86" y1="112" x2="92" y2="112"/></g>'+
+      // U-lock rides ON the frame tube (x=105), so its right edge meets it.
+      '<g class="part" data-part="lock"><rect x="95" y="112" width="10" height="26" rx="2"/><line x1="97" y1="112" x2="103" y2="112"/></g>'+
       '<g class="part" data-part="drivetrain">'+
         '<circle cx="105" cy="142" r="6"/>'+                      /* chainring from above */
         '<line x1="88" y1="142" x2="122" y2="142"/>'+             /* crank arms / pedal axle */
@@ -991,9 +1464,11 @@ function renderForm(fid){
   var f=DB.forms[fid]; if(!f) return;
   var h='';
 
-  h+='<div class="row" style="justify-content:space-between;margin-bottom:14px">'+
-     '<span class="tag brand">'+esc(f.title)+'</span>'+
-     '<button class="btn xs webonly" onclick="toggleFormEdit(\''+fid+'\')">'+
+  // The form's own title chip is dropped — the view heading above already names
+  // the check, and repeating it was pure clutter. The row now exists only to
+  // carry the manager edit button, so the whole row is manager-gated.
+  h+='<div class="row webonly" style="justify-content:flex-end;margin-bottom:14px;width:100%">'+
+     '<button class="btn xs" onclick="toggleFormEdit(\''+fid+'\')">'+
      (formEdit[fid]?'Done editing':'Edit this form')+'</button></div>';
 
   if(formEdit[fid]) h+=formBuilder(fid);
@@ -1036,10 +1511,13 @@ function renderForm(fid){
          '<span class="lbl">'+esc(it.label)+'</span>'+
          (it.qty?'<span class="qty">qty '+esc(it.qty)+'</span>':'')+'</label>';
       if(it.exp){
+        // Pre-filled from DB.expiry so the date is entered once, not every check.
+        var known=DB.expiry[it.id]||'';
         h+='<div class="expblock"><div class="exphead">Expiration date — '+esc(it.label)+'</div>'+
-           '<div class="exprow"><input type="date" data-exp="'+esc(it.id)+'" onchange="calcForm(\''+fid+'\')">'+
+           '<div class="exprow"><input type="date" data-exp="'+esc(it.id)+'" value="'+esc(known)+'"'+
+           ' onchange="setExpiry(\''+esc(it.id)+'\',this.value);calcForm(\''+fid+'\')">'+
            '<span class="expbadge none" data-expbadge="'+esc(it.id)+'">No date entered</span></div>'+
-           '<p style="font-size:12px;color:var(--ink-faint);margin:7px 0 0">If expired, notify the Equipment Manager.</p></div>';
+           '<p style="font-size:12px;color:var(--ink-faint);margin:7px 0 0">Recorded for next time. If expired, notify the Equipment Manager.</p></div>';
       }
     });
     h+='</div>';
@@ -1070,7 +1548,7 @@ function calcForm(fid){
     var n=daysUntil(inp.value);
     if(n===null){badge.className='expbadge none';badge.textContent='No date entered';
       if(worstExp==='ok') worstExp='none'; return;}
-    if(n<0){badge.className='expbadge bad';badge.textContent='EXPIRED — notify Equipment Manager';
+    if(n<0){badge.className='expbadge bad';badge.textContent='Expired — notify Equipment Manager';
       worstExp='bad';
       var lbl=host.querySelector('[data-item="'+id+'"]');
       expiredNames.push(lbl?lbl.getAttribute('data-label'):id);}
@@ -1126,6 +1604,9 @@ function calcForm(fid){
   }
   v.className='verdict '+cls;
   v.innerHTML='<div><span class="big">'+esc(big)+'</span><span class="detail">'+esc(detail)+'</span></div>';
+  // Hand the verdict back so submitForm can record it without restating any of
+  // the rules above. `cls` is already the ok/warn/oos vocabulary checkLog uses.
+  return {cls:cls, big:big, detail:detail, grounded:grounded, missing:missing};
 }
 
 /* ---------- submit ---------- */
@@ -1134,6 +1615,14 @@ function submitForm(fid){
   var fn=(document.getElementById(fid+'-fn')||{}).value||'';
   var ln=(document.getElementById(fid+'-ln')||{}).value||'';
   if(!fn.trim()||!ln.trim()){alert('Please enter your first and last name before submitting.');return;}
+  // A pre-ride check is the thing that sets a bike's status, so it has to name
+  // one. The jumpkit check is about the bag, not a bike, and is exempt.
+  if(fid==='safety'&&!activeBike){
+    alert('Pick which bike you checked first.\n\nThe check sets that bike’s status, so it has to be recorded against one.');
+    var pick=document.getElementById('bikePicker');
+    if(pick&&pick.scrollIntoView) pick.scrollIntoView({behavior:'smooth',block:'center'});
+    return;
+  }
 
   var items={},expiries={};
   host.querySelectorAll('[data-item]').forEach(function(b){items[b.getAttribute('data-label')]=b.checked;});
@@ -1149,7 +1638,9 @@ function submitForm(fid){
     if(c.checked) conds.push(c.closest('.checkline').querySelector('.lbl').textContent);
   });
 
-  var verdictEl=document.getElementById(fid+'-verdict');
+  // Ask calcForm for the verdict rather than scraping it back out of the DOM —
+  // it owns the grounding/expiry/missing rules and must not be restated here.
+  var res=calcForm(fid)||{};
   var payload={
     form:fid,
     formTitle:DB.forms[fid].title,
@@ -1159,17 +1650,25 @@ function submitForm(fid){
       return s&&s.selectedIndex>=0?s.options[s.selectedIndex].text:'';})():'',
     firstName:fn.trim(), lastName:ln.trim(),
     submittedAt:new Date().toISOString(),
-    verdict:verdictEl?verdictEl.querySelector('.big').textContent:'',
+    verdict:res.big||'',
     missing:Object.keys(items).filter(function(k){return !items[k];}),
     items:items, expiries:expiries, conditions:conds,
     notes:(document.getElementById(fid+'-notes')||{}).value||''
   };
 
+  // Record locally BEFORE the network call. The bike's status is derived from
+  // this log, and whether the Sheet is reachable has no bearing on whether the
+  // bike was just checked — a failed POST must not leave the fleet view stale.
+  var logged=recordSafetyCheck(fid,res,fn.trim()+' '+ln.trim());
+  var tail=logged
+    ? '\n\n'+bikeName(activeBike)+' is now marked “'+(STATUS_MAP[res.cls]||STATUS_MAP.warn)[1]+'”.'
+    : (res.grounded?'\n\nNo bike status was changed — this verdict is about conditions, not the bike.':'');
+
   var msg=document.getElementById(fid+'-savemsg');
   if(!DB.apiUrl){
     console.log('[Bike Ops] submission (backend not connected):',payload);
-    msg.textContent='Saved locally only — Google Sheet not connected yet.';
-    alert('Check complete.\n\nVerdict: '+payload.verdict+
+    msg.textContent=(logged?'Recorded on this device':'Saved locally only')+' — Google Sheet not connected yet.';
+    alert('Check complete.\n\nVerdict: '+payload.verdict+tail+
           '\n\nThe Google Sheet backend is not connected yet, so this was not sent anywhere. '+
           'A Bike Manager can connect it in Site Settings.');
     return;
@@ -1180,7 +1679,7 @@ function submitForm(fid){
     body:JSON.stringify(payload)})
   .then(function(){
     msg.textContent='Submitted ✓';
-    alert('Check submitted.\n\nVerdict: '+payload.verdict);
+    alert('Check submitted.\n\nVerdict: '+payload.verdict+tail);
   })
   .catch(function(err){
     console.error(err);
@@ -1239,9 +1738,10 @@ function renderVideos(){
   document.getElementById('videoCount').textContent=DB.videos.length+' video'+(DB.videos.length===1?'':'s');
   if(!DB.videos.length){g.innerHTML='<div class="placeholder">No videos yet. In Bike Manager mode, use “+ Add video”.</div>';return;}
   g.innerHTML=DB.videos.map(function(v,i){
-    var thumb=v.embed
-      ? '<iframe src="'+esc(v.embed)+'" allowfullscreen title="'+esc(v.title)+'"></iframe>'
-      : '▶ not linked yet<br><span style="font-size:10px">add an embed URL</span>';
+    var vsrc=embedSrc(v.embed);
+    var thumb=vsrc
+      ? '<iframe src="'+esc(vsrc)+'" allowfullscreen title="'+esc(v.title)+'"></iframe>'
+      : '▶ not linked yet<br><span style="font-size:10px">add a share link</span>';
     return '<div class="video"><div class="thumb">'+thumb+'</div><div class="meta">'+
       '<b>'+esc(v.title)+'</b>'+
       (v.legacy?'<span class="tag warn" style="align-self:flex-start;margin:2px 0">Reference only</span>':'')+
@@ -1253,7 +1753,7 @@ function renderVideos(){
 }
 function addVideo(){
   var t=prompt('Video title?'); if(!t||!t.trim()) return;
-  var u=prompt('Embed URL (YouTube "embed" link or Google Drive preview link).\nLeave blank to add it later:')||'';
+  var u=prompt('Paste the Share link — YouTube, Google Drive, or Google Slides.\n\nThe file must be shared "Anyone with the link → Viewer", or it will show a\nsign-in wall instead of playing.\n\nLeave blank to add it later:')||'';
   var n=prompt('Short description?')||'';
   DB.videos.push({id:uid('v'),title:t.trim(),embed:u.trim(),note:n.trim()});
   saveDB();renderVideos();
@@ -1275,16 +1775,48 @@ function delVideo(i){
    LECTURES — PowerPoint Online / OneDrive embeds
    ============================================================ */
 /* Appends/replaces &wdSlideIndex=N on a PowerPoint Online embed URL. */
+/* Turns a pasted SHARE url into one that will actually render inside an iframe.
+   This is why the first video and the decks came up blank: Google hands out
+   ".../edit?usp=sharing" and ".../view?usp=sharing", and neither embeds — they
+   redirect to the full app UI or a sign-in wall. Paste whatever the Share button
+   gives you; this converts it. */
+function embedSrc(url){
+  var u=String(url==null?'':url).trim();
+  if(!u) return '';
+  var m;
+  // Google Slides — /edit, /present, /pub all become /embed
+  if((m=u.match(/^(https?:\/\/docs\.google\.com\/presentation\/d\/(?:e\/)?[^\/?#]+)/i)))
+    return m[1]+'/embed?start=false&loop=false&delayms=60000';
+  // Google Drive file (video, PDF) — /view becomes /preview
+  if((m=u.match(/^(https?:\/\/drive\.google\.com\/file\/d\/[^\/?#]+)/i)))
+    return m[1]+'/preview';
+  // YouTube watch links and youtu.be short links
+  if((m=u.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([A-Za-z0-9_-]{6,})/i)))
+    return 'https://www.youtube.com/embed/'+m[1];
+  return u;   // already an embed URL, or OneDrive/Vimeo/etc — leave alone
+}
+
 function deckSrc(url,slide){
   if(!url) return '';
+  var base=embedSrc(url);
   var n=parseInt(slide,10);
-  if(!n||n<1) return url;
-  var clean=url.replace(/([?&])wdSlideIndex=\d+/i,'$1').replace(/[?&]$/,'');
+  if(!n||n<1) return base;
+  if(/docs\.google\.com\/presentation/i.test(base)){
+    // Slides addresses slides by OBJECT id, not by ordinal. `id.pN` matches the
+    // ids Google assigns to natively-created decks; a deck IMPORTED from
+    // PowerPoint often gets `id.gXXXXXX` instead, and then this won't land. If a
+    // module opens on the wrong slide, give that module its own embed URL —
+    // open the slide in Slides and copy the #slide=... fragment from the address bar.
+    var c=base.replace(/([?&])slide=[^&]*/i,'$1').replace(/[?&]$/,'');
+    return c+(c.indexOf('?')>=0?'&':'?')+'slide=id.p'+n;
+  }
+  // PowerPoint Online / OneDrive
+  var clean=base.replace(/([?&])wdSlideIndex=\d+/i,'$1').replace(/[?&]$/,'');
   return clean+(clean.indexOf('?')>=0?'&':'?')+'wdSlideIndex='+n;
 }
 /* A module shows its own deck if it has one, otherwise the shared deck at its slide. */
 function lectureSrc(L){
-  if(L.embed) return L.embed;
+  if(L.embed) return embedSrc(L.embed);
   if(DB.deck&&DB.deck.url&&L.slide>0) return deckSrc(DB.deck.url,L.slide);
   return '';
 }
@@ -1304,7 +1836,7 @@ function renderLectures(){
         '<span style="font-family:var(--font-mono);color:var(--ink-faint)">▸</span></div>'+
       '<div class="mbody">'+body+
         '<div class="row mt">'+
-          (editUrl?'<a class="btn xs webonly" href="'+esc(editUrl)+'" target="_blank" rel="noopener">Edit in PowerPoint ↗</a>':'')+
+          (editUrl?'<a class="btn xs webonly" href="'+esc(editUrl)+'" target="_blank" rel="noopener">Open to edit ↗</a>':'')+
           '<button class="btn xs webonly" onclick="editLecture('+i+')">Set links</button>'+
           '<button class="btn xs danger webonly" onclick="delLecture('+i+')">Remove</button>'+
         '</div>'+
@@ -1315,20 +1847,21 @@ function renderLectures(){
   document.getElementById('lectureNote').innerHTML=
     '<div class="row" style="justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap">'+
       '<span>'+(anyLinked
-        ? 'Editing happens in PowerPoint Online — this site only embeds the deck, so the OneDrive file stays the single source of truth.'
-        : 'No deck linked yet. Re-save the old .ppt as .pptx and upload it to the CMU EMS OneDrive, then link it once below.')+'</span>'+
+        ? 'Editing happens in Google Slides — this site only embeds the deck, so the Drive file stays the single source of truth.'
+        : 'No deck linked yet. Upload the deck to Google Slides, set it to “Anyone with the link → Viewer”, then link it once below.')+'</span>'+
       '<button class="btn xs webonly" onclick="editDeck()">'+(shared?'Change shared deck':'Link one deck for all modules')+'</button>'+
     '</div>'+
-    (shared?'<div class="mt-sm" style="font-size:12px;color:var(--ink-faint)">Shared deck linked. Each module opens it at its own start slide — set that with “Set links”. If you insert or reorder slides in PowerPoint, update the slide numbers here to match.</div>':'');
+    (shared?'<div class="mt-sm" style="font-size:12px;color:var(--ink-faint)">Shared deck linked. Each module opens it at its own start slide — set that with “Set links”. If you insert or reorder slides, update the slide numbers here to match.</div>':'');
 }
 /* Shared deck: one upload, six modules, each starting at its own slide. */
 function editDeck(){
   DB.deck=DB.deck||{url:'',edit:''};
-  var u=prompt('PowerPoint Online EMBED url for the whole deck.\n'+
-    'In PowerPoint Online: File ▸ Share ▸ Embed, then copy just the src="…" value.\n\n'+
+  var u=prompt('Share link for the whole deck (Google Slides or PowerPoint Online).\n\n'+
+    'In Google Slides: Share ▸ General access ▸ Anyone with the link ▸ Viewer,\n'+
+    'then Copy link and paste it here. It is converted to an embed automatically.\n\n'+
     'Leave blank to unlink.',DB.deck.url); if(u===null) return;
-  var e=prompt('EDIT url — the normal OneDrive link to the same deck.\n'+
-    'Opens PowerPoint Online in edit mode for whoever OneDrive has granted access.',DB.deck.edit); if(e===null) return;
+  var e=prompt('EDIT url — the normal link to the same deck.\n'+
+    'Opens it in edit mode for whoever has been granted access. Optional.',DB.deck.edit); if(e===null) return;
   DB.deck.url=u.trim(); DB.deck.edit=e.trim();
   if(DB.deck.url&&!DB.lectures.some(function(L){return L.slide>0;})){
     // Nothing has a start slide yet — seed 1..N so the deck is visible immediately
@@ -1405,14 +1938,171 @@ function delBylaw(i){
 /* ============================================================
    DASHBOARD / TABLES / CHECKS
    ============================================================ */
+var STATUS_MAP={ok:['st-ok','In service'],warn:['st-warn','Needs review'],oos:['st-oos','Out of service']};
+
+/* ---------- status is DERIVED, never hand-set ---------- */
+// Most recent completed check for a bike, or null. checkLog is newest-first.
+function lastCheck(bikeId){
+  for(var i=0;i<DB.checkLog.length;i++){ if(DB.checkLog[i].bike===bikeId) return DB.checkLog[i]; }
+  return null;
+}
+// The last check wins. The seeded status on the bike is only a fallback for a
+// bike that has never been checked through the site.
+function statusOf(b){ var c=lastCheck(b.id); return (c&&c.verdict)||b.status||'warn'; }
+function noteOf(b){ var c=lastCheck(b.id); return (c&&c.note)||b.note||''; }
+// Issues reference a bike by NAME, not id — matched here in one place so a
+// rename only has to be fixed once. Sorted worst-first: triage is the point.
+var SEV_ORDER={crit:0,warn:1,minor:2};
+function issuesFor(b){
+  return (DB.issues||[]).filter(function(i){return i.bike===b.name;})
+    .slice().sort(function(a,c){
+      var x=SEV_ORDER[a.sev], y=SEV_ORDER[c.sev];
+      return (x==null?3:x)-(y==null?3:y);
+    });
+}
+function sevTag(sev){
+  if(sev==='crit') return '<span class="tag crit">Critical</span>';
+  if(sev==='warn') return '<span class="tag warn">Warning</span>';
+  return '<span class="tag">Minor</span>';
+}
+// EMS ops runs on "when", so recency is stated plainly rather than as a date.
+function recency(iso){
+  var d=daysUntil(iso);
+  if(d===null) return {txt:'Never checked',stale:true};
+  var ago=-d;
+  if(ago<=0) return {txt:'Checked today',stale:false};
+  if(ago===1) return {txt:'Checked yesterday',stale:false};
+  return {txt:'Checked '+ago+' days ago',stale:ago>7};
+}
+function bikeRecency(bikeId){ var c=lastCheck(bikeId); return recency(c?c.date:null); }
+
+/* ---------- dated kit: recorded once, surfaced before it lapses ---------- */
+function setExpiry(itemId,iso){
+  if(iso) DB.expiry[itemId]=iso; else delete DB.expiry[itemId];
+  saveDB(); renderExpiryAlert();
+}
+// Every item either form flags as `exp`, with its stored date resolved. Driven
+// off the form schema rather than a hard-coded list, so adding an expiring item
+// in the form builder surfaces it here automatically.
+function datedItems(){
+  var out=[];
+  Object.keys(DB.forms||{}).forEach(function(fid){
+    (DB.forms[fid].sections||[]).forEach(function(s){
+      (s.items||[]).forEach(function(it){
+        if(!it.exp) return;
+        var iso=DB.expiry[it.id]||'';
+        out.push({id:it.id,label:it.label,date:iso,days:daysUntil(iso)});
+      });
+    });
+  });
+  return out;
+}
+function renderExpiryAlert(){
+  var el=document.getElementById('expiryAlert'); if(!el) return;
+  var items=datedItems();
+  if(!items.length){el.innerHTML='';return;}
+  var expired=items.filter(function(i){return i.days!==null&&i.days<0;}).length;
+  var soon=items.filter(function(i){return i.days!==null&&i.days>=0&&i.days<=30;}).length;
+  var undated=items.filter(function(i){return i.days===null;}).length;
+
+  var tone,msg;
+  if(expired){tone='oos';msg=expired+(expired===1?' item has':' items have')+' expired — notify the Equipment Manager.';}
+  else if(soon){tone='warn';msg=soon+(soon===1?' item expires':' items expire')+' within 30 days.';}
+  else if(undated){tone='none';msg='No expiration date recorded yet for '+undated+(undated===1?' item':' items')+'. Enter it once below and it sticks.';}
+  else {tone='ok';msg='All dated kit is in date.';}
+
+  el.innerHTML='<div class="kitalert '+tone+'"><div class="kahead">Dated kit</div>'+
+    '<ul class="kalist">'+items.map(function(i){
+      var cls,txt;
+      if(i.days===null){cls='none';txt='No date recorded';}
+      else if(i.days<0){cls='bad';txt='Expired '+(-i.days)+' day'+(i.days===-1?'':'s')+' ago';}
+      else if(i.days<=30){cls='soon';txt='Expires in '+i.days+' day'+(i.days===1?'':'s');}
+      else {cls='good';txt='In date — '+i.days+' days';}
+      return '<li><span>'+esc(i.label)+'</span><span class="expbadge '+cls+'">'+txt+'</span></li>';
+    }).join('')+'</ul><p class="kanote">'+esc(msg)+'</p></div>';
+}
+function bikeName(bikeId){
+  var b=DB.bikes.filter(function(x){return x.id===bikeId;})[0];
+  return b?b.name:'That bike';
+}
+
+// The ONLY writer to checkLog. Everything above reads it; without this a bike
+// would read "Never checked" forever no matter how many checks were completed.
+// Returns whether an entry was actually recorded.
+//
+// A weather-grounded verdict is deliberately NOT recorded: `cls` is 'oos' there,
+// but that is a statement about conditions, not the bike — calcForm disables the
+// mechanical checklist when grounded, so nothing was assessed. Logging it would
+// park a false "Out of service" on a sound bike that outlives the weather.
+function recordSafetyCheck(fid,res,by){
+  if(fid!=='safety'||!activeBike||!res.cls||res.grounded) return false;
+  DB.checkLog.unshift({
+    bike:activeBike,
+    date:todayISO(),          // local calendar date — see the note on todayISO
+    verdict:res.cls,
+    note:res.detail||'',
+    by:by||''
+  });
+  saveDB();
+  renderDash();          // status pills, notes, recency, fleet readiness bar
+  renderBikePicker();    // the picker shows status + recency too
+  return true;
+}
+
+function renderFleetSummary(){
+  var el=document.getElementById('fleetSummary'); if(!el) return;
+  var total=DB.bikes.length;
+  var ready=DB.bikes.filter(function(b){return statusOf(b)==='ok';}).length;
+  var stale=DB.bikes.filter(function(b){return bikeRecency(b.id).stale;}).length;
+  var tone=ready===0?'oos':(ready<total?'warn':'ok');
+  var msg=ready===0
+    ? 'No bike is cleared to ride right now. Each one needs a pre-ride check before it goes out.'
+    : (ready<total ? 'Not every bike is cleared — check the cards below before taking one.'
+                   : 'Every bike was cleared by its last check.');
+  el.innerHTML='<div class="fleetbar '+tone+'">'+
+    '<div class="fstats">'+
+      '<div class="fstat"><span class="flabel">Ready to ride</span>'+
+        '<span class="statnum">'+ready+'<span class="fdim"> / '+total+'</span></span></div>'+
+      '<div class="fstat"><span class="flabel">Open issues</span><span class="statnum">'+DB.issues.length+'</span></div>'+
+      '<div class="fstat"><span class="flabel">Unchecked 7+ days</span><span class="statnum">'+stale+'</span></div>'+
+    '</div><p class="fnote">'+msg+'</p></div>';
+}
+
+/* ---------- bike picker: the first thing on the home view ---------- */
+var activeBike=null;
+function setBike(id){ activeBike=(activeBike===id?null:id); renderBikePicker(); }
+function renderBikePicker(){
+  var el=document.getElementById('bikePicker'); if(!el) return;
+  el.innerHTML='<div class="card mb"><h3>Which bike are you taking?</h3>'+
+    '<div class="bikepick">'+DB.bikes.map(function(b){
+      var m=STATUS_MAP[statusOf(b)]||STATUS_MAP.warn, r=bikeRecency(b.id);
+      return '<button type="button" class="pick'+(activeBike===b.id?' on':'')+'" onclick="setBike(\''+esc(b.id)+'\')">'+
+        '<span class="pname">'+esc(b.name)+'</span>'+
+        '<span class="status '+m[0]+'"><span class="dot"></span>'+m[1]+'</span>'+
+        '<span class="prec'+(r.stale?' stale':'')+'">'+esc(r.txt)+'</span></button>';
+    }).join('')+'</div>'+
+    '<p class="hint">'+(activeBike?'This check will be recorded against that bike.'
+                                  :'Pick a bike so the check is recorded against it.')+'</p></div>';
+}
+
 function renderDash(){
+  renderFleetSummary();
   var el=document.getElementById('bikeCards'); if(!el) return;
-  var map={ok:['st-ok','In Service'],warn:['st-warn','Needs Review'],oos:['st-oos','Out of Service']};
   el.innerHTML=DB.bikes.map(function(b){
-    var m=map[b.status]||map.warn;
+    var m=STATUS_MAP[statusOf(b)]||STATUS_MAP.warn, r=bikeRecency(b.id);
+    var iss=issuesFor(b);
+    // Each problem carries its own severity tag, so "bell mounted backwards"
+    // can't read the same as "front brake needs bleeding". The tags are worded,
+    // not colour-only, so the card needs no extra legend to be understood.
+    var body=iss.length
+      ? '<ul class="isslist">'+iss.map(function(i){
+          return '<li>'+sevTag(i.sev)+'<span>'+esc(i.problem)+'</span></li>';
+        }).join('')+'</ul>'
+      : '<p class="noissues">No open issues.</p>'+
+        (noteOf(b)?'<p class="bnote">'+esc(noteOf(b))+'</p>':'');
     return '<div class="card"><div class="bike-head"><b>'+esc(b.name)+'</b>'+
       '<span class="status '+m[0]+'"><span class="dot"></span>'+m[1]+'</span></div>'+
-      '<p style="font-size:13px;color:var(--ink-faint);margin:0">'+esc(b.note)+'</p></div>';
+      '<p class="brec'+(r.stale?' stale':'')+'">'+esc(r.txt)+'</p>'+body+'</div>';
   }).join('');
 
   var rows=document.getElementById('issueRows');
@@ -1440,26 +2130,39 @@ function renderChecks(){
     {v:'jumpkit-check',t:'Jumpkit Check',d:'Confirm the equipment bag is complete, stocked, and nothing is expired.',qr:'jumpkit form'},
     {v:'safety-check', t:'Bike Safety Check',d:'Pre-ride check: bike mechanical, rider readiness, and weather conditions.',qr:'safety form'}
   ];
-  el.innerHTML=cards.map(function(c){
-    return '<div class="card brandtop"><h3>'+esc(c.t)+'</h3>'+
-      '<p style="font-size:13px;color:var(--ink-faint)">'+esc(c.d)+'</p>'+
-      '<div class="qr mt">QR →<br>'+esc(c.qr)+'</div>'+
-      '<button class="btn sm mt block solid" onclick="go(\''+c.v+'\')">Open form</button></div>';
-  }).join('')+
-  '<div class="card"><h3>Weekly Readiness</h3>'+
-  '<p style="font-size:13px;color:var(--ink-faint)">Bike-manager-only, once a week before the meeting.</p>'+
-  '<div class="qr mt">QR →<br>weekly check</div>'+
-  '<button class="btn sm mt block webonly" onclick="alert(\'The weekly readiness check still needs its field list defined.\')">Start (manager)</button>'+
-  '<div class="placeholder">Fields not defined yet.</div></div>';
+  // Deep-link URLs — exactly what the QR codes encode, and what gets printed onto
+  // physical stickers. Emit the canonical form: drop any query string the visitor
+  // happened to arrive with, and drop a trailing "index.html".
+  var base=publicBase();
 
-  // Deep-link URLs — these are exactly what a QR code should encode, and they get
-  // printed onto physical stickers. Emit the canonical form: drop any query string
-  // the visitor happened to arrive with, and drop a trailing "index.html".
-  var base=location.origin+location.pathname.replace(/index\.html?$/i,'');
+  el.innerHTML=cards.map(function(c){
+    var url=base+'#'+c.v;
+    return '<div class="card brandtop"><h3>'+esc(c.t)+'</h3>'+
+      '<p style="font-size:13px;color:var(--ink-mute)">'+esc(c.d)+'</p>'+
+      '<div class="qrbox mt">'+qrSVG(url,168)+'</div>'+
+      '<div class="qrurl">'+esc(url)+'</div>'+
+      '<button class="btn sm mt block solid noprint" onclick="go(\''+c.v+'\')">Open form</button></div>';
+  }).join('')+
+  '<div class="card noprint"><h3>Weekly Readiness</h3>'+
+  '<p style="font-size:13px;color:var(--ink-mute)">Bike-manager-only, once a week before the meeting.</p>'+
+  '<button class="btn sm mt block webonly" onclick="alert(\'The weekly readiness check still needs its field list defined.\')">Start (manager)</button>'+
+  '<div class="placeholder">Fields not defined yet, so there is nothing to link a QR code to.</div></div>';
+
   var q=document.getElementById('qrUrls');
-  if(q) q.innerHTML=['jumpkit-check','safety-check'].map(function(v){
-    return '<div class="kv"><span>'+esc(v)+'</span><span class="mono" style="font-size:12px;word-break:break-all">'+esc(base+'#'+v)+'</span></div>';
-  }).join('');
+  if(q) q.innerHTML=
+    '<p style="font-size:13.5px;color:var(--ink-mute);margin:0 0 14px">'+
+    'Generated in the page — no external service, nothing to expire, and they keep working offline. '+
+    'Print this view and the two codes come out on their own, without the navigation.</p>'+
+    (isLocalPreview()
+      ? '<div class="draftnote">You are previewing locally, so the codes above deliberately encode '+
+        'the live site (<span class="mono">'+esc(PUBLIC_BASE)+'</span>) rather than localhost — '+
+        'otherwise the printed stickers would be dead on a phone.</div>'
+      : '')+
+    ['jumpkit-check','safety-check'].map(function(v){
+      return '<div class="kv"><span>#'+esc(v)+'</span>'+
+        '<span class="mono" style="font-size:12px;word-break:break-all">'+esc(base+'#'+v)+'</span></div>';
+    }).join('')+
+    '<button class="btn sm mt noprint" onclick="window.print()">Print sticker sheet</button>';
 }
 
 /* ============================================================
@@ -1522,19 +2225,24 @@ function renderBanner(){
    INIT
    ============================================================ */
 function renderAll(){
-  renderDash();renderChecks();renderOOS();renderWeather();
-  renderForm('jumpkit');renderForm('safety');
+  renderDash();renderBikePicker();renderChecks();renderOOS();renderWeather();
+  renderForm('jumpkit');renderForm('safety');renderExpiryAlert();
   renderVideos();renderLectures();renderBylaws();renderSettings();renderBanner();
 }
 renderAll();
 
-// Open to everyone. Hash wins (so QR deep-links land correctly), then last view, then dashboard.
+// Open to everyone. Hash wins so QR deep-links land exactly where the sticker
+// promised. Otherwise home is the pre-ride check — someone opening this URL is
+// about to take a bike out. Managers get their last view back instead, since
+// they're mid-task rather than riding.
 (function(){
   var h=location.hash.slice(1);
   if(VIEWS.indexOf(h)>=0){go(h,true);return;}
-  var last='dash'; try{last=localStorage.getItem('bikeops_view')||'dash';}catch(e){}
-  if(last==='settings') last='dash';   // settings is manager-only
-  go(last);
+  if(document.body.classList.contains('is-web')){
+    var last=''; try{last=localStorage.getItem('bikeops_view')||'';}catch(e){}
+    if(last&&last!=='settings'&&VIEWS.indexOf(last)>=0){go(last);return;}
+  }
+  go(HOME);
 })();
 </script>
 </body>
