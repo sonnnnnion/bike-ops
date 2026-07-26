@@ -158,6 +158,26 @@
   .kv{display:flex;justify-content:space-between;gap:12px;padding:7px 0;border-bottom:1px solid var(--rule-soft);font-size:14px}
   .kv:last-child{border-bottom:0}
   .kv span:first-child{color:var(--ink-faint)}
+  /* Value + its manager controls. The controls sit after the value and are gated
+     by .row.webonly, so member view sees exactly the old right-aligned value. */
+  .kv .kvval{display:flex;align-items:center;gap:10px;text-align:right}
+  .kv .kvacts{gap:4px;flex:none}
+  .kv .kvacts .btn{padding:2px 7px;font-size:11px}
+  /* On a phone the label, the value and four buttons cannot share one line — the
+     value shreds into four wrapped words. Stack them instead. Scoped to manager
+     mode because member view has no buttons and reads fine as a two-column row. */
+  @media (max-width:620px){
+    body.is-web .kv{flex-direction:column;align-items:stretch;gap:6px;padding:10px 0}
+    body.is-web .kv .kvval{justify-content:space-between;text-align:left;gap:8px}
+    body.is-web .kv .kvval>span:first-child{flex:1}
+  }
+  /* Role summary paragraph on Role & Boundaries. */
+  .rolesum{font-size:13.5px;color:var(--ink-mute);line-height:1.6;margin:0 0 12px}
+  /* Part headings on the Bylaws page. */
+  .bylawhead{font-family:var(--font-display);font-size:19px;color:var(--brand-deep);
+    margin:0 0 2px;padding-bottom:7px;border-bottom:2px solid var(--brand)}
+  .bylawsub{font-size:13px;color:var(--ink-mute);margin:0 0 14px}
+  .mt-lg{margin-top:34px}
 
   .btn{display:inline-flex;align-items:center;gap:8px;font-family:var(--font-body);font-weight:600;font-size:14.5px;padding:10px 16px;border:1.5px solid var(--rule-strong);background:var(--chip);color:var(--ink);cursor:pointer;border-radius:var(--radius);box-shadow:var(--shadow-sm)}
   .btn:hover{transform:translateY(-1px);box-shadow:var(--shadow-md);border-color:var(--brand)}
@@ -547,11 +567,11 @@
     <div class="sb-item" data-view="docs"><span class="ic">◈</span>Role &amp; Boundaries</div>
     <div class="sb-item" data-view="checks"><span class="ic">▩</span>QR Codes</div>
     <div class="sb-item webonly" data-view="settings"><span class="ic">⚙</span>Site Settings</div>
-    <div class="sb-note" id="sbNote">DRAFT TEMPLATE<br>Backend not yet connected</div>
+    <div class="sb-note" id="sbNote">Sheets not connected</div>
   </nav>
 
   <main>
-    <div class="banner" id="topBanner">DRAFT — bike data and out-of-service rules are still being finalized. Forms save locally until the Google Sheet backend is connected (Site Settings).</div>
+    <div class="banner" id="topBanner">Checks are saving on this device only — the Google Sheets are not connected yet (Site Settings).</div>
 
     <!-- ===== FLEET STATUS =====
          Secondary to the pre-ride check. A bike's status is derived from its
@@ -689,11 +709,7 @@
       <div class="grid cols-2">
         <div class="card">
           <h3>Who to contact</h3>
-          <div class="kv"><span>Bike shop (primary)</span><span>TBD</span></div>
-          <div class="kv"><span>Bike shop (backup)</span><span>TBD</span></div>
-          <div class="kv"><span>Keys — Kryptonite</span><span>order replacements</span></div>
-          <div class="kv"><span>Report major repair to</span><span>Operations officer</span></div>
-          <div class="placeholder">Shop contacts to be researched (public-safety-capable, convenient).</div>
+          <div id="contactList"></div>
         </div>
         <div class="card">
           <h3>How-to fixes (in office)</h3>
@@ -722,28 +738,39 @@
     <!-- ===== BYLAWS ===== -->
     <section class="view" data-view="bylaws">
       <h2 class="view-title">Bylaws</h2>
-      <p class="view-sub">The standing duties of the Bike Manager, by article. Amendable in Bike Manager mode so the document stays current across handoffs.</p>
+      <p class="view-sub">The standing duties of each bike role, by article. Amendable in Bike Manager mode so the document stays current across handoffs.</p>
+
+      <h3 class="bylawhead">Part I · Bike Manager</h3>
+      <p class="bylawsub">The member responsible for keeping the fleet serviceable.</p>
       <div id="bylawList"></div>
-      <button class="btn sm mt solid webonly" onclick="addBylaw()">+ Add article</button>
+      <button class="btn sm mt solid webonly" onclick="addBylaw('bylaws')">+ Add article</button>
+
+      <h3 class="bylawhead mt-lg">Part II · Bike Response</h3>
+      <p class="bylawsub">Every member trained to ride. These apply to anyone taking a bike out, including the Bike Manager.</p>
+      <div id="bylawRespList"></div>
+      <button class="btn sm mt solid webonly" onclick="addBylaw('bylawsResponse')">+ Add article</button>
     </section>
 
     <!-- ===== ROLE & BOUNDARIES ===== -->
     <section class="view" data-view="docs">
       <h2 class="view-title">Role &amp; Boundaries</h2>
-      <p class="view-sub">Where bikes may go, who may ride, and what the role is in one line.</p>
+      <p class="view-sub">Where bikes may go, who may ride, and what each role is responsible for.</p>
       <div class="grid cols-2">
         <div class="card">
           <h3>Operating boundaries</h3>
-          <div class="kv"><span>On-campus while on duty</span><span>allowed</span></div>
-          <div class="kv"><span>General bounds</span><span>Mudge · TCS · backside Scaife</span></div>
-          <div class="kv"><span>Keep between duty</span><span>confirm Ashley/Taimur (Mellon)</span></div>
-          <div class="kv"><span>Red shirts</span><span>may ride · no jumpkits</span></div>
-          <div class="kv"><span>Bike jumpkit</span><span>doubles as personal jumpkit</span></div>
+          <div id="boundaryList"></div>
         </div>
-        <div class="card">
-          <h3>Bike Manager role</h3>
-          <p style="font-size:13px;color:var(--ink-faint);margin:0 0 8px">Maintain bikes, organize supplies, monitor readiness, keep members trained. ~20 min/week.</p>
-          <button class="btn sm" onclick="go('bylaws')">See full bylaws →</button>
+        <div>
+          <div class="card">
+            <h3>Bike Manager</h3>
+            <p class="rolesum">Keeps the fleet serviceable: maintains the bikes, organizes supplies, monitors readiness, and trains members. ~20 min/week.</p>
+            <button class="btn sm" onclick="go('bylaws')">Bike Manager bylaws →</button>
+          </div>
+          <div class="card mt">
+            <h3>Bike Response</h3>
+            <p class="rolesum">Members trained by the Bike Manager to ride. A Bike Responder is responsible for the bike while they have it — checking it before a ride, riding it within bounds, locking and returning it, and reporting anything wrong.</p>
+            <button class="btn sm" onclick="go('bylaws')">Bike Response bylaws →</button>
+          </div>
         </div>
       </div>
     </section>
@@ -1359,6 +1386,56 @@ var DEFAULTS={
       'The Bike Manager shall research shops better suited to public-safety maintenance.\n'+
       'The Bike Manager may recommend accessories, including lights, bells, bags, repair kits, and reflective materials.\n'+
       'The Bike Manager may recommend replacement bicycles or upgrades where the current fleet no longer meets operational need.'}
+  ],
+  // Bike Response is the other half of the role structure: the Bike Manager keeps
+  // the fleet serviceable, Bike Responders are the members trained to ride it.
+  // These duties are theirs, and are deliberately written to the same standard as
+  // the manager's — a rider's obligations are not a footnote to the manager's.
+  bylawsResponse:[
+    {id:'r1', title:'Eligibility and Training', body:
+      'A member becomes a Bike Responder upon completing the bike lecture and demonstrating competency to the Bike Manager.\n'+
+      'No member shall take a bicycle on a call before that training is complete.\n'+
+      'A Bike Responder shall maintain competency and shall complete any refresher training the Bike Manager calls.\n'+
+      'Red-shirt members may ride but shall not carry a jumpkit.'},
+    {id:'r2', title:'Before Riding', body:
+      'A Bike Responder shall complete the Bike Safety Check before taking a bicycle out.\n'+
+      'A Bike Responder shall confirm the tires hold adequate pressure and the brakes work.\n'+
+      'A Bike Responder shall test ride the bicycle before using it on a call.\n'+
+      'A Bike Responder shall not take a bicycle marked out of service, regardless of how the bicycle appears.\n'+
+      'A Bike Responder shall confirm the jumpkit is complete and nothing in it has expired.'},
+    {id:'r3', title:'Conduct While Riding', body:
+      'A Bike Responder shall wear a helmet at all times while mounted.\n'+
+      'A Bike Responder shall remain within the operating boundaries published on this site.\n'+
+      'A Bike Responder shall obey all traffic law and shall yield to pedestrians in all circumstances.\n'+
+      'A Bike Responder shall not ride when conditions ground bike response.\n'+
+      'A Bike Responder shall ride at a speed that permits stopping within sight distance, and shall not ride a bicycle beyond their own skill.'},
+    {id:'r4', title:'Security and Return', body:
+      'A Bike Responder shall lock the bicycle whenever it is left unattended, however briefly.\n'+
+      'A Bike Responder shall return the bicycle to its designated storage location.\n'+
+      'A Bike Responder shall return the jumpkit stocked, or shall report what was used.\n'+
+      'A Bike Responder shall return all keys.'},
+    {id:'r5', title:'Reporting', body:
+      'A Bike Responder shall report any defect found before, during, or after a ride, through Report a Problem on this site.\n'+
+      'A Bike Responder shall mark a bicycle out of service immediately upon finding a critical defect, and shall not wait for the Bike Manager to do so.\n'+
+      'A Bike Responder shall report any crash, fall, or near miss to the Bike Manager and to the appropriate officer.\n'+
+      'A Bike Responder shall report equipment that is missing, expired, or running low.\n'+
+      'No Bike Responder shall be discouraged from reporting a defect. Reporting a bicycle out of service is never a fault.'}
+  ],
+  // Rendered as editable key/value rows by renderKV. Every row is manager-editable,
+  // because these are exactly the facts that change between semesters and that a
+  // future Bike Manager should not need a developer to correct.
+  boundaries:[
+    {id:'bd1', k:'On-campus while on duty', v:'allowed'},
+    {id:'bd2', k:'General bounds',          v:'Mudge · TCS · backside Scaife'},
+    {id:'bd3', k:'Keep between duty',       v:'confirm Ashley/Taimur (Mellon)'},
+    {id:'bd4', k:'Red shirts',              v:'may ride · no jumpkits'},
+    {id:'bd5', k:'Bike jumpkit',            v:'doubles as personal jumpkit'}
+  ],
+  contacts:[
+    {id:'ct1', k:'Bike shop (primary)',     v:'TBD'},
+    {id:'ct2', k:'Bike shop (backup)',      v:'TBD'},
+    {id:'ct3', k:'Keys — Kryptonite',       v:'order replacements'},
+    {id:'ct4', k:'Report major repair to',  v:'Operations officer'}
   ]
 };
 
@@ -1687,7 +1764,6 @@ function renderWeather(){
   var h='<div class="row" style="justify-content:space-between;margin-bottom:6px">'+
     '<h3 style="margin:0">Weather &amp; Conditions</h3>'+
     '<button class="btn xs webonly" onclick="toggleWeatherEdit()">'+(weatherEditMode?'Done editing':'Edit conditions')+'</button></div>'+
-    '<div class="draftnote">DRAFT THRESHOLDS — pending confirmation from EMS leadership. Not yet ratified policy.</div>'+
     '<p style="font-size:13px;color:var(--ink-faint);margin:0 0 10px">This grounds bike response as a whole — it is not a fault with any one bike.</p>';
   if(weatherEditMode){
     h+='<div class="builder"><h4>Editing conditions</h4><p class="bsub">Ground = hard stop. Caution = advisory only.</p>';
@@ -1779,8 +1855,7 @@ function renderForm(fid){
   // Conditions first on the safety form — weather grounds everything below it.
   if(fid==='safety'){
     h+='<div class="card mt" id="condCard"><h3>Conditions check</h3>'+
-       '<p style="font-size:13px;color:var(--ink-faint);margin:0 0 4px">Is any of this true right now?</p>'+
-       '<div class="draftnote">Draft thresholds — pending confirmation from EMS leadership.</div>';
+       '<p style="font-size:13px;color:var(--ink-faint);margin:0 0 8px">Is any of this true right now?</p>';
     DB.weather.forEach(function(w){
       h+='<label class="checkline"><input type="checkbox" data-cond="'+esc(w.tier)+'" onchange="calcForm(\'safety\')">'+
          '<span class="lbl">'+esc(w.t)+'</span>'+
@@ -2282,14 +2357,25 @@ var bylawEdit={};
 // not require touching this.
 var ROMAN=['I','II','III','IV','V','VI','VII','VIII','IX','X','XI','XII'];
 function articleNum(i){ return ROMAN[i]||String(i+1); }
+// Two bodies of bylaws, same machinery: the Bike Manager's duties and the Bike
+// Responder's. `key` is the DB array; `host` the element to render into. Article
+// ids are unique across both sets, so the open/edit state map is shared safely.
+var BYLAW_SETS={
+  bylaws:        {host:'bylawList',    label:'Bike Manager'},
+  bylawsResponse:{host:'bylawRespList',label:'Bike Response'}
+};
 function renderBylaws(){
-  var el=document.getElementById('bylawList'); if(!el) return;
-  el.innerHTML=DB.bylaws.map(function(b,i){
+  Object.keys(BYLAW_SETS).forEach(function(key){ renderBylawSet(key); });
+}
+function renderBylawSet(key){
+  var el=document.getElementById(BYLAW_SETS[key].host); if(!el) return;
+  var list=DB[key]||[];
+  el.innerHTML=list.map(function(b,i){
     var open=bylawEdit[b.id]?' open':'';
     var body=bylawEdit[b.id]
-      ? '<textarea oninput="DB.bylaws['+i+'].body=this.value;saveDB()">'+esc(b.body)+'</textarea>'+
+      ? '<textarea oninput="DB.'+key+'['+i+'].body=this.value;saveDB()">'+esc(b.body)+'</textarea>'+
         '<div class="row mt"><button class="btn xs solid" onclick="toggleBylawEdit(\''+esc(b.id)+'\')">Done</button>'+
-        '<button class="btn xs danger" onclick="delBylaw('+i+')">Delete article</button></div>'
+        '<button class="btn xs danger" onclick="delBylaw(\''+key+'\','+i+')">Delete article</button></div>'
       // Clauses are numbered §article.clause from position rather than written
       // into the text, so reordering or inserting one cannot leave the document
       // numbered wrong.
@@ -2312,21 +2398,83 @@ function toggleBylawEdit(id){
   renderBylaws();
   var el=document.getElementById('by-'+id); if(el) el.classList.add('open');
 }
-function addBylaw(){
-  uiPrompt('Articles are the duty areas of the Bike Manager role.','','Add an article',{okText:'Add article'})
+function addBylaw(key){
+  uiPrompt('Articles are the duty areas of the '+BYLAW_SETS[key].label+' role.','','Add an article',{okText:'Add article'})
     .then(function(t){
       if(!t) return;
-      DB.bylaws.push({id:uid('b'),title:t.trim(),body:'New article — click Edit to fill this in.'});
+      DB[key].push({id:uid(key==='bylaws'?'b':'r'),title:t.trim(),body:'New article — click Edit to fill this in.'});
       saveDB();renderBylaws();
     });
 }
-function delBylaw(i){
-  var t=DB.bylaws[i].title;
+function delBylaw(key,i){
+  var t=DB[key][i].title;
   uiConfirm('“'+t+'” and everything under it will be deleted.','Delete this article?',
             {okText:'Delete',danger:true}).then(function(yes){
     if(!yes) return;
-    DB.bylaws.splice(i,1);saveDB();renderBylaws();
+    DB[key].splice(i,1);saveDB();renderBylaws();
   });
+}
+
+/* ---------- editable key/value rows (boundaries, contacts) ----------
+   These were hardcoded in the HTML, which meant a future Bike Manager needed a
+   developer to correct a shop phone number or a boundary that changed between
+   semesters. Same shape for both lists, so one renderer serves both. */
+var KV_SETS={
+  boundaries:{host:'boundaryList',noun:'boundary',
+    hint:'Where bikes may go, who may ride, and what rides with them.'},
+  contacts:  {host:'contactList', noun:'contact',
+    hint:'Who to reach for repairs, keys, and escalation.'}
+};
+function renderKVSets(){ Object.keys(KV_SETS).forEach(renderKV); }
+function renderKV(key){
+  var conf=KV_SETS[key], el=document.getElementById(conf.host); if(!el) return;
+  var list=DB[key]||[];
+  var h=list.map(function(r,i){
+    return '<div class="kv"><span>'+esc(r.k)+'</span>'+
+      '<span class="kvval"><span>'+esc(r.v)+'</span>'+
+      '<span class="row kvacts webonly">'+
+        '<button class="btn xs" title="Move up"'+(i===0?' disabled':'')+' onclick="moveKV(\''+key+'\','+i+',-1)">↑</button>'+
+        '<button class="btn xs" title="Move down"'+(i===list.length-1?' disabled':'')+' onclick="moveKV(\''+key+'\','+i+',1)">↓</button>'+
+        '<button class="btn xs" onclick="editKV(\''+key+'\','+i+')">Edit</button>'+
+        '<button class="btn xs danger" onclick="delKV(\''+key+'\','+i+')">✕</button>'+
+      '</span></span></div>';
+  }).join('');
+  if(!list.length) h='<div class="placeholder">Nothing listed yet.</div>';
+  h+='<button class="btn sm mt webonly" onclick="addKV(\''+key+'\')">+ Add '+esc(conf.noun)+'</button>';
+  el.innerHTML=h;
+}
+function kvFields(r){
+  r=r||{};
+  return [{key:'k',label:'Label',required:true,value:r.k||''},
+          {key:'v',label:'Detail',required:true,value:r.v||''}];
+}
+function addKV(key){
+  uiForm('Add a '+KV_SETS[key].noun,KV_SETS[key].hint,kvFields(),{okText:'Add'}).then(function(r){
+    if(!r) return;
+    DB[key].push({id:uid(key.slice(0,2)),k:r.k.trim(),v:r.v.trim()});
+    saveDB();renderKV(key);
+  });
+}
+function editKV(key,i){
+  var row=DB[key][i];
+  uiForm('Edit '+KV_SETS[key].noun,'',kvFields(row)).then(function(r){
+    if(!r) return;
+    row.k=r.k.trim();row.v=r.v.trim();
+    saveDB();renderKV(key);
+  });
+}
+function delKV(key,i){
+  var name=DB[key][i].k;
+  uiConfirm('“'+name+'” will be removed from this list.','Remove this '+KV_SETS[key].noun+'?',
+            {okText:'Remove',danger:true}).then(function(yes){
+    if(!yes) return;
+    DB[key].splice(i,1);saveDB();renderKV(key);
+  });
+}
+function moveKV(key,i,d){
+  var a=DB[key], j=i+d;
+  if(j<0||j>=a.length) return;
+  a.splice(j,0,a.splice(i,1)[0]); saveDB();renderKV(key);
 }
 
 /* ============================================================
@@ -2795,8 +2943,10 @@ function renderBanner(){
                 esc(SHEET_LABEL[off])+' submissions still save on this device only (Site Settings).';
     n.innerHTML='PARTLY LIVE<br>1 of 2 sheets connected';
   }else{
-    b.innerHTML='DRAFT — bike data and out-of-service rules are still being finalized. Forms save locally until the Google Sheets are connected (Site Settings).';
-    n.innerHTML='DRAFT TEMPLATE<br>Backend not yet connected';
+    // Not a draft disclaimer — this is the one thing standing between a member
+    // and believing a submission was filed. It stays until a sheet is connected.
+    b.innerHTML='Checks are saving on this device only — the Google Sheets are not connected yet (Site Settings).';
+    n.innerHTML='Sheets not connected';
   }
 }
 
@@ -2806,7 +2956,8 @@ function renderBanner(){
 function renderAll(){
   renderDash();renderBikePicker();renderChecks();renderOOS();renderWeather();
   renderForm('jumpkit');renderForm('safety');renderExpiryAlert();
-  renderVideos();renderLectures();renderBylaws();renderSettings();renderBanner();
+  renderVideos();renderLectures();renderBylaws();renderKVSets();
+  renderSettings();renderBanner();
 }
 renderAll();
 

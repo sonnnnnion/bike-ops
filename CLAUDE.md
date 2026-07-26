@@ -65,5 +65,12 @@ rather than reading it whole; re-read the exact region immediately before each E
   controls from casual visitors; it is not a security boundary. See `SETUP-BACKEND.md`.
 - Bike names: **Diane** (curtain), **Kevin** (ceiling), **Cheryl** (OOS bike), assigned
   by Michaela 2026-07-25 and editable in manager mode. Do not invent *new* ones.
-- Weather thresholds are DRAFT pending EMS leadership sign-off, and labelled as such
-  in the UI. Keep that label until Michaela says otherwise.
+- **No DRAFT notices anywhere.** Michaela removed them all (2026-07-25): she is the one
+  in charge and decides what is provisional. Do not reintroduce a "draft"/"pending
+  ratification" label on weather thresholds, the banner, or anything else.
+  The "sheets not connected" banner is *not* a draft notice — it is what stops a member
+  believing a submission was filed. It stays.
+- Two roles, two bodies of bylaws: `DB.bylaws` (Bike Manager) and `DB.bylawsResponse`
+  (Bike Response — every member trained to ride). Both render through `renderBylawSet`.
+- `DB.boundaries` and `DB.contacts` are manager-editable key/value lists rendered by
+  `renderKV`. Do not hardcode rows back into the HTML.
