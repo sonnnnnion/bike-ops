@@ -227,8 +227,19 @@
 
   .qr{width:118px;height:118px;border:2px solid var(--rule);display:grid;place-items:center;background:#fff;font-family:var(--font-mono);font-size:10px;color:var(--ink-faint);text-align:center;box-shadow:var(--shadow-sm);padding:6px;line-height:1.35}
   .video{border:2px solid var(--rule);box-shadow:var(--shadow-md);background:var(--card);display:flex;flex-direction:column}
-  .video .thumb{aspect-ratio:16/9;background:repeating-linear-gradient(45deg,var(--bg-2),var(--bg-2) 10px,#fbf3f2 10px,#fbf3f2 20px);display:grid;place-items:center;border-bottom:2px solid var(--rule);font-family:var(--font-mono);font-size:12px;color:var(--ink-faint);text-align:center;padding:8px}
-  .video .thumb iframe{width:100%;height:100%;border:0}
+  /* aspect-ratio is set inline per video — see ASPECTS. The striped fill is the
+     "not linked yet" placeholder; once an embed is in, the box goes black so any
+     letterboxing the player still adds reads as film, not as a broken layout. */
+  .video .thumb{aspect-ratio:16/9;background:repeating-linear-gradient(45deg,var(--bg-2),var(--bg-2) 10px,#fbf3f2 10px,#fbf3f2 20px);display:grid;place-items:center;border-bottom:2px solid var(--rule);font-family:var(--font-mono);font-size:12px;color:var(--ink-faint);text-align:center;padding:8px;overflow:hidden;
+    /* A 9:16 card in a 3-up grid would otherwise run past 600px tall and drag the
+       whole row with it. Cap the height; a portrait clip still gets far more of
+       the frame than it did in a 16:9 box. */
+    max-height:440px}
+  .video .thumb.filled{background:#000;padding:0}
+  .video .thumb iframe{width:100%;height:100%;border:0;display:block}
+  /* Each card sizes to its own content, so one tall embed does not stretch its
+     neighbours into a column of empty space. */
+  #videoGrid{align-items:start}
   .video .meta{padding:12px 14px;flex:1;display:flex;flex-direction:column;gap:4px}
   .video .meta b{display:block;font-size:14px}
   .video .meta small{color:var(--ink-faint);font-size:12px}
@@ -305,7 +316,7 @@
   .module .mtitle{font-weight:700;font-size:15px;flex:1}
   .module .mbody{display:none;border-top:1.5px solid var(--rule-soft);padding:12px 14px}
   .module.open .mbody{display:block}
-  .module .embed{aspect-ratio:16/9;width:100%;border:1.5px solid var(--rule);background:var(--bg-2)}
+  .module .embed{aspect-ratio:16/9;width:100%;border:1.5px solid var(--rule);background:#000;overflow:hidden}
   .module .embed iframe{width:100%;height:100%;border:0;display:block}
   /* Compact notice, NOT 16/9 — an unlinked module shouldn't open into a
      screen-tall empty box just because a real slide deck would be that shape. */
@@ -1369,7 +1380,8 @@ var DEFAULTS={
       'The Bike Manager shall maintain an accounting of all lock keys and shall order replacements through the manufacturer when a key is lost or damaged.'},
     {id:'b4', title:'Training and Competency', body:
       'The Bike Manager shall organize bicycle training as needed to maintain member competency.\n'+
-      'No member shall operate a bicycle on a call before completing the bike lecture and demonstrating competency.\n'+
+      'The Bike Manager shall administer the written examination and the bike competency examination required of every Bike Responder, and shall record who has passed each and on what date.\n'+
+      'No member shall operate a bicycle on a call before passing both examinations.\n'+
       'The Bike Manager shall ensure that every member is able to inspect a bicycle before use and to report a defect after use.\n'+
       'The Bike Manager shall maintain and revise the bike lecture and supporting training materials.\n'+
       'The Bike Manager shall identify deficiencies in training and recommend corrections.'},
@@ -1393,9 +1405,12 @@ var DEFAULTS={
   // the manager's — a rider's obligations are not a footnote to the manager's.
   bylawsResponse:[
     {id:'r1', title:'Eligibility and Training', body:
-      'A member becomes a Bike Responder upon completing the bike lecture and demonstrating competency to the Bike Manager.\n'+
-      'No member shall take a bicycle on a call before that training is complete.\n'+
-      'A Bike Responder shall maintain competency and shall complete any refresher training the Bike Manager calls.\n'+
+      'A member becomes a Bike Responder upon completing the bike lecture and passing both examinations described below.\n'+
+      'A member shall pass a written examination covering the bike lecture, these bylaws, the operating boundaries, and the conditions under which bike response is grounded.\n'+
+      'A member shall pass a bike competency examination, administered by the Bike Manager, confirming that the member is physically capable of riding and handling the bicycles — including mounting and dismounting, controlled braking, riding one-handed, low-speed balance, and maneuvering the loaded bicycle on foot.\n'+
+      'Both examinations shall be passed before a member takes a bicycle on a call. Neither substitutes for the other: the written examination establishes what the member knows, the competency examination establishes what the member can physically do.\n'+
+      'The Bike Manager shall record who has passed each examination and on what date.\n'+
+      'A Bike Responder shall maintain competency and shall complete any refresher training or re-examination the Bike Manager calls.\n'+
       'Red-shirt members may ride but shall not carry a jumpkit.'},
     {id:'r2', title:'Before Riding', body:
       'A Bike Responder shall complete the Bike Safety Check before taking a bicycle out.\n'+
@@ -2158,6 +2173,24 @@ function moveItem(fid,si,ii,d){
 /* ============================================================
    VIDEOS
    ============================================================ */
+/* Embeds are cross-origin iframes, so nothing here can crop or zoom what the
+   player draws inside one — the black bars in a Drive or YouTube embed are the
+   player letterboxing a source that does not match its box. The only real fix is
+   to give the box the same shape as the footage, which is a fact only the person
+   who filmed it knows. Hence: a per-item choice, defaulting to widescreen. */
+var ASPECTS=[
+  {v:'16/9', t:'Widescreen 16:9 — most video and Google Slides'},
+  {v:'4/3',  t:'Classic 4:3 — older decks, some phone video'},
+  {v:'1/1',  t:'Square 1:1'},
+  {v:'9/16', t:'Portrait 9:16 — filmed upright on a phone'}
+];
+var ASPECT_VALUES=ASPECTS.map(function(a){return a.v;});
+// Anything unrecognised falls back to widescreen rather than being interpolated
+// into the style attribute, which would let stored data inject CSS.
+function aspectOf(o){
+  var a=(o&&o.aspect)||'16/9';
+  return ASPECT_VALUES.indexOf(a)>=0?a:'16/9';
+}
 function renderVideos(){
   var g=document.getElementById('videoGrid'); if(!g) return;
   document.getElementById('videoCount').textContent=DB.videos.length+' video'+(DB.videos.length===1?'':'s');
@@ -2167,7 +2200,7 @@ function renderVideos(){
     var thumb=vsrc
       ? '<iframe src="'+esc(vsrc)+'" allowfullscreen title="'+esc(v.title)+'"></iframe>'
       : '▶ not linked yet<br><span style="font-size:10px">add a share link</span>';
-    return '<div class="video"><div class="thumb">'+thumb+'</div><div class="meta">'+
+    return '<div class="video"><div class="thumb'+(vsrc?' filled':'')+'" style="aspect-ratio:'+aspectOf(v)+'">'+thumb+'</div><div class="meta">'+
       '<b>'+esc(v.title)+'</b>'+
       (v.legacy?'<span class="tag warn" style="align-self:flex-start;margin:2px 0">Reference only</span>':'')+
       '<small>'+esc(v.note||'')+'</small>'+
@@ -2183,13 +2216,15 @@ function videoFields(v){
   return [
     {key:'title',label:'Title',required:true,value:v.title||''},
     {key:'embed',label:'Share link',value:v.embed||'',hint:VIDEO_LINK_HINT},
-    {key:'note',label:'Short description',value:v.note||''}
+    {key:'note',label:'Short description',value:v.note||''},
+    {key:'aspect',label:'Shape',type:'select',value:aspectOf(v),options:ASPECTS,
+     hint:'Match this to how the video was filmed. Black bars mean the shape is wrong — a video shot upright on a phone needs Portrait, not Widescreen.'}
   ];
 }
 function addVideo(){
   uiForm('Add a video','',videoFields(),{okText:'Add video'}).then(function(r){
     if(!r) return;
-    DB.videos.push({id:uid('v'),title:r.title.trim(),embed:r.embed.trim(),note:r.note.trim()});
+    DB.videos.push({id:uid('v'),title:r.title.trim(),embed:r.embed.trim(),note:r.note.trim(),aspect:r.aspect});
     saveDB();renderVideos();
   });
 }
@@ -2197,7 +2232,7 @@ function editVideo(i){
   var v=DB.videos[i];
   uiForm('Edit video','',videoFields(v)).then(function(r){
     if(!r) return;
-    v.title=r.title.trim();v.embed=r.embed.trim();v.note=r.note.trim();
+    v.title=r.title.trim();v.embed=r.embed.trim();v.note=r.note.trim();v.aspect=r.aspect;
     saveDB();renderVideos();
   });
 }
@@ -2259,6 +2294,12 @@ function lectureSrc(L){
   if(DB.deck&&DB.deck.url&&L.slide>0) return deckSrc(DB.deck.url,L.slide);
   return '';
 }
+// One deck usually means one shape, so the deck's setting is the default and a
+// module only overrides it when it carries its own separate embed.
+function lectureAspect(L){
+  if(L&&L.aspect) return aspectOf(L);
+  return aspectOf(DB.deck);
+}
 function renderLectures(){
   var el=document.getElementById('lectureList'); if(!el) return;
   document.getElementById('lectureCount').textContent=DB.lectures.length+' module'+(DB.lectures.length===1?'':'s');
@@ -2266,7 +2307,7 @@ function renderLectures(){
     var src=lectureSrc(L);
     var editUrl=L.edit||((DB.deck&&DB.deck.edit)||'');
     var body=src
-      ? '<div class="embed"><iframe src="'+esc(src)+'" allowfullscreen title="'+esc(L.title)+'"></iframe></div>'
+      ? '<div class="embed" style="aspect-ratio:'+lectureAspect(L)+'"><iframe src="'+esc(src)+'" allowfullscreen title="'+esc(L.title)+'"></iframe></div>'
       : '<div class="noembed">Deck not yet linked.<br>Link one deck for every module below, or give this module its own embed URL.</div>';
     return '<div class="module" id="mod-'+esc(L.id)+'">'+
       '<div class="mhead" onclick="toggleModule(\''+esc(L.id)+'\')">'+
@@ -2299,10 +2340,12 @@ function editDeck(){
     {key:'url',label:'Share link',value:DB.deck.url||'',
      hint:'Google Slides: Share ▸ General access ▸ Anyone with the link ▸ Viewer, then Copy link. Converted to an embed automatically. Leave blank to unlink.'},
     {key:'edit',label:'Edit link',value:DB.deck.edit||'',
-     hint:'The normal link to the same deck. Opens it in edit mode for whoever has been granted access.'}
+     hint:'The normal link to the same deck. Opens it in edit mode for whoever has been granted access.'},
+    {key:'aspect',label:'Slide shape',type:'select',value:aspectOf(DB.deck),options:ASPECTS,
+     hint:'Google Slides defaults to widescreen. A deck built in older PowerPoint is usually 4:3 — set that here and every module follows.'}
   ]).then(function(r){
     if(!r) return;
-    DB.deck.url=r.url.trim(); DB.deck.edit=r.edit.trim();
+    DB.deck.url=r.url.trim(); DB.deck.edit=r.edit.trim(); DB.deck.aspect=r.aspect;
     if(DB.deck.url&&!DB.lectures.some(function(L){return L.slide>0;})){
       // Nothing has a start slide yet — seed 1..N so the deck is visible immediately
       // rather than silently staying "Not linked" after a successful link.
@@ -2331,11 +2374,14 @@ function editLecture(i){
     {key:'embed',label:'Separate embed link for this module',value:L.embed||'',
      hint:'Leave blank to use the shared deck at the slide above.'},
     {key:'edit',label:'Separate edit link for this module',value:L.edit||'',
-     hint:'Leave blank to use the shared deck’s edit link.'}
+     hint:'Leave blank to use the shared deck’s edit link.'},
+    {key:'aspect',label:'Shape',type:'select',value:L.aspect||'',
+     options:[{v:'',t:'Follow the shared deck'}].concat(ASPECTS),
+     hint:'Only worth changing if this module has its own embed above.'}
   ]).then(function(r){
     if(!r) return;
     L.title=r.title.trim();L.slide=Math.max(0,parseInt(r.slide,10)||0);
-    L.embed=r.embed.trim();L.edit=r.edit.trim();
+    L.embed=r.embed.trim();L.edit=r.edit.trim();L.aspect=r.aspect;
     saveDB();renderLectures();
   });
 }

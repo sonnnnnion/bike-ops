@@ -103,13 +103,15 @@ Confirm three things:
 ## The script
 
 ```javascript
-/**
- * Bike Ops — form intake for the CMU EMS bike program.
- * Receives submissions from the Bike Ops site and appends them to THIS spreadsheet.
- *
- * The same script goes into both spreadsheets. The ONLY line you change between the
- * two copies is EXPECTED_FORM directly below.
- */
+// Bike Ops — form intake for the CMU EMS bike program.
+// Receives submissions from the Bike Ops site and appends them to THIS spreadsheet.
+//
+// The same script goes into both spreadsheets. The ONLY line you change between the
+// two copies is EXPECTED_FORM directly below.
+//
+// Every comment here is a // line comment on purpose. A /* */ block whose opening
+// line gets dropped during a copy-paste turns its first line into code and throws
+// a syntax error that points at prose — which is exactly what happened once.
 
 // 'jumpkit' in the Bike Jumpkit Check spreadsheet.
 // 'safety'  in the Bike Safety Check spreadsheet.
@@ -192,7 +194,7 @@ function doPost(e) {
   }
 }
 
-/** Creates the tab and header row the first time a form type is submitted. */
+// Creates the tab and header row the first time a form type is submitted.
 function getSheet(conf) {
   var ss = SpreadsheetApp.getActiveSpreadsheet();
   var sheet = ss.getSheetByName(conf.name);
@@ -205,7 +207,7 @@ function getSheet(conf) {
   return sheet;
 }
 
-/** Red row = something needs a manager's attention. */
+// Red row = something needs a manager's attention.
 function highlightIfProblem(sheet, p, missing, conditions) {
   var v = String(p.verdict || '').toLowerCase();
   var bad = missing.length > 0 ||
@@ -219,7 +221,7 @@ function highlightIfProblem(sheet, p, missing, conditions) {
        .setBackground('#fce8e6');
 }
 
-/** "EXPIRED: oral glucose" / "expires within 30 days" / "" */
+// "EXPIRED: oral glucose" / "expires within 30 days" / ""
 function expiryFlag(expiries) {
   if (!expiries) return '';
   var today = new Date(); today.setHours(0, 0, 0, 0);
@@ -325,6 +327,14 @@ Apps Script editor → **Executions** (left sidebar). If there are no entries, t
 request never landed — recheck the URL in Site Settings ends in `/exec`, and that
 you re-deployed as a **new version** after editing. If entries show "Failed", open
 one; `console.error` logs the reason and the raw body.
+
+**Apps Script says `SyntaxError: Unexpected token '*'` on line 1.** The paste started
+one line too late and dropped the opening `/**` of the header comment, which turned the
+prose underneath it into code. The script above no longer uses a `/* */` block anywhere,
+so this cannot recur — but if you are looking at a copy that still has it, either add
+`/**` back as the first line or re-copy the current script. **Select from the very first
+character of the block**; clicking into the middle of a code block and pressing
+Ctrl/Cmd-A selects the page, not the block.
 
 **Nothing arrives, and Executions shows "wrong spreadsheet for form".** The two Web
 App URLs are swapped in Site Settings. Open the failed execution to see which form it
