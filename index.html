@@ -886,7 +886,7 @@ function openModal(opts){
       '<div class="modal-body">'+(opts.body||'')+'</div>'+
       '<div class="modal-foot">'+
         (opts.cancelText?'<button type="button" class="btn ghost" data-mcancel>'+esc(opts.cancelText)+'</button>':'')+
-        '<button type="button" class="btn solid'+(opts.danger?' danger':'')+'" data-mok>'+esc(opts.okText||'OK')+'</button>'+
+        '<button type="button" class="btn '+(opts.plainOk?'ghost':'solid')+(opts.danger?' danger':'')+'" data-mok>'+esc(opts.okText||'OK')+'</button>'+
       '</div></div>';
     document.body.appendChild(w); _modalHost=w;
 
@@ -1667,7 +1667,7 @@ function setWeb(on){
    actually hurt if a member saw it. What protects submitted data is the Apps
    Script running server-side, not this. The boundary becomes real only when a
    server verifies the token before accepting a write. */
-var GOOGLE_CLIENT_ID='';
+var GOOGLE_CLIENT_ID='649290078556-l1p8l9qr5stjldgrs08c8eo0od6c727e.apps.googleusercontent.com';
 // Confirmed by Michaela 2026-07-26. A wrong address here simply refuses the
 // correct account with no explanation, so it is worth re-reading before enabling.
 var MANAGER_EMAILS=['bikecmuems@gmail.com'];
@@ -1705,6 +1705,8 @@ function googleUnlock(){
       body:'<div id="gsiBtn" style="display:flex;justify-content:center;padding:6px 0 2px"></div>'+
            '<p class="hint" style="text-align:center">Any other account stays in member view.</p>',
       cancelText:'Cancel',okText:'Use passcode instead',
+      // The Google button is the primary action; the fallback must not out-shout it.
+      plainOk:true,
       onOk:function(){ return 'passcode'; },
       onOpen:function(w,close){
         try{
