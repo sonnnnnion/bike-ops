@@ -1,7 +1,7 @@
-# Connecting Bike Ops to a Google Sheet
+# Connecting Bike Ops to its Google Sheets
 
 This wires the Jumpkit Check and Bike Safety Check forms so submissions land in a
-spreadsheet automatically. Takes about 15 minutes, done once.
+spreadsheet automatically. Takes about 25 minutes, done once.
 
 **You do not put any password into this site.** That is the whole point of the design
 below: the script lives *inside* the Google account and runs as that account. The
@@ -13,66 +13,89 @@ before deciding to do it another way.
 
 ## What you get
 
-Two tabs in one spreadsheet:
+**Two separate spreadsheets**, matching the two that already exist in the Bike Ops
+Drive folder:
 
-| Sheet tab | Filled in by | Michaela's ask |
+| Spreadsheet | Filled in by | Who fills it |
 |---|---|---|
-| `Equipment Checks` | Jumpkit Check form | flags when equipment is missing or expired |
-| `Bike Checks` | Bike Safety Check form | the weekly bike checks |
+| **Bike Jumpkit Check** | Jumpkit Check form | any member, before a ride |
+| **Bike Safety Check** | Bike Safety Check form | riders before a ride; the Bike Manager weekly, for every bike |
 
 Both record the date submitted and who submitted it (first and last name — the form
 refuses to submit without them).
 
+> **Two files, not two tabs.** An earlier version of this doc described one
+> spreadsheet with an `Equipment Checks` tab and a `Bike Checks` tab. That is not what
+> exists — the two checks are read by different people on different schedules, and
+> keeping them separate means either one can be shared or exported on its own. You do
+> the setup below **twice**, once per spreadsheet, and end up with **two Web App
+> URLs**.
+
 ---
 
-## Step 1 — Make the spreadsheet
+## Do this twice — once per spreadsheet
+
+Work through Steps 1–3 completely for **Bike Jumpkit Check**, then repeat them for
+**Bike Safety Check**. Keep both URLs; you need them together in Step 4.
+
+## Step 1 — Open the spreadsheet
 
 1. Sign in as the bike program's Google account (the shared bike ops Gmail).
-2. Go to <https://sheets.new> and name it something like **Bike Ops Submissions**.
-3. Leave it otherwise empty. The script creates and titles both tabs on first use.
+2. Open **Bike Jumpkit Check** (or **Bike Safety Check**) from the Bike Ops folder.
+   If it does not exist yet, create it at <https://sheets.new> and name it exactly that.
+3. Leave it otherwise empty. The script creates and titles its tab on first use.
 
 ## Step 2 — Add the script
 
 1. In that spreadsheet: **Extensions → Apps Script**.
 2. Delete the sample `myFunction` stub.
 3. Paste in everything from [the script below](#the-script).
-4. Click the 💾 save icon.
+4. **Set `EXPECTED_FORM` at the top of the script** — `'jumpkit'` in the Bike Jumpkit
+   Check copy, `'safety'` in the Bike Safety Check copy. This is the one line that
+   differs between the two, and it is what makes a swapped URL fail loudly instead of
+   quietly filing safety checks into the jumpkit sheet.
+5. Click the 💾 save icon.
 
 ## Step 3 — Deploy it as a Web App
 
 1. **Deploy → New deployment**.
 2. Click the gear next to "Select type" and choose **Web app**.
 3. Set:
-   - **Description:** `Bike Ops form intake`
+   - **Description:** `Bike Ops form intake — jumpkit` (or `— safety`)
    - **Execute as:** **Me** (the bike ops account you are signed in as) ← must be this
    - **Who has access:** **Anyone** ← must be this
 4. **Deploy**. Google asks you to authorize — approve it. You will hit a
    "Google hasn't verified this app" screen: **Advanced → Go to (project name)**.
    That warning is expected for your own script.
-5. Copy the **Web app URL**. It ends in `/exec`.
+5. Copy the **Web app URL**. It ends in `/exec`. Label which spreadsheet it came from —
+   the two URLs look nearly identical and are easy to mix up.
 
 > "Who has access: Anyone" means anyone who *has the URL* can post a row. It does not
 > make the spreadsheet public, and it does not expose the Google account. See
 > [How locked down is this?](#how-locked-down-is-this) for what that does and doesn't
 > protect.
 
-## Step 4 — Paste the URL into the site
+## Step 4 — Paste both URLs into the site
 
 1. Open the site, click **🔒 Bike Manager**, enter the passphrase.
 2. Go to **Site Settings** in the sidebar.
-3. Paste the URL into **Apps Script Web App URL** and save.
-4. The yellow DRAFT banner stops saying the backend is unconnected.
+3. There are **two** fields, labelled with the spreadsheet names. Paste each URL into
+   its matching field and save.
+4. The banner stops saying the backend is unconnected. If you fill in only one, the
+   banner says **"Partly connected"** and names which half is live — that is deliberate,
+   so nobody assumes the other form is being recorded.
 
-## Step 5 — Test it before trusting it
+## Step 5 — Test both before trusting either
 
-Submit one real Jumpkit check with a deliberately unchecked item, and one Safety
-check. Confirm two things:
+Submit one real Jumpkit check with a deliberately unchecked item, and one Safety check.
+Confirm three things:
 
-- a row appears in each sheet tab, and
-- the `Missing` column actually lists the item you left unchecked.
+- a row appears in **Bike Jumpkit Check**, and a row appears in **Bike Safety Check**,
+- neither row landed in the *other* spreadsheet, and
+- the `Missing Items` column actually lists the item you left unchecked.
 
 **Do not skip this.** Because of how the browser sends the data, the site says
-"Submitted ✓" even if the script rejected it — see the warning in
+"Sent ✓" even if the script rejected it — see the warning in
 [How locked down is this?](#how-locked-down-is-this).
 
 ---
@@ -82,16 +105,24 @@ check. Confirm two things:
 ```javascript
 /**
  * Bike Ops — form intake for the CMU EMS bike program.
- * Receives submissions from the Bike Ops site and appends them to this spreadsheet.
+ * Receives submissions from the Bike Ops site and appends them to THIS spreadsheet.
  *
- * Two tabs, created automatically on first submission:
- *   Equipment Checks  <- jumpkit / bag checks
- *   Bike Checks       <- pre-ride bike safety checks
+ * The same script goes into both spreadsheets. The ONLY line you change between the
+ * two copies is EXPECTED_FORM directly below.
  */
+
+// 'jumpkit' in the Bike Jumpkit Check spreadsheet.
+// 'safety'  in the Bike Safety Check spreadsheet.
+//
+// This is a guard, not a preference. Without it, pasting the wrong URL into Site
+// Settings would file safety checks into the jumpkit spreadsheet and create a
+// stray tab to hold them — wrong, and silent, because the site cannot read the
+// reply. With it, the mismatch is refused and logged where you can find it.
+var EXPECTED_FORM = 'jumpkit';
 
 var SHEETS = {
   jumpkit: {
-    name: 'Equipment Checks',
+    name: 'Jumpkit Checks',
     headers: ['Submitted At', 'First Name', 'Last Name', 'Bag', 'Verdict',
               'Anything Missing?', 'Missing Items', 'Expiring / Expired',
               'Expiration Dates', 'Notes']
@@ -111,6 +142,13 @@ function doPost(e) {
 
     var conf = SHEETS[p.form];
     if (!conf) return ok('unknown form: ' + p.form);
+
+    if (p.form !== EXPECTED_FORM) {
+      console.error('Bike Ops: this deployment expects "' + EXPECTED_FORM +
+        '" but received "' + p.form + '". The wrong Web App URL is almost ' +
+        'certainly pasted into Site Settings. Nothing was written.');
+      return ok('wrong spreadsheet for form: ' + p.form);
+    }
 
     var sheet = getSheet(conf);
     var missing = p.missing || [];
@@ -224,6 +262,9 @@ Editing the code is not enough — you must ship a new version:
 
 **Deploy → Manage deployments → ✏️ (edit) → Version: New version → Deploy**
 
+Do this in **both** spreadsheets. They hold independent copies of the script, so a fix
+applied to one leaves the other running the old code.
+
 The URL stays the same, so you do **not** need to update the site. If you instead
 pick "New deployment" you get a *different* URL and the site keeps posting to the
 old one — a common way to sit there wondering why nothing is arriving.
@@ -247,7 +288,7 @@ in as the account, and cannot touch anything else in the Drive.
   has no token check to give a false sense of security.
 - **Submissions are fire-and-forget.** The site posts with `mode:'no-cors'`, which
   dodges a CORS problem but also means the browser cannot read the reply. The site
-  shows "Submitted ✓" as soon as the request leaves — *even if the script errored
+  shows "Sent ✓" as soon as the request leaves — *even if the script errored
   or rejected it*. That is why Step 5 says to verify a real row appears.
 - **The Bike Manager passphrase is not a security boundary.** It hides manager
   controls from casual visitors. Anyone who opens devtools can flip it on. Do not
@@ -285,9 +326,17 @@ request never landed — recheck the URL in Site Settings ends in `/exec`, and t
 you re-deployed as a **new version** after editing. If entries show "Failed", open
 one; `console.error` logs the reason and the raw body.
 
-**Rows land in the wrong tab.** The tab is chosen by `payload.form`, which is
-`jumpkit` or `safety`. Don't rename the tabs by hand — change `SHEETS[...].name`
-and re-deploy, or the script just recreates the originals.
+**Nothing arrives, and Executions shows "wrong spreadsheet for form".** The two Web
+App URLs are swapped in Site Settings. Open the failed execution to see which form it
+received, and put that URL in the other field.
+
+**Rows land in the wrong tab within a spreadsheet.** The tab is chosen by
+`payload.form`. Don't rename tabs by hand — change `SHEETS[...].name` and re-deploy,
+or the script just recreates the originals.
+
+**I edited the script and only one spreadsheet changed.** There are two independent
+copies. Every script edit has to be pasted and re-deployed in *both*, unless it is the
+`EXPECTED_FORM` line, which is meant to differ.
 
 **"Missing Items" is empty but the verdict says incomplete.** The verdict text
 comes from the site; `missing` is computed from unchecked boxes. If they disagree,

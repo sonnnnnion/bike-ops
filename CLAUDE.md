@@ -32,6 +32,14 @@ rather than reading it whole; re-read the exact region immediately before each E
   syncs `location.hash`, so every view is deep-linkable for QR codes.
 - Manager-only controls use class `webonly`, shown by `setWeb(on)` toggling `.is-web`
   on `<body>`. **Reuse this pattern — do not add a second mechanism.**
+- Bikes are keyed by `id` (`curtain`/`ceiling`/`oosbike` — the storage location).
+  `name` is manager-editable, so **never match a bike by name**; `DB.issues[].bike`
+  and `DB.checkLog[].bike` both hold ids.
+- Dialogs go through `uiAlert` / `uiConfirm` / `uiPrompt` / `uiForm` (promise-based,
+  in `openModal`). **No `window.alert/confirm/prompt`** — the native ones render as
+  "sonnnnnion.github.io says", which reads as a browser warning, not as the site.
+- Two backends, not one: `DB.api.jumpkit` and `DB.api.safety` point at two separate
+  spreadsheets. `DB.apiUrl` is legacy and is migrated on load.
 
 ## Things that bite
 
@@ -41,6 +49,12 @@ rather than reading it whole; re-read the exact region immediately before each E
   returns *tomorrow* after 8pm EDT. Use `todayISO()`.
 - The sidebar must not be `display:none` on mobile. QR codes are scanned on phones,
   so hiding nav strands anyone who lands on a form deep link.
+- `.webonly{display:none}` is declared early, so **any later rule setting `display` at
+  equal specificity leaks manager controls into member view**. After any gating change,
+  sweep all views in member view for `.webonly` elements with `offsetParent !== null`.
+  Expected: 0.
+- The global `label{}` rule is uppercase/tracked/faint. Any `<label>` holding a
+  sentence (e.g. `.mcheck`) must undo `text-transform` and `letter-spacing`.
 
 ## Constraints
 
@@ -49,6 +63,7 @@ rather than reading it whole; re-read the exact region immediately before each E
   site. Never commit those files or paste their contents anywhere.
 - The site is public: it cannot hold a secret. The Bike Manager passcode hides manager
   controls from casual visitors; it is not a security boundary. See `SETUP-BACKEND.md`.
-- Bike names are pending a GBM vote — do not invent them.
+- Bike names: **Diane** (curtain), **Kevin** (ceiling), **Cheryl** (OOS bike), assigned
+  by Michaela 2026-07-25 and editable in manager mode. Do not invent *new* ones.
 - Weather thresholds are DRAFT pending EMS leadership sign-off, and labelled as such
   in the UI. Keep that label until Michaela says otherwise.

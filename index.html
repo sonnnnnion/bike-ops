@@ -173,6 +173,12 @@
   .webonly{display:none}
   body.is-web .webonly{display:inline-flex}
   body.is-web .webonly.blockonly{display:block}
+  /* The Site Settings nav item needs `flex`, which neither rule above gives it.
+     It used to get that from an inline style set in setWeb() — a SECOND gating
+     mechanism, which meant anything toggling `is-web` without going through
+     setWeb (devtools, a future caller) left the item visible in member view.
+     Stated here instead, so `.is-web` remains the only switch. */
+  body.is-web .sb-item.webonly{display:flex}
 
   .tag{font-family:var(--font-mono);font-size:10.5px;text-transform:uppercase;letter-spacing:.05em;border:1.5px solid var(--rule);padding:3px 7px;background:#fff;display:inline-block}
   .tag.crit{background:var(--oos);color:#fff;border-color:transparent}
@@ -252,13 +258,24 @@
   /* ---------- collapsible (bylaws) ---------- */
   .acc{border:1.5px solid var(--rule);background:var(--card);margin-bottom:10px;box-shadow:var(--shadow-sm)}
   .acc .acchead{display:flex;align-items:center;gap:10px;padding:12px 14px;cursor:pointer;font-weight:700;font-size:15px}
-  .acc .acchead .num{font-family:var(--font-mono);font-size:12px;color:#fff;background:var(--brand);width:24px;height:24px;display:grid;place-items:center;flex:0 0 auto}
+  /* min-width, not width — the article numeral is roman, so VIII must be able to
+     widen the badge instead of overflowing a 24px box. */
+  .acc .acchead .num{font-family:var(--font-mono);font-size:11.5px;letter-spacing:.04em;color:#fff;
+    background:var(--brand);min-width:30px;height:24px;padding:0 6px;display:grid;place-items:center;
+    flex:0 0 auto;border-radius:var(--r-sm)}
   .acc .acchead .chev{margin-left:auto;font-family:var(--font-mono);color:var(--ink-faint);transition:transform .2s var(--ease)}
   .acc.open .acchead .chev{transform:rotate(90deg)}
   .acc .accbody{display:none;padding:0 14px 14px 48px;font-size:13.5px;color:var(--ink-soft)}
   .acc.open .accbody{display:block}
   .acc .accbody ul{margin:0;padding-left:18px}
   .acc .accbody li{margin-bottom:5px}
+  /* Clauses: hanging section number, so the text of every clause aligns on one
+     left edge the way a printed governing document does. */
+  .acc .accbody ol.clauses{margin:0;padding:0;list-style:none}
+  .acc .accbody ol.clauses li{display:flex;gap:11px;align-items:baseline;margin-bottom:9px;line-height:1.55}
+  .acc .accbody .cnum{font-family:var(--font-mono);font-size:11.5px;color:var(--brand);
+    flex:0 0 auto;min-width:34px;font-weight:600}
+  .acc .accbody .ctext{flex:1}
   .acc .accbody textarea{min-height:130px;font-size:13px;font-family:var(--font-body)}
 
   /* ---------- lectures ---------- */
@@ -398,6 +415,18 @@
   .sharenote{border:1px solid #E8D3A8;border-radius:var(--radius);background:var(--warn-wash);
     color:#7a4d00;font-size:13px;line-height:1.55;padding:12px 15px;margin-bottom:18px}
   .sharenote b{display:block;margin-bottom:3px}
+  /* Same rule as .sharenote above: no `display` here. The gate is .row.webonly. */
+  .bikeacts{border-top:1px solid var(--rule-soft);padding-top:12px;margin-top:14px}
+
+  /* Pre-ride reminder at the foot of the jumpkit check. Deliberately louder than
+     a hint and quieter than the verdict — it is a prompt to go do something
+     physical, not a judgement on what was just filled in. */
+  .rideprompt{margin-top:18px;padding:15px 18px;border:1.5px solid var(--brand);
+    border-left-width:5px;border-radius:var(--radius);background:var(--brand-tint)}
+  .rideprompt b{font-family:var(--font-display);font-size:15.5px;color:var(--brand-deep)}
+  .rideprompt ul{margin:9px 0 0;padding-left:20px}
+  .rideprompt li{font-size:14px;color:var(--ink-soft);margin-bottom:4px}
+  .rideprompt p{font-size:13px;color:var(--ink-mute);margin:10px 0 0}
 
   /* ---------- per-bike issue list on the fleet cards ---------- */
   .isslist{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:9px}
@@ -442,6 +471,46 @@
     .fstats{gap:26px}
     .statnum{font-size:27px}
   }
+
+  /* ---------- in-site dialog ----------
+     Replaces window.alert/confirm/prompt. The native ones render as
+     "sonnnnnion.github.io says", which reads like a browser warning rather than
+     part of the site, and they cannot show a checklist — which mark-out-of-service
+     needs. ---- */
+  .modal-wrap{position:fixed;inset:0;z-index:200;display:flex;align-items:center;justify-content:center;
+    padding:20px;background:rgba(36,26,29,.44);backdrop-filter:blur(2px);
+    animation:mfade .16s var(--ease-out)}
+  .modal-wrap[hidden]{display:none}
+  @keyframes mfade{from{opacity:0}to{opacity:1}}
+  @keyframes mrise{from{opacity:0;transform:translateY(10px) scale(.985)}to{opacity:1;transform:none}}
+  .modal{background:var(--card);border:1px solid var(--rule);border-radius:var(--r-lg);
+    box-shadow:var(--shadow-lg);width:min(520px,100%);max-height:86vh;display:flex;flex-direction:column;
+    animation:mrise .2s var(--ease-out)}
+  .modal-head{padding:20px 22px 0}
+  .modal-head h3{font-family:var(--font-display);font-size:20px;margin:0 0 4px;color:var(--ink)}
+  .modal-head .msub{font-size:13.5px;color:var(--ink-mute);margin:0;white-space:pre-line}
+  .modal-body{padding:16px 22px 4px;overflow-y:auto}
+  .modal-body:empty{display:none}
+  .modal-foot{padding:16px 22px 20px;display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap}
+  .modal-foot .btn{min-width:88px;justify-content:center}
+  /* Checklist used by mark-out-of-service; mirrors the OOS tool's vocabulary. */
+  .mchecks{display:flex;flex-direction:column;gap:2px;margin:0 0 4px}
+  .mcheck{display:flex;gap:10px;align-items:flex-start;padding:9px 10px;border-radius:var(--radius);
+    cursor:pointer;transition:background .14s var(--ease)}
+  .mcheck:hover{background:var(--bg-2)}
+  .mcheck input{margin:2px 0 0;flex:none;width:16px;height:16px;accent-color:var(--brand)}
+  /* The global `label` rule is uppercase/tracked/faint for form field captions.
+     A criterion is a sentence, not a caption, so that styling is undone here —
+     without this the checklist reads as SHOUTED SMALL CAPS. */
+  .mcheck .mct{font-size:14px;color:var(--ink-soft);line-height:1.45;
+    text-transform:none;letter-spacing:0;font-weight:500}
+  .mgroup{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;
+    color:var(--ink-faint);margin:12px 0 4px}
+  .mgroup:first-child{margin-top:0}
+  @media (max-width:520px){
+    .modal-foot{justify-content:stretch}
+    .modal-foot .btn{flex:1}
+  }
 </style>
 </head>
 <body>
@@ -477,7 +546,7 @@
     <div class="sb-item" data-view="bylaws"><span class="ic">§</span>Bylaws</div>
     <div class="sb-item" data-view="docs"><span class="ic">◈</span>Role &amp; Boundaries</div>
     <div class="sb-item" data-view="checks"><span class="ic">▩</span>QR Codes</div>
-    <div class="sb-item webonly blockonly" data-view="settings" style="display:none"><span class="ic">⚙</span>Site Settings</div>
+    <div class="sb-item webonly" data-view="settings"><span class="ic">⚙</span>Site Settings</div>
     <div class="sb-note" id="sbNote">DRAFT TEMPLATE<br>Backend not yet connected</div>
   </nav>
 
@@ -537,7 +606,7 @@
             <h3>Verdict</h3>
             <div id="verdict" class="verdict ok"><span class="big">In Service ✓</span></div>
             <p class="mt-sm" style="font-size:12.5px;color:var(--ink-faint)">Any <b>critical</b> item → Out of Service. Any <b>warning</b> only → Needs manager review. Nothing → In Service.</p>
-            <button class="btn sm mt webonly" onclick="alert('Applying a verdict to a specific bike needs the Sheet backend — see Site Settings.')">Apply to a bike</button>
+            <button class="btn sm mt webonly" onclick="uiAlert('Applying a verdict to a specific bike needs the Sheet backend — see Site Settings.')">Apply to a bike</button>
           </div>
         </div>
       </div>
@@ -632,7 +701,7 @@
           <div class="checkline" style="border:0;padding:6px 0"><span class="lbl">▸ Reseat a dropped chain</span></div>
           <div class="checkline" style="border:0;padding:6px 0"><span class="lbl">▸ Inflate tires to correct PSI</span></div>
           <div class="checkline" style="border:0;padding:6px 0"><span class="lbl">▸ Tighten seat &amp; handlebars</span></div>
-          <button class="btn sm mt webonly" onclick="alert('Adding how-to guides comes with the Sheet backend.')">+ Add guide</button>
+          <button class="btn sm mt webonly" onclick="uiAlert('Adding how-to guides comes with the Sheet backend.')">+ Add guide</button>
         </div>
       </div>
     </section>
@@ -646,16 +715,16 @@
           <thead><tr><th>Item</th><th>Category</th><th>On hand</th><th>Status</th><th></th></tr></thead>
           <tbody id="invRows"></tbody>
         </table>
-        <button class="btn sm mt solid webonly" onclick="alert('Adding inventory items comes with the Sheet backend.')">+ Add item</button>
+        <button class="btn sm mt solid webonly" onclick="addInv()">+ Add item</button>
       </div>
     </section>
 
     <!-- ===== BYLAWS ===== -->
     <section class="view" data-view="bylaws">
       <h2 class="view-title">Bylaws</h2>
-      <p class="view-sub">What the Bike Manager role covers, by duty area. Editable in Bike Manager mode so it stays current across handoffs.</p>
+      <p class="view-sub">The standing duties of the Bike Manager, by article. Amendable in Bike Manager mode so the document stays current across handoffs.</p>
       <div id="bylawList"></div>
-      <button class="btn sm mt solid webonly" onclick="addBylaw()">+ Add section</button>
+      <button class="btn sm mt solid webonly" onclick="addBylaw()">+ Add article</button>
     </section>
 
     <!-- ===== ROLE & BOUNDARIES ===== -->
@@ -701,6 +770,124 @@
 function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,function(c){
   return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];});}
 function uid(p){return (p||'id')+'-'+Math.random().toString(36).slice(2,8);}
+
+/* ---------- in-site dialogs ----------
+   Everything here replaces window.alert/confirm/prompt. Three reasons the native
+   ones had to go: they announce themselves as "sonnnnnion.github.io says", which
+   reads to a member like a browser security warning rather than the site talking;
+   they cannot render a checklist, which mark-out-of-service needs; and they are
+   unstyled, so the one moment the site interrupts you is the one moment it stops
+   looking like itself.
+
+   All four return a Promise, so callers `await`/`.then()` instead of assuming a
+   value is on hand. Only one dialog can be open at a time — that matches the
+   native behaviour these replace and keeps focus handling simple. ---- */
+var _modalHost=null,_modalPrev=null;
+function _closeModal(resolve,value){
+  if(!_modalHost) return;
+  document.removeEventListener('keydown',_modalKey,true);
+  _modalHost.remove(); _modalHost=null;
+  if(_modalPrev&&_modalPrev.focus) _modalPrev.focus();
+  _modalPrev=null;
+  resolve(value);
+}
+var _modalEsc=null,_modalEnter=null;
+function _modalKey(e){
+  if(e.key==='Escape'&&_modalEsc){e.preventDefault();_modalEsc();}
+  // Enter submits, except in a textarea where it has to stay a newline.
+  else if(e.key==='Enter'&&_modalEnter&&e.target.tagName!=='TEXTAREA'){e.preventDefault();_modalEnter();}
+}
+// opts: {title, message, body, okText, cancelText, danger, focus, onOk}
+// onOk reads the body and returns the resolved value; returning undefined keeps
+// the dialog open, which is how validation refuses to close on empty input.
+function openModal(opts){
+  return new Promise(function(resolve){
+    if(_modalHost) _closeModal(function(){},null);
+    _modalPrev=document.activeElement;
+    var w=document.createElement('div'); w.className='modal-wrap';
+    w.innerHTML='<div class="modal" role="dialog" aria-modal="true" aria-labelledby="modalTitle">'+
+      '<div class="modal-head"><h3 id="modalTitle">'+esc(opts.title||'')+'</h3>'+
+      (opts.message?'<p class="msub">'+esc(opts.message)+'</p>':'')+'</div>'+
+      '<div class="modal-body">'+(opts.body||'')+'</div>'+
+      '<div class="modal-foot">'+
+        (opts.cancelText?'<button type="button" class="btn ghost" data-mcancel>'+esc(opts.cancelText)+'</button>':'')+
+        '<button type="button" class="btn solid'+(opts.danger?' danger':'')+'" data-mok>'+esc(opts.okText||'OK')+'</button>'+
+      '</div></div>';
+    document.body.appendChild(w); _modalHost=w;
+
+    var cancel=function(){_modalEsc=null;_modalEnter=null;_closeModal(resolve,opts.cancelValue===undefined?null:opts.cancelValue);};
+    var ok=function(){
+      var v=opts.onOk?opts.onOk(w):true;
+      if(v===undefined) return;            // validation refused — stay open
+      _modalEsc=null;_modalEnter=null;_closeModal(resolve,v);
+    };
+    w.querySelector('[data-mok]').onclick=ok;
+    var c=w.querySelector('[data-mcancel]'); if(c) c.onclick=cancel;
+    // Clicking the scrim cancels, but only the scrim itself — not a click that
+    // started inside the dialog and drifted out while selecting text.
+    w.addEventListener('mousedown',function(e){if(e.target===w) cancel();});
+    _modalEsc=opts.cancelText?cancel:ok; _modalEnter=ok;
+    document.addEventListener('keydown',_modalKey,true);
+    var f=opts.focus?w.querySelector(opts.focus):w.querySelector('[data-mok]');
+    if(f&&f.focus) f.focus();
+    if(f&&f.select) f.select();
+  });
+}
+function uiAlert(msg,title){
+  return openModal({title:title||'Heads up',message:msg,okText:'Got it'});
+}
+function uiConfirm(msg,title,opts){
+  opts=opts||{};
+  return openModal({title:title||'Are you sure?',message:msg,
+    okText:opts.okText||'Yes',cancelText:opts.cancelText||'Cancel',
+    danger:opts.danger,cancelValue:false,onOk:function(){return true;}});
+}
+// Resolves to the string, or null if cancelled. Empty input is refused rather
+// than resolved as '' — every caller here treats '' as "user cancelled" anyway.
+function uiPrompt(msg,def,title,opts){
+  opts=opts||{};
+  var multi=!!opts.multiline, allowEmpty=!!opts.allowEmpty;
+  var field=multi
+    ? '<textarea id="mPromptIn" rows="3">'+esc(def||'')+'</textarea>'
+    : '<input type="text" id="mPromptIn" value="'+esc(def||'')+'">';
+  return openModal({title:title||'',message:msg,
+    body:'<div class="field">'+field+'</div>',
+    okText:opts.okText||'Save',cancelText:'Cancel',focus:'#mPromptIn',
+    onOk:function(w){
+      var v=w.querySelector('#mPromptIn').value;
+      if(!allowEmpty&&!v.trim()) return undefined;   // refuse to close on empty
+      return v;
+    }});
+}
+// Several editors used to fire three or four prompts back to back, so you could
+// not see what you had already typed and a cancel four dialogs in lost the lot.
+// fields: [{key,label,value,type:'text'|'textarea'|'number'|'url',hint,required}]
+// Resolves to an object keyed by `key`, or null if cancelled.
+function uiForm(title,message,fields,opts){
+  opts=opts||{};
+  var body=fields.map(function(f){
+    var id='mf-'+f.key;
+    var input;
+    if(f.type==='textarea') input='<textarea id="'+id+'" rows="'+(f.rows||3)+'">'+esc(f.value||'')+'</textarea>';
+    else if(f.type==='select') input='<select id="'+id+'">'+(f.options||[]).map(function(o){
+      return '<option value="'+esc(o.v)+'"'+(String(o.v)===String(f.value)?' selected':'')+'>'+esc(o.t)+'</option>';}).join('')+'</select>';
+    else input='<input type="'+(f.type||'text')+'" id="'+id+'" value="'+esc(f.value==null?'':f.value)+'">';
+    return '<div class="field"><label for="'+id+'">'+esc(f.label)+(f.required?'':' <span style="text-transform:none;letter-spacing:0;font-weight:500">(optional)</span>')+'</label>'+
+      input+(f.hint?'<p class="hint">'+esc(f.hint)+'</p>':'')+'</div>';
+  }).join('');
+  return openModal({title:title,message:message,body:body,
+    okText:opts.okText||'Save',cancelText:'Cancel',focus:'#mf-'+fields[0].key,
+    onOk:function(w){
+      var out={},bad=null;
+      fields.forEach(function(f){
+        var v=w.querySelector('#mf-'+f.key).value;
+        if(f.required&&!String(v).trim()&&!bad) bad=w.querySelector('#mf-'+f.key);
+        out[f.key]=v;
+      });
+      if(bad){bad.focus();return undefined;}          // stay open, land on the gap
+      return out;
+    }});
+}
 // Local calendar date, NOT toISOString() — that converts to UTC and returns
 // tomorrow's date any evening after 8pm EDT, which would misdate submissions.
 function todayISO(){var d=new Date();
@@ -964,7 +1151,14 @@ function qrSVG(text,px){
 /* ---------- default content (seed; editable in manager mode) ---------- */
 var DEFAULTS={
   version:3,
-  apiUrl:'',            // Apps Script Web App URL — set in Site Settings
+  // One Apps Script Web App URL per form, because the two checks live in two
+  // SEPARATE spreadsheets ("Bike Jumpkit Check" and "Bike Safety Check"), not in
+  // two tabs of one file. They are filled by different people on different
+  // cadences and are read separately, so they stay separate; a single endpoint
+  // would have to demultiplex by a `form` field and could not be handed to
+  // someone as "here is the jumpkit sheet".
+  api:{jumpkit:'',safety:''},
+  apiUrl:'',            // legacy single endpoint — migrated into `api` on load
   // Completed pre-ride checks, newest first. A bike's live status is derived
   // from its most recent entry here (see statusOf), so nobody hand-sets it.
   // The `status`/`note` on each bike below are only the seed/fallback for a
@@ -975,17 +1169,22 @@ var DEFAULTS={
   // check and nothing could warn anyone *before* the bag was opened. Persisting
   // them is what makes the expiry heads-up on the jumpkit view possible.
   expiry:{},
+  // Named by Michaela 2026-07-25. `id` is the storage location the bike came
+  // from and is what everything else keys on; `name` is a label a manager can
+  // change without breaking a single reference.
   bikes:[
-    {id:'curtain', name:'Curtain Bike',  status:'warn', note:'Needs air in tires; bell mounted backwards; side light uncharged.'},
-    {id:'ceiling', name:'Ceiling Bike',  status:'oos',  note:'Still on the rope/hook system. Latch will not stay unlocked — unsafe to retrieve alone.'},
-    {id:'oosbike', name:'Third Bike',    status:'oos',  note:'Front brake needs bleeding; missing rack bolt (~50mm) and spacer (~30mm).'}
+    {id:'curtain', name:'Diane',  status:'warn', note:'Needs air in tires; bell mounted backwards; side light uncharged.'},
+    {id:'ceiling', name:'Kevin',  status:'oos',  note:'Still on the rope/hook system. Latch will not stay unlocked — unsafe to retrieve alone.'},
+    {id:'oosbike', name:'Cheryl', status:'oos',  note:'Front brake needs bleeding; missing rack bolt (~50mm) and spacer (~30mm).'}
   ],
+  // `bike` is a bike ID, never a name — renaming a bike must not orphan its
+  // issues. issuesFor() still accepts a stored name for rows saved before this.
   issues:[
-    {bike:'Ceiling Bike', problem:'Ceiling latch will not stay unlocked', sev:'crit', by:'bike manager', date:'Jul 23'},
-    {bike:'Third Bike',   problem:'Front brake needs bleeding',           sev:'crit', by:'bike manager', date:'Jul 23'},
-    {bike:'Third Bike',   problem:'Rack missing bolt + spacer',           sev:'warn', by:'bike manager', date:'Jul 23'},
-    {bike:'Curtain Bike', problem:'Tires low / need air',                 sev:'warn', by:'bike manager', date:'Jul 23'},
-    {bike:'Curtain Bike', problem:'Bell mounted backwards',               sev:'minor',by:'bike manager', date:'Jul 23'}
+    {bike:'ceiling', problem:'Ceiling latch will not stay unlocked', sev:'crit', by:'bike manager', date:'Jul 23'},
+    {bike:'oosbike', problem:'Front brake needs bleeding',           sev:'crit', by:'bike manager', date:'Jul 23'},
+    {bike:'oosbike', problem:'Rack missing bolt + spacer',           sev:'warn', by:'bike manager', date:'Jul 23'},
+    {bike:'curtain', problem:'Tires low / need air',                 sev:'warn', by:'bike manager', date:'Jul 23'},
+    {bike:'curtain', problem:'Bell mounted backwards',               sev:'minor',by:'bike manager', date:'Jul 23'}
   ],
   inventory:[
     {item:'Kryptonite keys', cat:'Locks/Keys',  qty:'2', status:'ok'},
@@ -1122,13 +1321,44 @@ var DEFAULTS={
     {id:'L5', title:'Bike Priority',   embed:'', edit:'', slide:0},
     {id:'L6', title:'Practical Exam',  embed:'', edit:'', slide:0}
   ],
+  // Written as a governing document rather than a task list: each line is a
+  // clause, stated as an obligation of the office and not of whoever currently
+  // holds it. Rendered as numbered sections (Article N, §N.M) by renderBylaws.
+  // One line per clause — the renderer splits on newline.
   bylaws:[
-    {id:'b1', title:'Bike Maintenance', body:'Check both bikes on a regular basis.\nCoordinate tune-ups or repairs when needed.\nKeep basic bike maintenance supplies organized and available.\nReport major repair needs to the appropriate officer before the bikes become unusable.'},
-    {id:'b2', title:'Bike Equipment Organization', body:'Keep bike storage areas clean and accessible.\nIdentify missing or low bike supplies.\nMaintain a list of bike parts or supplies that may need to be ordered.'},
-    {id:'b3', title:'Locks and Keys', body:'Make sure each bike has a working lock.\nMake sure bikes are locked properly when stored or left unattended.\nKeep track of bike lock keys; order replacement keys through Kryptonite when needed.'},
-    {id:'b4', title:'Bike Training', body:'Help organize bike training when needed.\nMake sure members understand safe bike use expectations.\nSupport updates to the bike lecture or training materials.\nIdentify areas where bike training should be improved.\nMake sure members know how to inspect bikes before use.\nMake sure members know how to report bike problems after use.'},
-    {id:'b5', title:'Bike Repair and Tune-Ups', body:'Determine when a bike needs outside repair.\nCheck whether repairs can be handled with existing office supplies first.\nFind an appropriate bike shop when professional maintenance is needed.\nPrioritize shops that are convenient but also capable of servicing public safety or operational bikes.\nTrack when tune-ups or major repairs are completed.\nMaintain notes on recurring bike problems.\nRecommend replacement if a bike becomes unreliable, unsafe, or too expensive to maintain.'},
-    {id:'b6', title:'Bike Improvement Projects', body:'Bike check forms and pre-ride inspection checklist (this site).\nImproving the bike lecture and training program.\nA bike maintenance schedule.\nLabeling bike supplies and maintenance tools.\nA better system for tracking locks and keys.\nBetter storage options for bikes and bike supplies.\nResearching bike shops better suited for public safety maintenance.\nRecommending accessories: lights, bells, bags, repair kits, reflective materials.\nRecommending replacement bikes or upgrades if current bikes are no longer reliable.'}
+    {id:'b1', title:'Maintenance of Bicycles', body:
+      'The Bike Manager shall inspect every bicycle in the fleet no less than once per week, whether or not the bicycle has been ridden.\n'+
+      'The Bike Manager shall record each inspection through the Bike Safety Check, which constitutes the official record of a bicycle’s condition.\n'+
+      'The Bike Manager shall coordinate tune-ups and repairs as the condition of a bicycle requires.\n'+
+      'The Bike Manager shall keep basic maintenance supplies organized, accessible, and in serviceable condition.\n'+
+      'The Bike Manager shall report any repair need exceeding routine maintenance to the appropriate officer before the bicycle becomes unusable.'},
+    {id:'b2', title:'Equipment and Storage', body:
+      'The Bike Manager shall keep all bicycle storage areas clean, accessible, and free of obstruction.\n'+
+      'The Bike Manager shall identify supplies that are missing, depleted, or approaching depletion.\n'+
+      'The Bike Manager shall maintain a current list of parts and supplies requiring order, and shall present that list to the appropriate officer.'},
+    {id:'b3', title:'Locks and Keys', body:
+      'Every bicycle shall be issued a working lock. A bicycle without one shall not be considered available for service.\n'+
+      'Every bicycle shall be secured whenever it is stored or left unattended.\n'+
+      'The Bike Manager shall maintain an accounting of all lock keys and shall order replacements through the manufacturer when a key is lost or damaged.'},
+    {id:'b4', title:'Training and Competency', body:
+      'The Bike Manager shall organize bicycle training as needed to maintain member competency.\n'+
+      'No member shall operate a bicycle on a call before completing the bike lecture and demonstrating competency.\n'+
+      'The Bike Manager shall ensure that every member is able to inspect a bicycle before use and to report a defect after use.\n'+
+      'The Bike Manager shall maintain and revise the bike lecture and supporting training materials.\n'+
+      'The Bike Manager shall identify deficiencies in training and recommend corrections.'},
+    {id:'b5', title:'Repair and Professional Service', body:
+      'The Bike Manager shall determine whether a repair may be completed in-house before referring it outside.\n'+
+      'Where professional service is required, the Bike Manager shall select a shop competent to service public-safety or operational bicycles, giving weight to proximity only after competency is established.\n'+
+      'The Bike Manager shall record the date and nature of every tune-up and major repair.\n'+
+      'The Bike Manager shall maintain notes on recurring defects for the purpose of identifying a failing bicycle.\n'+
+      'The Bike Manager shall recommend replacement of any bicycle that becomes unreliable, unsafe, or uneconomical to maintain.'},
+    {id:'b6', title:'Continuing Improvement', body:
+      'The Bike Manager shall maintain the bicycle check forms and the pre-ride inspection checklist published on this site.\n'+
+      'The Bike Manager shall maintain a bicycle maintenance schedule.\n'+
+      'The Bike Manager shall pursue improvements to supply labeling, key tracking, and bicycle storage.\n'+
+      'The Bike Manager shall research shops better suited to public-safety maintenance.\n'+
+      'The Bike Manager may recommend accessories, including lights, bells, bags, repair kits, and reflective materials.\n'+
+      'The Bike Manager may recommend replacement bicycles or upgrades where the current fleet no longer meets operational need.'}
   ]
 };
 
@@ -1151,6 +1381,13 @@ function loadDB(){
     else if(want&&typeof want==='object'){ if(got&&typeof got==='object'&&!Array.isArray(got)) base[k]=got; }
     else if(typeof got===typeof want){ base[k]=got; }
   });
+  // Migrate the old single endpoint. It only ever pointed at one Apps Script, and
+  // whichever Sheet that was, it was receiving both forms — so it is carried onto
+  // both slots rather than guessed at, and the manager re-points one of them.
+  if(base.apiUrl&&!base.api.jumpkit&&!base.api.safety){
+    base.api={jumpkit:base.apiUrl,safety:base.apiUrl};
+    base.apiUrl='';
+  }
   return base;
 }
 function saveDB(){
@@ -1158,11 +1395,15 @@ function saveDB(){
   catch(e){console.warn('Could not save locally:',e);}
 }
 function resetDB(){
-  if(!confirm('Reset ALL site content back to the built-in defaults? Any edits you made here will be lost.')) return;
-  try{localStorage.removeItem(DB_KEY);}catch(e){}
-  DB=JSON.parse(JSON.stringify(DEFAULTS));
-  renderAll();
-  alert('Content reset to defaults.');
+  uiConfirm('This puts every form, criterion, video, lecture and bylaw back to the built-in defaults. '+
+            'Completed checks and bike status go with them. Anything you have edited on this device is lost.',
+            'Reset all site content?',{okText:'Reset everything',danger:true}).then(function(yes){
+    if(!yes) return;
+    try{localStorage.removeItem(DB_KEY);}catch(e){}
+    DB=JSON.parse(JSON.stringify(DEFAULTS));
+    renderAll();
+    uiAlert('Content is back to the built-in defaults.','Reset complete');
+  });
 }
 
 /* ============================================================
@@ -1229,18 +1470,33 @@ function setWeb(on){
   pill.textContent=on?'Bike Manager':'Member view';
   pill.className='role-pill'+(on?' web':'');
   document.getElementById('webBtn').textContent=on?'Exit manager':'🔒 Bike Manager';
-  document.querySelector('[data-view="settings"]').style.display=on?'flex':'none';
+  // The Site Settings nav item is gated purely by `.is-web` in CSS — see the
+  // rule next to .webonly. Nothing to set here.
   if(!on&&location.hash.slice(1)==='settings') go(HOME);
   renderAll();
 }
 function toggleWeb(){
   if(document.body.classList.contains('is-web')){setWeb(false);return;}
-  var p=prompt('Bike Manager passcode:');
-  if(p===null) return;
-  sha256Hex(p.trim()).then(function(h){
-    if(h===null){alert('This browser cannot verify the passcode (needs a secure context).');return;}
-    if(h===MGR_HASH) setWeb(true);
-    else alert('Incorrect passcode.');
+  // type=password so the code is not left legible on a shared bike-room screen.
+  openModal({
+    title:'Bike Manager',
+    message:'Enter the manager passcode to show the controls for editing forms, criteria and bike status.',
+    body:'<div class="field"><label for="mPass">Passcode</label>'+
+         '<input type="password" id="mPass" autocomplete="off"></div>'+
+         '<p class="hint" id="mPassErr" style="color:var(--oos);display:none">That passcode is not right.</p>',
+    okText:'Unlock',cancelText:'Cancel',focus:'#mPass',
+    onOk:function(w){
+      var v=w.querySelector('#mPass').value;
+      if(!v.trim()) return undefined;
+      return v.trim();
+    }
+  }).then(function(p){
+    if(p===null) return;
+    return sha256Hex(p).then(function(h){
+      if(h===null) return uiAlert('This browser cannot verify the passcode — it needs a secure context (https or localhost).','Cannot verify');
+      if(h===MGR_HASH) setWeb(true);
+      else return uiAlert('That passcode is not right.','Incorrect passcode').then(toggleWeb);
+    });
   });
 }
 
@@ -1376,15 +1632,30 @@ function renderOOS(){
   calcOOS();
 }
 function addOOS(){
-  var t=prompt('New criterion (what is wrong with the bike)?');
-  if(!t||!t.trim()) return;
-  var parts=prompt('Which bike part does this highlight?\nOptions: '+Object.keys(PART_LABEL).join(', '),'frame');
-  DB.oos.push({id:uid('o'),t:t.trim(),sev:'warn',parts:[(parts||'frame').trim()]});
-  saveDB();renderOOS();
+  // Part is a select, not free text: a typo used to produce a criterion that
+  // silently highlighted nothing on either diagram. Severity is chosen too — it
+  // was hardcoded to 'warn', so no criterion added here could ever ground a bike.
+  uiForm('Add a criterion','What is wrong with the bike, and what does it point at on the diagram?',[
+    {key:'t',label:'Criterion',required:true,value:'',hint:'Write it as the rider would see it, e.g. "Brake pads worn".'},
+    {key:'sev',label:'Severity',type:'select',value:'warn',options:[
+      {v:'crit',t:'Critical — bike is out of service'},
+      {v:'warn',t:'Warning — needs attention'},
+      {v:'minor',t:'Minor — note it'}]},
+    {key:'part',label:'Highlights which part',type:'select',value:'frame',
+      options:Object.keys(PART_LABEL).map(function(k){return {v:k,t:PART_LABEL[k]};})}
+  ],{okText:'Add criterion'}).then(function(r){
+    if(!r) return;
+    DB.oos.push({id:uid('o'),t:r.t.trim(),sev:r.sev,parts:[r.part]});
+    saveDB();renderOOS();
+  });
 }
 function delOOS(i){
-  if(!confirm('Remove "'+DB.oos[i].t+'"?')) return;
-  DB.oos.splice(i,1);saveDB();renderOOS();
+  var name=DB.oos[i].t;
+  uiConfirm('“'+name+'” will no longer appear on the out-of-service checklist.','Remove this criterion?',
+            {okText:'Remove',danger:true}).then(function(yes){
+    if(!yes) return;
+    DB.oos.splice(i,1);saveDB();renderOOS();
+  });
 }
 function calcOOS(){
   var boxes=document.querySelectorAll('#oosList input');
@@ -1442,13 +1713,24 @@ function renderWeather(){
   el.innerHTML=h;
 }
 function addWeather(){
-  var t=prompt('New condition?'); if(!t||!t.trim()) return;
-  DB.weather.push({id:uid('w'),t:t.trim(),tier:'ground'});
-  saveDB();renderWeather();renderForm('safety');
+  uiForm('Add a weather condition','Conditions appear on the safety check. A grounding condition stops the ride outright; a caution is judgement.',[
+    {key:'t',label:'Condition',required:true,value:'',hint:'e.g. "Lightning within 10 miles"'},
+    {key:'tier',label:'Effect',type:'select',value:'ground',options:[
+      {v:'ground',t:'Ground — do not ride'},
+      {v:'caution',t:'Caution — rider judgement'}]}
+  ],{okText:'Add condition'}).then(function(r){
+    if(!r) return;
+    DB.weather.push({id:uid('w'),t:r.t.trim(),tier:r.tier});
+    saveDB();renderWeather();renderForm('safety');
+  });
 }
 function delWeather(i){
-  if(!confirm('Remove "'+DB.weather[i].t+'"?')) return;
-  DB.weather.splice(i,1);saveDB();renderWeather();renderForm('safety');
+  var name=DB.weather[i].t;
+  uiConfirm('“'+name+'” will no longer appear on the safety check.','Remove this condition?',
+            {okText:'Remove',danger:true}).then(function(yes){
+    if(!yes) return;
+    DB.weather.splice(i,1);saveDB();renderWeather();renderForm('safety');
+  });
 }
 
 /* ============================================================
@@ -1456,6 +1738,10 @@ function delWeather(i){
    ============================================================ */
 var formEdit={jumpkit:false,safety:false};
 var FORM_HOST={jumpkit:'jumpkitForm',safety:'safetyForm'};
+// The exact spreadsheet names in the Bike Ops Drive folder. Used in every
+// message about where a submission went, so what the site says matches what a
+// manager sees in Drive.
+var SHEET_LABEL={jumpkit:'Bike Jumpkit Check',safety:'Bike Safety Check'};
 
 function toggleFormEdit(fid){formEdit[fid]=!formEdit[fid];renderForm(fid);}
 
@@ -1524,8 +1810,21 @@ function renderForm(fid){
   });
   h+='</div>';
 
-  h+='<div class="card mt"><h3>Anything else wrong?</h3>'+
-     '<textarea id="'+fid+'-notes" rows="3" placeholder="Optional — anything not covered above"></textarea></div>';
+  h+='<div class="card mt"><h3>Is there anything else to note?</h3>'+
+     '<p style="font-size:13px;color:var(--ink-mute);margin:0 0 10px">Optional. Anything the checklist above does not cover.</p>'+
+     '<textarea id="'+fid+'-notes" rows="3" placeholder="Leave blank if nothing"></textarea></div>';
+
+  // The jumpkit check is about the bag, so it is the one place a rider can finish
+  // a check feeling done without ever having touched the bike. This is the
+  // reminder that the bag being right is not the same as the bike being rideable.
+  if(fid==='jumpkit'){
+    h+='<div class="rideprompt"><b>Before you take the bike out</b>'+
+       '<ul><li>Check the tires have adequate pressure.</li>'+
+       '<li>Check the brakes work.</li>'+
+       '<li>Always test ride the bike before using it on a call.</li></ul>'+
+       '<p>If anything is wrong with the bike itself, do the '+
+       '<a href="#safety-check" onclick="go(\'safety-check\');return false">Bike Safety Check</a> instead.</p></div>';
+  }
 
   h+='<div id="'+fid+'-verdict"></div>'+
      '<div class="row mt"><button class="btn solid" onclick="submitForm(\''+fid+'\')">Submit check</button>'+
@@ -1614,13 +1913,19 @@ function submitForm(fid){
   var host=document.getElementById(FORM_HOST[fid]);
   var fn=(document.getElementById(fid+'-fn')||{}).value||'';
   var ln=(document.getElementById(fid+'-ln')||{}).value||'';
-  if(!fn.trim()||!ln.trim()){alert('Please enter your first and last name before submitting.');return;}
+  if(!fn.trim()||!ln.trim()){
+    uiAlert('Add your first and last name before submitting — a check is a record of who cleared the bike.','Name required');
+    var nf=document.getElementById(fid+'-fn'); if(nf&&nf.focus) nf.focus();
+    return;
+  }
   // A pre-ride check is the thing that sets a bike's status, so it has to name
   // one. The jumpkit check is about the bag, not a bike, and is exempt.
   if(fid==='safety'&&!activeBike){
-    alert('Pick which bike you checked first.\n\nThe check sets that bike’s status, so it has to be recorded against one.');
-    var pick=document.getElementById('bikePicker');
-    if(pick&&pick.scrollIntoView) pick.scrollIntoView({behavior:'smooth',block:'center'});
+    uiAlert('Pick which bike you checked. The check sets that bike’s status, so it has to be recorded against one.','Which bike?')
+      .then(function(){
+        var pick=document.getElementById('bikePicker');
+        if(pick&&pick.scrollIntoView) pick.scrollIntoView({behavior:'smooth',block:'center'});
+      });
     return;
   }
 
@@ -1664,26 +1969,32 @@ function submitForm(fid){
     ? '\n\n'+bikeName(activeBike)+' is now marked “'+(STATUS_MAP[res.cls]||STATUS_MAP.warn)[1]+'”.'
     : (res.grounded?'\n\nNo bike status was changed — this verdict is about conditions, not the bike.':'');
 
+  // Each form goes to its OWN spreadsheet, so a missing safety endpoint must not
+  // silently send safety checks into the jumpkit sheet.
+  var endpoint=(DB.api||{})[fid]||'';
+  var sheetName=SHEET_LABEL[fid];
   var msg=document.getElementById(fid+'-savemsg');
-  if(!DB.apiUrl){
+  if(!endpoint){
     console.log('[Bike Ops] submission (backend not connected):',payload);
-    msg.textContent=(logged?'Recorded on this device':'Saved locally only')+' — Google Sheet not connected yet.';
-    alert('Check complete.\n\nVerdict: '+payload.verdict+tail+
-          '\n\nThe Google Sheet backend is not connected yet, so this was not sent anywhere. '+
-          'A Bike Manager can connect it in Site Settings.');
+    msg.textContent=(logged?'Recorded on this device':'Saved locally only')+' — the '+sheetName+' sheet is not connected yet.';
+    uiAlert('Verdict: '+payload.verdict+tail+
+          '\n\nThe “'+sheetName+'” Google Sheet is not connected yet, so this was not sent anywhere. '+
+          'A Bike Manager can connect it in Site Settings.','Check complete');
     return;
   }
   msg.textContent='Sending…';
-  fetch(DB.apiUrl,{method:'POST',mode:'no-cors',
+  fetch(endpoint,{method:'POST',mode:'no-cors',
     headers:{'Content-Type':'text/plain;charset=utf-8'},
     body:JSON.stringify(payload)})
   .then(function(){
-    msg.textContent='Submitted ✓';
-    alert('Check submitted.\n\nVerdict: '+payload.verdict+tail);
+    // no-cors means this resolves even if the script errored — say "sent", not
+    // "saved", so nobody reads this as proof a row landed.
+    msg.textContent='Sent to '+sheetName+' ✓';
+    uiAlert('Verdict: '+payload.verdict+tail+'\n\nSent to the “'+sheetName+'” sheet.','Check complete');
   })
   .catch(function(err){
     console.error(err);
-    msg.textContent='Could not reach the Sheet — check the URL in Site Settings.';
+    msg.textContent='Could not reach the '+sheetName+' sheet — check its URL in Site Settings.';
   });
 }
 
@@ -1691,10 +2002,14 @@ function submitForm(fid){
 function formBuilder(fid){
   var f=DB.forms[fid];
   var h='<div class="builder"><h4>Editing "'+esc(f.title)+'"</h4>'+
-    '<p class="bsub">Rename sections, add or remove items, set quantities, and mark which items have an expiration date. Changes save as you type.</p>';
+    '<p class="bsub">Rename sections, add or remove items, set quantities, reorder with ↑ ↓, and mark which items have an expiration date. Changes save as you type.</p>';
+  var nsec=(f.sections||[]).length;
   (f.sections||[]).forEach(function(sec,si){
+    var nit=(sec.items||[]).length;
     h+='<div class="bsection"><div class="bhead">'+
       '<input type="text" value="'+esc(sec.name)+'" oninput="DB.forms.'+fid+'.sections['+si+'].name=this.value;saveDB()">'+
+      '<button class="btn xs" title="Move section up"'+(si===0?' disabled':'')+' onclick="moveSection(\''+fid+'\','+si+',-1)">↑</button>'+
+      '<button class="btn xs" title="Move section down"'+(si===nsec-1?' disabled':'')+' onclick="moveSection(\''+fid+'\','+si+',1)">↓</button>'+
       '<button class="btn xs danger" onclick="delSection(\''+fid+'\','+si+')">Delete section</button></div>';
     (sec.items||[]).forEach(function(it,ii){
       h+='<div class="bitem">'+
@@ -1702,6 +2017,8 @@ function formBuilder(fid){
         '<input type="number" min="1" value="'+esc(it.qty||'')+'" placeholder="qty" oninput="DB.forms.'+fid+'.sections['+si+'].items['+ii+'].qty=this.value;saveDB()">'+
         '<label class="expflag"><input type="checkbox"'+(it.exp?' checked':'')+
           ' onchange="DB.forms.'+fid+'.sections['+si+'].items['+ii+'].exp=this.checked;saveDB();renderForm(\''+fid+'\')"> expires</label>'+
+        '<button class="btn xs" title="Move up"'+(ii===0?' disabled':'')+' onclick="moveItem(\''+fid+'\','+si+','+ii+',-1)">↑</button>'+
+        '<button class="btn xs" title="Move down"'+(ii===nit-1?' disabled':'')+' onclick="moveItem(\''+fid+'\','+si+','+ii+',1)">↓</button>'+
         '<button class="btn xs danger" onclick="delItem(\''+fid+'\','+si+','+ii+')">✕</button>'+
       '</div>';
     });
@@ -1712,22 +2029,55 @@ function formBuilder(fid){
   return h;
 }
 function addSection(fid){
-  var n=prompt('Section name?'); if(!n||!n.trim()) return;
-  DB.forms[fid].sections.push({id:uid('sec'),name:n.trim(),items:[]});
-  saveDB();renderForm(fid);
+  uiPrompt('Sections group the items on the form, e.g. "Airway" or "Brakes and wheels".','','Add a section',{okText:'Add section'})
+    .then(function(n){
+      if(!n) return;
+      DB.forms[fid].sections.push({id:uid('sec'),name:n.trim(),items:[]});
+      saveDB();renderForm(fid);
+    });
 }
 function delSection(fid,si){
-  if(!confirm('Delete section "'+DB.forms[fid].sections[si].name+'" and all its items?')) return;
-  DB.forms[fid].sections.splice(si,1);saveDB();renderForm(fid);
+  var s=DB.forms[fid].sections[si];
+  var count=(s.items||[]).length;
+  uiConfirm('“'+s.name+'” and the '+count+' item'+(count===1?'':'s')+' inside it will be removed from this form.',
+            'Delete this section?',{okText:'Delete section',danger:true}).then(function(yes){
+    if(!yes) return;
+    DB.forms[fid].sections.splice(si,1);saveDB();renderForm(fid);
+  });
 }
 function addItem(fid,si){
-  var n=prompt('Item name?'); if(!n||!n.trim()) return;
-  DB.forms[fid].sections[si].items.push({id:uid('i'),label:n.trim(),qty:1});
-  saveDB();renderForm(fid);
+  uiForm('Add an item','This becomes a line on the check.',[
+    {key:'label',label:'Item',required:true,value:''},
+    {key:'qty',label:'Quantity expected',type:'number',value:1},
+    {key:'exp',label:'Has an expiration date',type:'select',value:'no',
+      options:[{v:'no',t:'No'},{v:'yes',t:'Yes — ask for a date at each check'}]}
+  ],{okText:'Add item'}).then(function(r){
+    if(!r) return;
+    var it={id:uid('i'),label:r.label.trim(),qty:Number(r.qty)||1};
+    if(r.exp==='yes') it.exp=true;
+    DB.forms[fid].sections[si].items.push(it);
+    saveDB();renderForm(fid);
+  });
 }
 function delItem(fid,si,ii){
-  if(!confirm('Remove "'+DB.forms[fid].sections[si].items[ii].label+'"?')) return;
-  DB.forms[fid].sections[si].items.splice(ii,1);saveDB();renderForm(fid);
+  var label=DB.forms[fid].sections[si].items[ii].label;
+  uiConfirm('“'+label+'” will no longer be checked on this form.','Remove this item?',
+            {okText:'Remove',danger:true}).then(function(yes){
+    if(!yes) return;
+    DB.forms[fid].sections[si].items.splice(ii,1);saveDB();renderForm(fid);
+  });
+}
+// Reordering, which the builder had no way to do — a mis-ordered checklist could
+// only be fixed by deleting items and re-adding them in sequence.
+function moveSection(fid,si,d){
+  var a=DB.forms[fid].sections, j=si+d;
+  if(j<0||j>=a.length) return;
+  a.splice(j,0,a.splice(si,1)[0]); saveDB();renderForm(fid);
+}
+function moveItem(fid,si,ii,d){
+  var a=DB.forms[fid].sections[si].items, j=ii+d;
+  if(j<0||j>=a.length) return;
+  a.splice(j,0,a.splice(ii,1)[0]); saveDB();renderForm(fid);
 }
 
 /* ============================================================
@@ -1751,24 +2101,38 @@ function renderVideos(){
       '</div></div>';
   }).join('');
 }
+var VIDEO_LINK_HINT='Paste the Share link from YouTube, Google Drive or Google Slides — it is converted to an embed automatically. '+
+  'The file must be shared “Anyone with the link → Viewer”, or it shows a sign-in wall instead of playing.';
+function videoFields(v){
+  v=v||{};
+  return [
+    {key:'title',label:'Title',required:true,value:v.title||''},
+    {key:'embed',label:'Share link',value:v.embed||'',hint:VIDEO_LINK_HINT},
+    {key:'note',label:'Short description',value:v.note||''}
+  ];
+}
 function addVideo(){
-  var t=prompt('Video title?'); if(!t||!t.trim()) return;
-  var u=prompt('Paste the Share link — YouTube, Google Drive, or Google Slides.\n\nThe file must be shared "Anyone with the link → Viewer", or it will show a\nsign-in wall instead of playing.\n\nLeave blank to add it later:')||'';
-  var n=prompt('Short description?')||'';
-  DB.videos.push({id:uid('v'),title:t.trim(),embed:u.trim(),note:n.trim()});
-  saveDB();renderVideos();
+  uiForm('Add a video','',videoFields(),{okText:'Add video'}).then(function(r){
+    if(!r) return;
+    DB.videos.push({id:uid('v'),title:r.title.trim(),embed:r.embed.trim(),note:r.note.trim()});
+    saveDB();renderVideos();
+  });
 }
 function editVideo(i){
   var v=DB.videos[i];
-  var t=prompt('Video title?',v.title); if(t===null) return;
-  var u=prompt('Embed URL:',v.embed); if(u===null) return;
-  var n=prompt('Short description?',v.note); if(n===null) return;
-  v.title=t.trim();v.embed=u.trim();v.note=n.trim();
-  saveDB();renderVideos();
+  uiForm('Edit video','',videoFields(v)).then(function(r){
+    if(!r) return;
+    v.title=r.title.trim();v.embed=r.embed.trim();v.note=r.note.trim();
+    saveDB();renderVideos();
+  });
 }
 function delVideo(i){
-  if(!confirm('Remove "'+DB.videos[i].title+'"?')) return;
-  DB.videos.splice(i,1);saveDB();renderVideos();
+  var t=DB.videos[i].title;
+  uiConfirm('“'+t+'” will be removed from the Videos page.','Remove this video?',
+            {okText:'Remove',danger:true}).then(function(yes){
+    if(!yes) return;
+    DB.videos.splice(i,1);saveDB();renderVideos();
+  });
 }
 
 /* ============================================================
@@ -1856,49 +2220,68 @@ function renderLectures(){
 /* Shared deck: one upload, six modules, each starting at its own slide. */
 function editDeck(){
   DB.deck=DB.deck||{url:'',edit:''};
-  var u=prompt('Share link for the whole deck (Google Slides or PowerPoint Online).\n\n'+
-    'In Google Slides: Share ▸ General access ▸ Anyone with the link ▸ Viewer,\n'+
-    'then Copy link and paste it here. It is converted to an embed automatically.\n\n'+
-    'Leave blank to unlink.',DB.deck.url); if(u===null) return;
-  var e=prompt('EDIT url — the normal link to the same deck.\n'+
-    'Opens it in edit mode for whoever has been granted access. Optional.',DB.deck.edit); if(e===null) return;
-  DB.deck.url=u.trim(); DB.deck.edit=e.trim();
-  if(DB.deck.url&&!DB.lectures.some(function(L){return L.slide>0;})){
-    // Nothing has a start slide yet — seed 1..N so the deck is visible immediately
-    // rather than silently staying "Not linked" after a successful link.
-    DB.lectures.forEach(function(L,i){L.slide=i+1;});
-  }
-  saveDB();renderLectures();
+  uiForm('Link the shared deck','One deck, every module — each module opens it at its own start slide.',[
+    {key:'url',label:'Share link',value:DB.deck.url||'',
+     hint:'Google Slides: Share ▸ General access ▸ Anyone with the link ▸ Viewer, then Copy link. Converted to an embed automatically. Leave blank to unlink.'},
+    {key:'edit',label:'Edit link',value:DB.deck.edit||'',
+     hint:'The normal link to the same deck. Opens it in edit mode for whoever has been granted access.'}
+  ]).then(function(r){
+    if(!r) return;
+    DB.deck.url=r.url.trim(); DB.deck.edit=r.edit.trim();
+    if(DB.deck.url&&!DB.lectures.some(function(L){return L.slide>0;})){
+      // Nothing has a start slide yet — seed 1..N so the deck is visible immediately
+      // rather than silently staying "Not linked" after a successful link.
+      DB.lectures.forEach(function(L,i){L.slide=i+1;});
+    }
+    saveDB();renderLectures();
+  });
 }
 function toggleModule(id){
   var m=document.getElementById('mod-'+id); if(m) m.classList.toggle('open');
 }
 function addLecture(){
-  var t=prompt('Module title?'); if(!t||!t.trim()) return;
-  DB.lectures.push({id:uid('L'),title:t.trim(),embed:'',edit:'',slide:0});
-  saveDB();renderLectures();
+  uiPrompt('Modules are the sections of the bike lecture, in teaching order.','','Add a module',{okText:'Add module'})
+    .then(function(t){
+      if(!t) return;
+      DB.lectures.push({id:uid('L'),title:t.trim(),embed:'',edit:'',slide:0});
+      saveDB();renderLectures();
+    });
 }
 function editLecture(i){
   var L=DB.lectures[i];
-  var t=prompt('Module title?',L.title); if(t===null) return;
-  var s=prompt('Which slide does this module start on in the shared deck?\n'+
-    'Enter a slide number, or 0 if this module uses its own separate deck.',L.slide||0); if(s===null) return;
-  var e=prompt('Optional — a SEPARATE embed url just for this module.\n'+
-    'Leave blank to use the shared deck at the slide above.',L.embed); if(e===null) return;
-  var ed=prompt('Optional — a separate EDIT url for this module.\n'+
-    'Leave blank to use the shared deck’s edit link.',L.edit); if(ed===null) return;
-  L.title=t.trim();L.slide=Math.max(0,parseInt(s,10)||0);L.embed=e.trim();L.edit=ed.trim();
-  saveDB();renderLectures();
+  uiForm('Module links','Where this module lives in the deck.',[
+    {key:'title',label:'Module title',required:true,value:L.title||''},
+    {key:'slide',label:'Start slide in the shared deck',type:'number',value:L.slide||0,
+     hint:'A slide number, or 0 if this module uses its own separate deck.'},
+    {key:'embed',label:'Separate embed link for this module',value:L.embed||'',
+     hint:'Leave blank to use the shared deck at the slide above.'},
+    {key:'edit',label:'Separate edit link for this module',value:L.edit||'',
+     hint:'Leave blank to use the shared deck’s edit link.'}
+  ]).then(function(r){
+    if(!r) return;
+    L.title=r.title.trim();L.slide=Math.max(0,parseInt(r.slide,10)||0);
+    L.embed=r.embed.trim();L.edit=r.edit.trim();
+    saveDB();renderLectures();
+  });
 }
 function delLecture(i){
-  if(!confirm('Remove module "'+DB.lectures[i].title+'"?')) return;
-  DB.lectures.splice(i,1);saveDB();renderLectures();
+  var t=DB.lectures[i].title;
+  uiConfirm('“'+t+'” will be removed from the lecture. The deck itself is untouched.','Remove this module?',
+            {okText:'Remove',danger:true}).then(function(yes){
+    if(!yes) return;
+    DB.lectures.splice(i,1);saveDB();renderLectures();
+  });
 }
 
 /* ============================================================
    BYLAWS
    ============================================================ */
 var bylawEdit={};
+// Article numerals. Falls back to the arabic index past XII rather than throwing
+// away the number entirely — the list is six long and adding a seventh should
+// not require touching this.
+var ROMAN=['I','II','III','IV','V','VI','VII','VIII','IX','X','XI','XII'];
+function articleNum(i){ return ROMAN[i]||String(i+1); }
 function renderBylaws(){
   var el=document.getElementById('bylawList'); if(!el) return;
   el.innerHTML=DB.bylaws.map(function(b,i){
@@ -1906,13 +2289,17 @@ function renderBylaws(){
     var body=bylawEdit[b.id]
       ? '<textarea oninput="DB.bylaws['+i+'].body=this.value;saveDB()">'+esc(b.body)+'</textarea>'+
         '<div class="row mt"><button class="btn xs solid" onclick="toggleBylawEdit(\''+esc(b.id)+'\')">Done</button>'+
-        '<button class="btn xs danger" onclick="delBylaw('+i+')">Delete section</button></div>'
-      : '<ul>'+String(b.body||'').split('\n').filter(function(l){return l.trim();})
-          .map(function(l){return '<li>'+esc(l)+'</li>';}).join('')+'</ul>'+
+        '<button class="btn xs danger" onclick="delBylaw('+i+')">Delete article</button></div>'
+      // Clauses are numbered §article.clause from position rather than written
+      // into the text, so reordering or inserting one cannot leave the document
+      // numbered wrong.
+      : '<ol class="clauses">'+String(b.body||'').split('\n').filter(function(l){return l.trim();})
+          .map(function(l,ci){return '<li><span class="cnum">§'+(i+1)+'.'+(ci+1)+'</span>'+
+            '<span class="ctext">'+esc(l.trim())+'</span></li>';}).join('')+'</ol>'+
         '<button class="btn xs webonly mt-sm" onclick="toggleBylawEdit(\''+esc(b.id)+'\')">Edit</button>';
     return '<div class="acc'+open+'" id="by-'+esc(b.id)+'">'+
       '<div class="acchead" onclick="toggleAcc(event,\''+esc(b.id)+'\')">'+
-        '<span class="num">'+(i+1)+'</span><span>'+esc(b.title)+'</span><span class="chev">▸</span></div>'+
+        '<span class="num">'+articleNum(i)+'</span><span>'+esc(b.title)+'</span><span class="chev">▸</span></div>'+
       '<div class="accbody">'+body+'</div></div>';
   }).join('');
 }
@@ -1926,13 +2313,20 @@ function toggleBylawEdit(id){
   var el=document.getElementById('by-'+id); if(el) el.classList.add('open');
 }
 function addBylaw(){
-  var t=prompt('Section title?'); if(!t||!t.trim()) return;
-  DB.bylaws.push({id:uid('b'),title:t.trim(),body:'New section — click Edit to fill this in.'});
-  saveDB();renderBylaws();
+  uiPrompt('Articles are the duty areas of the Bike Manager role.','','Add an article',{okText:'Add article'})
+    .then(function(t){
+      if(!t) return;
+      DB.bylaws.push({id:uid('b'),title:t.trim(),body:'New article — click Edit to fill this in.'});
+      saveDB();renderBylaws();
+    });
 }
 function delBylaw(i){
-  if(!confirm('Delete "'+DB.bylaws[i].title+'"?')) return;
-  DB.bylaws.splice(i,1);saveDB();renderBylaws();
+  var t=DB.bylaws[i].title;
+  uiConfirm('“'+t+'” and everything under it will be deleted.','Delete this article?',
+            {okText:'Delete',danger:true}).then(function(yes){
+    if(!yes) return;
+    DB.bylaws.splice(i,1);saveDB();renderBylaws();
+  });
 }
 
 /* ============================================================
@@ -1950,11 +2344,13 @@ function lastCheck(bikeId){
 // bike that has never been checked through the site.
 function statusOf(b){ var c=lastCheck(b.id); return (c&&c.verdict)||b.status||'warn'; }
 function noteOf(b){ var c=lastCheck(b.id); return (c&&c.note)||b.note||''; }
-// Issues reference a bike by NAME, not id — matched here in one place so a
-// rename only has to be fixed once. Sorted worst-first: triage is the point.
+// Issues reference a bike by ID. Names are manager-editable, so matching on a
+// name would silently orphan every issue the moment a bike is renamed; the
+// name fallback below only exists for rows stored before the switch to ids.
+// Sorted worst-first: triage is the point.
 var SEV_ORDER={crit:0,warn:1,minor:2};
 function issuesFor(b){
-  return (DB.issues||[]).filter(function(i){return i.bike===b.name;})
+  return (DB.issues||[]).filter(function(i){return i.bike===b.id||i.bike===b.name;})
     .slice().sort(function(a,c){
       var x=SEV_ORDER[a.sev], y=SEV_ORDER[c.sev];
       return (x==null?3:x)-(y==null?3:y);
@@ -2021,9 +2417,14 @@ function renderExpiryAlert(){
       return '<li><span>'+esc(i.label)+'</span><span class="expbadge '+cls+'">'+txt+'</span></li>';
     }).join('')+'</ul><p class="kanote">'+esc(msg)+'</p></div>';
 }
-function bikeName(bikeId){
-  var b=DB.bikes.filter(function(x){return x.id===bikeId;})[0];
-  return b?b.name:'That bike';
+// Accepts a bike id, or a name stored before issues were re-keyed to ids —
+// a row saved under the old scheme should still render as a name, not as raw
+// stored text that happens to look like one.
+function bikeName(ref){
+  var b=DB.bikes.filter(function(x){return x.id===ref;})[0];
+  if(b) return b.name;
+  var byName=DB.bikes.filter(function(x){return x.name===ref;})[0];
+  return byName?byName.name:(ref||'That bike');
 }
 
 // The ONLY writer to checkLog. Everything above reads it; without this a bike
@@ -2047,6 +2448,77 @@ function recordSafetyCheck(fid,res,by){
   renderDash();          // status pills, notes, recency, fleet readiness bar
   renderBikePicker();    // the picker shows status + recency too
   return true;
+}
+
+/* ---------- manager-mode bike controls ----------
+   A manager needs to act on a bike without walking through a whole check: a bike
+   comes back from the shop, or is pulled for something spotted in passing.
+   Both write a checkLog entry rather than setting `status` directly, because
+   status is derived from that log — writing the field would be overwritten by
+   the next check and would leave no record of who changed it or when. ---- */
+function setBikeStatus(bikeId,verdict,note,by){
+  DB.checkLog.unshift({bike:bikeId,date:todayISO(),verdict:verdict,note:note||'',by:by||'bike manager'});
+  saveDB();renderDash();renderBikePicker();
+}
+function renameBike(id){
+  var b=DB.bikes.filter(function(x){return x.id===id;})[0]; if(!b) return;
+  uiPrompt('Everything else keys on the bike’s storage location, so renaming is safe — issues and past checks follow the new name.',
+           b.name,'Rename this bike',{okText:'Rename'}).then(function(n){
+    if(!n) return;
+    b.name=n.trim();saveDB();renderAll();
+  });
+}
+// Uses the same criteria list as the out-of-service tool, so "what is wrong"
+// is worded identically wherever it is recorded, and the parts it names still
+// line up with the diagram.
+function markBikeOOS(id){
+  var body='<div class="mchecks">'+DB.oos.map(function(it,i){
+    return '<label class="mcheck"><input type="checkbox" data-oos="'+i+'">'+
+      '<span class="mct">'+esc(it.t)+' '+sevTag(it.sev)+'</span></label>';
+  }).join('')+'</div>'+
+  '<div class="field" style="margin-top:14px"><label for="oosMore">Anything else to note</label>'+
+  '<textarea id="oosMore" rows="3" placeholder="Optional — anything the list above does not cover."></textarea></div>';
+  openModal({
+    title:'Mark '+bikeName(id)+' out of service',
+    message:'Tick everything that applies. This is the same list the out-of-service tool uses.',
+    body:body,okText:'Mark out of service',cancelText:'Cancel',danger:true,
+    onOk:function(w){
+      var picked=[];
+      w.querySelectorAll('[data-oos]').forEach(function(c){
+        if(c.checked) picked.push(DB.oos[Number(c.getAttribute('data-oos'))]);
+      });
+      var more=(w.querySelector('#oosMore').value||'').trim();
+      if(!picked.length&&!more) return undefined;   // needs a reason to be a record
+      return {picked:picked,more:more};
+    }
+  }).then(function(r){
+    if(!r) return;
+    var note=r.picked.map(function(p){return p.t;}).concat(r.more?[r.more]:[]).join('; ');
+    setBikeStatus(id,'oos',note);
+    // Mirror each ticked criterion into the issues table so the fleet count and
+    // the per-bike issue list agree with the status that was just set.
+    r.picked.forEach(function(p){
+      DB.issues.push({bike:id,problem:p.t,sev:p.sev,by:'bike manager',date:shortToday()});
+    });
+    if(r.more) DB.issues.push({bike:id,problem:r.more,sev:'minor',by:'bike manager',date:shortToday()});
+    saveDB();renderDash();
+  });
+}
+function returnToService(id){
+  var open=issuesFor({id:id,name:bikeName(id)}).length;
+  uiConfirm(bikeName(id)+' will show as ready to ride'+
+            (open?', and its '+open+' open issue'+(open===1?'':'s')+' will be cleared':'')+
+            '. Do this once the bike has actually been fixed and ridden.',
+            'Return this bike to service?',{okText:'Return to service'}).then(function(yes){
+    if(!yes) return;
+    DB.issues=DB.issues.filter(function(i){return i.bike!==id&&i.bike!==bikeName(id);});
+    setBikeStatus(id,'ok','Returned to service by the bike manager.');
+  });
+}
+// "Jul 23" style, matching the seeded issue rows.
+function shortToday(){
+  var d=new Date();
+  return ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][d.getMonth()]+' '+d.getDate();
 }
 
 function renderFleetSummary(){
@@ -2100,28 +2572,108 @@ function renderDash(){
         }).join('')+'</ul>'
       : '<p class="noissues">No open issues.</p>'+
         (noteOf(b)?'<p class="bnote">'+esc(noteOf(b))+'</p>':'');
+    // .row.webonly needs the specificity bump noted in the architecture comment —
+    // a bare .webonly here would be out-ranked by .row's own display rule and
+    // leak these controls into member view.
+    // "Return to service" is offered only for a bike that is actually OUT of it.
+    // A `warn` bike is still rideable, so the useful action there is still to
+    // pull it, not to "return" something that never left.
+    var isOut=statusOf(b)==='oos';
+    var acts='<div class="row mt bikeacts webonly">'+
+      '<button class="btn xs" onclick="renameBike(\''+esc(b.id)+'\')">Rename</button>'+
+      (isOut
+        ? '<button class="btn xs" onclick="returnToService(\''+esc(b.id)+'\')">Return to service</button>'+
+          '<button class="btn xs danger" onclick="markBikeOOS(\''+esc(b.id)+'\')">Update problems</button>'
+        : '<button class="btn xs danger" onclick="markBikeOOS(\''+esc(b.id)+'\')">Mark out of service</button>')+
+      '</div>';
     return '<div class="card"><div class="bike-head"><b>'+esc(b.name)+'</b>'+
       '<span class="status '+m[0]+'"><span class="dot"></span>'+m[1]+'</span></div>'+
-      '<p class="brec'+(r.stale?' stale':'')+'">'+esc(r.txt)+'</p>'+body+'</div>';
+      '<p class="brec'+(r.stale?' stale':'')+'">'+esc(r.txt)+'</p>'+body+acts+'</div>';
   }).join('');
 
   var rows=document.getElementById('issueRows');
   if(rows) rows.innerHTML=DB.issues.map(function(i){
     var tag=i.sev==='crit'?'<span class="tag crit">Critical</span>'
            :i.sev==='warn'?'<span class="tag warn">Warning</span>':'<span class="tag">Minor</span>';
-    return '<tr><td>'+esc(i.bike)+'</td><td>'+esc(i.problem)+'</td><td>'+tag+'</td>'+
+    return '<tr><td>'+esc(bikeName(i.bike))+'</td><td>'+esc(i.problem)+'</td><td>'+tag+'</td>'+
       '<td>'+esc(i.by)+'</td><td>'+esc(i.date)+'</td>'+
       '<td><button class="btn xs ghost webonly">Resolve</button></td></tr>';
   }).join('');
 
   var inv=document.getElementById('invRows');
-  var smap={ok:['st-ok','OK'],warn:['st-warn','Low'],oos:['st-oos','Out']};
-  if(inv) inv.innerHTML=DB.inventory.map(function(r){
-    var m=smap[r.status]||smap.warn;
+  if(inv) inv.innerHTML=DB.inventory.map(function(r,i){
+    var m=INV_STATUS[r.status]||INV_STATUS.warn;
     return '<tr><td>'+esc(r.item)+'</td><td>'+esc(r.cat)+'</td><td>'+esc(r.qty)+'</td>'+
       '<td><span class="status '+m[0]+'"><span class="dot"></span>'+m[1]+'</span></td>'+
-      '<td>'+(r.status==='ok'?'':'<button class="btn xs ghost webonly">Order</button>')+'</td></tr>';
+      '<td><span class="row webonly" style="gap:6px">'+
+        '<button class="btn xs" onclick="editInv('+i+')">Edit</button>'+
+        '<button class="btn xs danger" onclick="delInv('+i+')">✕</button></span></td></tr>';
   }).join('');
+}
+var INV_STATUS={ok:['st-ok','OK'],warn:['st-warn','Low'],oos:['st-oos','Out']};
+// Quantity is free text on purpose — "?" is a real and honest answer for the
+// helmets, and forcing a number there would mean inventing one.
+function invFields(r){
+  r=r||{};
+  return [
+    {key:'item',label:'Item',required:true,value:r.item||''},
+    {key:'cat',label:'Category',value:r.cat||'',hint:'e.g. Tools, Parts, Locks/Keys, Safety'},
+    {key:'qty',label:'On hand',value:r.qty==null?'':r.qty,hint:'A count, or “?” if it has not been counted.'},
+    {key:'status',label:'Status',type:'select',value:r.status||'ok',options:[
+      {v:'ok',t:'OK — enough on hand'},
+      {v:'warn',t:'Low — order soon'},
+      {v:'oos',t:'Out — none left'}]}
+  ];
+}
+function addInv(){
+  uiForm('Add an inventory item','',invFields(),{okText:'Add item'}).then(function(r){
+    if(!r) return;
+    DB.inventory.push({item:r.item.trim(),cat:r.cat.trim(),qty:r.qty.trim(),status:r.status});
+    saveDB();renderDash();
+  });
+}
+function editInv(i){
+  var row=DB.inventory[i];
+  uiForm('Edit inventory item','',invFields(row)).then(function(r){
+    if(!r) return;
+    row.item=r.item.trim();row.cat=r.cat.trim();row.qty=r.qty.trim();row.status=r.status;
+    saveDB();renderDash();
+  });
+}
+function delInv(i){
+  var name=DB.inventory[i].item;
+  uiConfirm('“'+name+'” will be removed from the inventory list.','Remove this item?',
+            {okText:'Remove',danger:true}).then(function(yes){
+    if(!yes) return;
+    DB.inventory.splice(i,1);saveDB();renderDash();
+  });
+}
+
+/* The weekly rider check and the Bike Safety Check are the SAME form — the only
+   difference is who runs it and how often. This used to be advertised as a third,
+   separate check with "fields not defined yet", which implied a form was still
+   owed and invited someone to build a duplicate of one that already exists.
+   So: no new form, just the cadence stated, and whether it has been met. */
+function weeklyCard(){
+  var due=DB.bikes.filter(function(b){return bikeRecency(b.id).stale;});
+  var never=DB.bikes.filter(function(b){return !lastCheck(b.id);});
+  var body,tone;
+  if(never.length===DB.bikes.length){
+    tone='warn'; body='No bike has been checked through the site yet.';
+  }else if(due.length){
+    tone='warn';
+    body=due.map(function(b){return b.name;}).join(', ')+
+      (due.length===1?' has':' have')+' not been checked in over a week.';
+  }else{
+    tone='ok'; body='Every bike has been checked in the last 7 days.';
+  }
+  return '<div class="card noprint"><h3>Weekly check</h3>'+
+    '<p style="font-size:13px;color:var(--ink-mute)">The weekly rider check <b>is</b> the Bike Safety Check — same form, same questions. '+
+    'Riders run it before a ride; the Bike Manager runs it once a week for every bike, whether or not anyone rode.</p>'+
+    '<div class="kv" style="margin-top:12px"><span>Status</span>'+
+      '<span class="status '+tone+'"><span class="dot"></span>'+(tone==='ok'?'Up to date':'Due')+'</span></div>'+
+    '<p style="font-size:13px;color:var(--ink-soft);margin:10px 0 0">'+esc(body)+'</p>'+
+    '<button class="btn sm mt block solid" onclick="go(\'safety-check\')">Open the Bike Safety Check</button></div>';
 }
 
 function renderChecks(){
@@ -2143,10 +2695,7 @@ function renderChecks(){
       '<div class="qrurl">'+esc(url)+'</div>'+
       '<button class="btn sm mt block solid noprint" onclick="go(\''+c.v+'\')">Open form</button></div>';
   }).join('')+
-  '<div class="card noprint"><h3>Weekly Readiness</h3>'+
-  '<p style="font-size:13px;color:var(--ink-mute)">Bike-manager-only, once a week before the meeting.</p>'+
-  '<button class="btn sm mt block webonly" onclick="alert(\'The weekly readiness check still needs its field list defined.\')">Start (manager)</button>'+
-  '<div class="placeholder">Fields not defined yet, so there is nothing to link a QR code to.</div></div>';
+  weeklyCard();
 
   var q=document.getElementById('qrUrls');
   if(q) q.innerHTML=
@@ -2171,16 +2720,19 @@ function renderChecks(){
 function renderSettings(){
   var el=document.getElementById('settingsBody'); if(!el) return;
   el.innerHTML=
-   '<div class="card brandtop"><h3>Google Sheet backend</h3>'+
-   '<p style="font-size:13px;color:var(--ink-faint);margin:0 0 12px">Paste the Apps Script <b>Web App URL</b> from the CMU EMS bike Google account. '+
-   'The script runs inside that account and appends form submissions to the Sheet — no password is ever stored in this site.</p>'+
-   '<div class="field"><label for="apiUrl">Apps Script Web App URL</label>'+
-   '<input type="url" id="apiUrl" placeholder="https://script.google.com/macros/s/…/exec" value="'+esc(DB.apiUrl||'')+'"></div>'+
-   '<button class="btn sm solid" onclick="saveApi()">Save URL</button> '+
-   '<button class="btn sm ghost" onclick="clearApi()">Disconnect</button>'+
-   '<div class="'+(DB.apiUrl?'':'placeholder')+'" style="margin-top:12px">'+
-     (DB.apiUrl?'<span class="tag ok">Connected</span> Submissions will POST to the Sheet.'
-              :'Not connected — submissions are logged to the browser console only.')+'</div>'+
+   '<div class="card brandtop"><h3>Google Sheet backends</h3>'+
+   '<p style="font-size:13px;color:var(--ink-faint);margin:0 0 4px">The two checks write to <b>two separate spreadsheets</b> in the Bike Ops Drive folder. '+
+   'Each one has its own Apps Script, so each needs its own <b>Web App URL</b> pasted below.</p>'+
+   '<p style="font-size:13px;color:var(--ink-faint);margin:0 0 14px">The scripts run inside the CMU EMS bike Google account — no password is ever stored in this site.</p>'+
+   ['jumpkit','safety'].map(function(k){
+     var u=(DB.api||{})[k]||'';
+     return '<div class="field"><label for="api-'+k+'">'+esc(SHEET_LABEL[k])+' — Web App URL</label>'+
+       '<input type="url" id="api-'+k+'" placeholder="https://script.google.com/macros/s/…/exec" value="'+esc(u)+'">'+
+       '<p class="hint">'+(u?'<span class="tag ok">Connected</span> '+esc(SHEET_LABEL[k])+' submissions POST here.'
+                           :'Not connected — these submissions are logged to the browser console only.')+'</p></div>';
+   }).join('')+
+   '<button class="btn sm solid" onclick="saveApi()">Save URLs</button> '+
+   '<button class="btn sm ghost" onclick="clearApi()">Disconnect both</button>'+
    '<p style="font-size:12.5px;color:var(--ink-faint);margin-top:12px">Setup steps are in <b>SETUP-BACKEND.md</b> in the project folder.</p>'+
    '</div>'+
 
@@ -2196,13 +2748,31 @@ function renderSettings(){
    'What actually protects submitted data is the Apps Script running server-side in the EMS Google account.</p></div>';
 }
 function saveApi(){
-  var u=(document.getElementById('apiUrl').value||'').trim();
-  if(u&&!/^https:\/\/script\.google\.com\//.test(u)){
-    if(!confirm('That does not look like an Apps Script URL. Save anyway?')) return;
-  }
-  DB.apiUrl=u;saveDB();renderSettings();renderBanner();
+  var vals={},odd=[];
+  ['jumpkit','safety'].forEach(function(k){
+    var u=(document.getElementById('api-'+k).value||'').trim();
+    vals[k]=u;
+    if(u&&!/^https:\/\/script\.google\.com\//.test(u)) odd.push(SHEET_LABEL[k]);
+  });
+  // Pasting the SHEET url instead of the Apps Script url is the easy mistake
+  // here, and it fails silently at submit time, so it is worth one question.
+  var go=function(){
+    DB.api=vals; DB.apiUrl='';
+    saveDB();renderSettings();renderBanner();
+  };
+  if(!odd.length) return go();
+  uiConfirm('The URL for '+odd.join(' and ')+' does not look like an Apps Script Web App URL '+
+            '(those start with https://script.google.com/). Pasting the spreadsheet’s own link here will not work.',
+            'Save anyway?',{okText:'Save anyway'}).then(function(yes){ if(yes) go(); });
 }
-function clearApi(){DB.apiUrl='';saveDB();renderSettings();renderBanner();}
+function clearApi(){
+  uiConfirm('Both checks will go back to saving on this device only.','Disconnect both sheets?',
+            {okText:'Disconnect'}).then(function(yes){
+    if(!yes) return;
+    DB.api={jumpkit:'',safety:''}; DB.apiUrl='';
+    saveDB();renderSettings();renderBanner();
+  });
+}
 function exportDB(){
   var blob=new Blob([JSON.stringify(DB,null,2)],{type:'application/json'});
   var a=document.createElement('a');
@@ -2212,11 +2782,20 @@ function exportDB(){
 function renderBanner(){
   var b=document.getElementById('topBanner');
   var n=document.getElementById('sbNote');
-  if(DB.apiUrl){
-    b.innerHTML='Connected to the CMU EMS Google Sheet. Submitted checks are recorded with the submitter\'s name and date.';
-    n.innerHTML='LIVE<br>Sheet connected';
+  var api=DB.api||{};
+  var on=['jumpkit','safety'].filter(function(k){return !!api[k];});
+  if(on.length===2){
+    b.innerHTML='Connected to both CMU EMS Google Sheets. Submitted checks are recorded with the submitter\'s name and date.';
+    n.innerHTML='LIVE<br>Both sheets connected';
+  }else if(on.length===1){
+    // Naming the half that is live matters — otherwise a member submits the
+    // other form, sees "Submitted", and assumes it landed somewhere.
+    var off=on[0]==='jumpkit'?'safety':'jumpkit';
+    b.innerHTML='Partly connected — '+esc(SHEET_LABEL[on[0]])+' is live. '+
+                esc(SHEET_LABEL[off])+' submissions still save on this device only (Site Settings).';
+    n.innerHTML='PARTLY LIVE<br>1 of 2 sheets connected';
   }else{
-    b.innerHTML='DRAFT — bike data and out-of-service rules are still being finalized. Forms save locally until the Google Sheet backend is connected (Site Settings).';
+    b.innerHTML='DRAFT — bike data and out-of-service rules are still being finalized. Forms save locally until the Google Sheets are connected (Site Settings).';
     n.innerHTML='DRAFT TEMPLATE<br>Backend not yet connected';
   }
 }
