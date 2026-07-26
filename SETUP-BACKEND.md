@@ -171,19 +171,38 @@ who opens devtools can still switch manager mode on. It is **better identity, no
 security boundary**. Never put anything behind this gate that would genuinely hurt if a
 member saw it. What protects submitted data is the Apps Script running server-side.
 
-To enable it:
+To enable it, signed in as the bike account:
 
-1. <https://console.cloud.google.com/> → create a project (any name).
-2. **APIs & Services → OAuth consent screen** → External → fill in app name and support
-   email → Save. You do not need to publish or get it verified for your own account.
-3. **APIs & Services → Credentials → Create credentials → OAuth client ID → Web
-   application**.
-4. Under **Authorised JavaScript origins** add both:
+1. Go to <https://console.cloud.google.com/>. **Create a project first** — click
+   **Select a project → New project**, name it anything ("Bike Ops"), Create, then make
+   sure it is the selected project in the top bar. Every screen below is blank until a
+   project is selected, which looks like a broken page but is not.
+2. Open **Google Auth Platform** (search "Google Auth Platform" in the top search bar).
+   If it offers **Get started**, take it — it walks the next two steps in one wizard.
+3. **App information:** app name (e.g. "CMU EMS Bike Ops") and your support email.
+4. **Audience: External.** This is where "External" lives now — Google replaced the old
+   "OAuth consent screen" page with this, so older instructions send you looking for a
+   screen that no longer exists. External simply means "not a Workspace-internal app";
+   you do **not** need to publish it or pass verification to sign in as the owner.
+5. **Contact information:** your email. Then agree and create.
+6. Go to **Clients → Create client → Application type: Web application**.
+7. Under **Authorised JavaScript origins** add both, exactly, with no trailing slash:
    - `https://sonnnnnion.github.io`
    - `http://localhost:8848`
-5. Copy the **Client ID** (ends in `.apps.googleusercontent.com`).
-6. In `index.html`, set `var GOOGLE_CLIENT_ID='…'` and check `MANAGER_EMAILS` holds the
+
+   Leave **Authorised redirect URIs** empty — Google Identity Services returns the token
+   to the page itself and never redirects.
+8. Create, then copy the **Client ID**. It ends in `.apps.googleusercontent.com`.
+9. In `index.html`, set `var GOOGLE_CLIENT_ID='…'` and check `MANAGER_EMAILS` holds the
    exact bike-account address. **A wrong address silently refuses the right account.**
+
+While the app is in **Testing**, only accounts listed as test users can sign in — add
+the bike account under **Audience → Test users**, or press **Publish app** on that same
+page. If sign-in fails with "access_denied", that is almost always which one of those
+two you have not done.
+
+The Client ID is not a secret: it is designed to sit in a public page, and it is useless
+without an origin on the list above.
 
 If Google cannot be reached, the dialog offers "Use passcode instead", so a network
 problem in a bike room never locks the manager out.
