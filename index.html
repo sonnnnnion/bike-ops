@@ -94,7 +94,13 @@
     font-weight:800;font-size:11px;letter-spacing:.02em;border-radius:var(--r-sm)}
 
   .sidebar{border-right:1px solid var(--rule);padding:18px 12px;background:transparent;display:flex;flex-direction:column;gap:2px}
-  .sb-item{display:flex;align-items:center;gap:10px;padding:10px 13px;border-radius:var(--radius);cursor:pointer;font-weight:500;font-size:14.5px;color:var(--ink-soft)}
+  /* Real <button>s, not styled divs. A div is not reachable by Tab and does not
+     respond to Enter or Space, which left the whole navigation unusable without a
+     mouse. Everything below the first two lines is undoing button defaults; the
+     click handler is delegated on #nav, so it kept working unchanged. */
+  .sb-item{display:flex;align-items:center;gap:10px;padding:10px 13px;border-radius:var(--radius);cursor:pointer;font-weight:500;font-size:14.5px;color:var(--ink-soft);
+    width:100%;text-align:left;background:none;border:0;font-family:inherit;line-height:inherit;-webkit-appearance:none;appearance:none}
+  .sb-item:focus-visible{outline:2px solid var(--brand);outline-offset:2px}
   .sb-item .ic{width:18px;text-align:center;color:var(--brand);opacity:.75}
   .sb-item:hover{background:var(--bg-2);color:var(--ink)}
   .sb-item.active{background:var(--brand);color:#fff;font-weight:600;box-shadow:var(--shadow-sm)}
@@ -581,22 +587,22 @@
          type. The three Ride actions are ~90% of real traffic; everything below
          Fleet is reference material that gets opened occasionally. -->
     <div class="sb-label">Ride</div>
-    <div class="sb-item active" data-view="safety-check"><span class="ic">✔</span>Pre-Ride Check</div>
-    <div class="sb-item" data-view="jumpkit-check"><span class="ic">✚</span>Jumpkit Check</div>
-    <div class="sb-item" data-view="bikes"><span class="ic">⚑</span>Report a Problem</div>
+    <button type="button" class="sb-item active" data-view="safety-check"><span class="ic">✔</span>Pre-Ride Check</button>
+    <button type="button" class="sb-item" data-view="jumpkit-check"><span class="ic">✚</span>Jumpkit Check</button>
+    <button type="button" class="sb-item" data-view="bikes"><span class="ic">⚑</span>Report a Problem</button>
     <div class="sb-label">Fleet</div>
-    <div class="sb-item" data-view="dash"><span class="ic">◉</span>Bike Status</div>
-    <div class="sb-item" data-view="oos"><span class="ic">⚠</span>Out-of-Service Tool</div>
+    <button type="button" class="sb-item" data-view="dash"><span class="ic">◉</span>Bike Status</button>
+    <button type="button" class="sb-item" data-view="oos"><span class="ic">⚠</span>Out-of-Service Tool</button>
     <div class="sb-label">Learn</div>
-    <div class="sb-item" data-view="videos"><span class="ic">▶</span>Videos</div>
-    <div class="sb-item" data-view="lectures"><span class="ic">▤</span>Lectures</div>
+    <button type="button" class="sb-item" data-view="videos"><span class="ic">▶</span>Videos</button>
+    <button type="button" class="sb-item" data-view="lectures"><span class="ic">▤</span>Lectures</button>
     <div class="sb-label">Reference</div>
-    <div class="sb-item webonly" data-view="repairs"><span class="ic">✱</span>Repairs &amp; Fixes</div>
-    <div class="sb-item webonly" data-view="inventory"><span class="ic">▦</span>Inventory</div>
-    <div class="sb-item" data-view="bylaws"><span class="ic">§</span>Bylaws</div>
-    <div class="sb-item" data-view="docs"><span class="ic">◈</span>Role &amp; Boundaries</div>
-    <div class="sb-item" data-view="checks"><span class="ic">▩</span>QR Codes</div>
-    <div class="sb-item webonly" data-view="settings"><span class="ic">⚙</span>Site Settings</div>
+    <button type="button" class="sb-item webonly" data-view="repairs"><span class="ic">✱</span>Repairs &amp; Fixes</button>
+    <button type="button" class="sb-item webonly" data-view="inventory"><span class="ic">▦</span>Inventory</button>
+    <button type="button" class="sb-item" data-view="bylaws"><span class="ic">§</span>Bylaws</button>
+    <button type="button" class="sb-item" data-view="docs"><span class="ic">◈</span>Role &amp; Boundaries</button>
+    <button type="button" class="sb-item" data-view="checks"><span class="ic">▩</span>QR Codes</button>
+    <button type="button" class="sb-item webonly" data-view="settings"><span class="ic">⚙</span>Site Settings</button>
   </nav>
 
   <main>
@@ -1562,7 +1568,13 @@ function go(v,fromHash){
   if(VIEWS.indexOf(v)<0) v=HOME;
   if(MANAGER_VIEWS.indexOf(v)>=0&&!isManager()) v=HOME;
   var navFor=NAV_PARENT[v]||v;
-  document.querySelectorAll('.sb-item').forEach(function(x){x.classList.toggle('active',x.dataset.view===navFor);});
+  document.querySelectorAll('.sb-item').forEach(function(x){
+    var on=x.dataset.view===navFor;
+    x.classList.toggle('active',on);
+    // The active item is styled, so it also has to be announced. Without this a
+    // screen reader hears thirteen identical buttons with no sense of place.
+    if(on) x.setAttribute('aria-current','page'); else x.removeAttribute('aria-current');
+  });
   document.querySelectorAll('.view').forEach(function(x){x.classList.toggle('active',x.dataset.view===v);});
   // On phones the sidebar is a horizontal strip, so the active item can sit
   // off-screen. Nudge it into view — but only when actually scrolling sideways,
