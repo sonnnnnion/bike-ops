@@ -774,7 +774,7 @@
         <div>
           <div class="card">
             <h3>Bike Manager</h3>
-            <p class="rolesum">Keeps the fleet serviceable: maintains the bikes, organizes supplies, monitors readiness, and trains members. ~20 min/week.</p>
+            <p class="rolesum">Keeps the fleet serviceable: maintains the bikes, organizes supplies, monitors readiness, and trains members.</p>
             <button class="btn sm" onclick="go('bylaws')">Bike Manager bylaws →</button>
           </div>
           <div class="card mt">
@@ -1833,6 +1833,10 @@ var FORM_HOST={jumpkit:'jumpkitForm',safety:'safetyForm'};
 // message about where a submission went, so what the site says matches what a
 // manager sees in Drive.
 var SHEET_LABEL={jumpkit:'Bike Jumpkit Check',safety:'Bike Safety Check'};
+// What each bike id actually refers to. Ids are storage locations and never
+// change; this is how a rename field says WHICH bike it is renaming without
+// using the current name, which is the thing being edited.
+var BIKE_ORIGIN={curtain:'The curtain bike',ceiling:'The ceiling bike',oosbike:'The third bike'};
 
 function toggleFormEdit(fid){formEdit[fid]=!formEdit[fid];renderForm(fid);}
 
@@ -2928,6 +2932,19 @@ function renderSettings(){
    '<button class="btn sm solid" onclick="saveApi()">Save URLs</button> '+
    '<button class="btn sm ghost" onclick="clearApi()">Disconnect both</button>'+
    '<p style="font-size:12.5px;color:var(--ink-faint);margin-top:12px">Setup steps are in <b>SETUP-BACKEND.md</b> in the project folder.</p>'+
+   '</div>'+
+
+   // Renaming is also on each Bike Status card, which is the contextual place for
+   // it. It is repeated here because Site Settings is where a manager goes to
+   // configure the site, and a name you can only change from a card you have to
+   // scroll to is a name most people will never find.
+   '<div class="card mt"><h3>Bike names</h3>'+
+   '<p style="font-size:13px;color:var(--ink-faint);margin:0 0 12px">Type to rename. Everything else keys on the bike’s storage location, so renaming is safe — past checks and open issues follow the new name.</p>'+
+   DB.bikes.map(function(b,i){
+     return '<div class="field"><label for="bname-'+esc(b.id)+'">'+esc(BIKE_ORIGIN[b.id]||'Bike')+'</label>'+
+       '<input type="text" id="bname-'+esc(b.id)+'" value="'+esc(b.name)+'" '+
+       'oninput="DB.bikes['+i+'].name=this.value;saveDB();renderDash();renderBikePicker()"></div>';
+   }).join('')+
    '</div>'+
 
    '<div class="card mt"><h3>Saved content</h3>'+
