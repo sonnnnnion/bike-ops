@@ -107,7 +107,54 @@ Confirm three things:
 
 - a row appears in **Bike Jumpkit Check**, and a row appears in **Bike Safety Check**,
 - neither row landed in the *other* spreadsheet, and
-- the `Missing Items` column actually lists the item you left unchecked.
+- the `What Was Missing` column actually lists the item you left unchecked.
+
+---
+
+## What the two tabs look like
+
+**The checks tab** — for whoever reads down the log:
+
+| Column | Why it's there |
+|---|---|
+| `Date` / `Time` | Split, so you can sort or filter by day without parsing a timestamp |
+| `Name`, `Andrew ID` | Who did it. Andrew ID because two members can share a name |
+| `Bag` / `Bike` | Which one this check was about |
+| `Result` | The verdict the site reached |
+| `Missing` | A **number**, so you can sort worst-first or filter to `>0` |
+| `What Was Missing` | One item per line |
+| `Notes` | Whatever was typed at the bottom of the check |
+
+Date, time and name are frozen, so they stay on screen as you scroll right. A filter
+is already on. Rows are shaded: green if clean, amber if something is expiring, red if
+anything is missing or the bike was not cleared. The colour is never the only signal —
+the `Result` text says the same thing. The `Submission ID` column is hidden; it exists
+so a double-tapped submit cannot become a second row.
+
+**The Restock tab** — for the equipment manager, and it is a worklist, not a log:
+
+| Column | |
+|---|---|
+| `Done` | A real checkbox. Tick it when the item is back in the bag |
+| `Item` | One row per item, ever — not one row per report |
+| `Times Reported` | Bold when >1, i.e. it has been asked for repeatedly |
+| `First` / `Last Reported` | How long it has been outstanding |
+| `Where`, `Last Reported By` | Which bag, and who to ask |
+
+The important part: **reporting the same item again does not add a row.** It bumps the
+counter and the last-reported date, so the length of the list is the length of the
+actual job. Ticking `Done` greys the row and strikes it through. If that item is later
+reported missing again, the row reopens by itself.
+
+### After pasting an updated script
+
+Run **`tidyUp`** once from the Apps Script editor (select it in the function dropdown,
+press Run). That reformats a tab that already exists and repaints the restock list —
+new formatting otherwise only applies to a tab created from scratch.
+
+If your tabs already hold test rows from an older column layout, the simplest clean
+start is to delete those tabs (right-click the tab → Delete) and submit once. The
+script rebuilds them with the current columns and formatting.
 
 ---
 
@@ -163,20 +210,38 @@ problem in a bike room never locks the manager out.
 // reply. With it, the mismatch is refused and logged where you can find it.
 var EXPECTED_FORM = 'jumpkit';
 
+// Column layouts. Order is "who and what happened" first, detail after, so the
+// leftmost screenful answers the question an operations exec actually opens this
+// to ask. Widths are set to match; anything long is clipped rather than wrapped so
+// every submission stays one scannable line.
 var SHEETS = {
   jumpkit: {
     name: 'Jumpkit Checks',
-    headers: ['Submitted At', 'First Name', 'Last Name', 'Andrew ID', 'Bag', 'Verdict',
-              'Anything Missing?', 'Missing Items', 'Expiring / Expired',
-              'Expiration Dates', 'Notes', 'Submission ID']
+    headers: ['Date', 'Time', 'Name', 'Andrew ID', 'Bag', 'Result',
+              'Missing', 'What Was Missing', 'Expiry Flag',
+              'Expiration Dates', 'Notes', 'Submission ID'],
+    widths:  [92, 62, 150, 92, 96, 210, 74, 320, 190, 220, 260, 90]
   },
   safety: {
     name: 'Bike Checks',
-    headers: ['Submitted At', 'First Name', 'Last Name', 'Andrew ID', 'Verdict',
-              'Anything Missing?', 'Missing Items', 'Grounded By Weather?',
-              'Conditions Flagged', 'Notes', 'Submission ID']
+    headers: ['Date', 'Time', 'Name', 'Andrew ID', 'Bike', 'Result',
+              'Missing', 'What Was Missing', 'Weather Grounded',
+              'Conditions Flagged', 'Notes', 'Submission ID'],
+    widths:  [92, 62, 150, 92, 96, 210, 74, 320, 130, 240, 260, 90]
   }
 };
+
+var RESTOCK = {
+  name: 'Restock',
+  // One row PER ITEM, not per submission. The equipment manager's question is
+  // "what do I need to put back", not "what happened on Tuesday" — that is what
+  // the checks tab is for. Repeat reports bump a counter instead of adding rows.
+  headers: ['Done', 'Item', 'Times Reported', 'First Reported', 'Last Reported',
+            'Where', 'Last Reported By'],
+  widths:  [58, 380, 110, 118, 118, 110, 160]
+};
+
+// ---------------------------------------------------------------- read side
 
 // Answers the "Test connection" button in Site Settings.
 //
@@ -192,91 +257,139 @@ function doGet(e) {
   } catch (err) {
     rows = -1;
   }
-  return ok2({
-    ok: true,
-    expects: EXPECTED_FORM,
-    sheet: conf.name || '',
-    rows: rows
-  });
+  return json({ ok: true, expects: EXPECTED_FORM, sheet: conf.name || '', rows: rows });
 }
 
-function ok2(obj) {
+function json(obj) {
   return ContentService.createTextOutput(JSON.stringify(obj))
                        .setMimeType(ContentService.MimeType.JSON);
 }
 
+// ---------------------------------------------------------------- write side
+
 function doPost(e) {
   try {
-    if (!e || !e.postData || !e.postData.contents) return ok('no body');
+    if (!e || !e.postData || !e.postData.contents) return json({ result: 'no body' });
     var p = JSON.parse(e.postData.contents);
 
     var conf = SHEETS[p.form];
-    if (!conf) return ok('unknown form: ' + p.form);
+    if (!conf) return json({ result: 'unknown form: ' + p.form });
 
     if (p.form !== EXPECTED_FORM) {
       console.error('Bike Ops: this deployment expects "' + EXPECTED_FORM +
         '" but received "' + p.form + '". The wrong Web App URL is almost ' +
         'certainly pasted into Site Settings. Nothing was written.');
-      return ok('wrong spreadsheet for form: ' + p.form);
+      return json({ result: 'wrong spreadsheet for form: ' + p.form });
     }
 
-    var sheet = getSheet(conf);
+    var sheet = ensureSheet(conf);
+    if (alreadyWritten(sheet, p.submissionId, conf.headers.length)) {
+      return json({ result: 'duplicate ignored' });
+    }
+
     var missing = p.missing || [];
     var conditions = p.conditions || [];
+    var now = new Date();
+    var tz = Session.getScriptTimeZone();
 
-    // Local timestamp, not the browser's UTC string — so "date submitted"
-    // reads as the day it actually happened in Pittsburgh.
-    var when = Utilities.formatDate(new Date(),
-      Session.getScriptTimeZone(), 'yyyy-MM-dd HH:mm:ss');
-
-    var row;
-    if (p.form === 'jumpkit') {
-      row = [
-        when, p.firstName || '', p.lastName || '', p.andrewId || '', p.bag || '', p.verdict || '',
-        missing.length ? 'YES — ' + missing.length + ' missing' : 'no',
-        missing.join('\n'),
-        expiryFlag(p.expiries),
-        formatExpiries(p.expiries),
-        p.notes || '',
-        p.submissionId || ''
-      ];
-    } else {
-      row = [
-        when, p.firstName || '', p.lastName || '', p.andrewId || '', p.verdict || '',
-        missing.length ? 'YES — ' + missing.length + ' missing' : 'no',
-        missing.join('\n'),
-        conditions.length ? 'YES' : 'no',
-        conditions.join(', '),
-        p.notes || '',
-        p.submissionId || ''
-      ];
-    }
-
-    if (alreadyWritten(sheet, p.submissionId)) return ok('duplicate ignored');
+    var row = [
+      Utilities.formatDate(now, tz, 'yyyy-MM-dd'),
+      Utilities.formatDate(now, tz, 'HH:mm'),
+      ((p.firstName || '') + ' ' + (p.lastName || '')).trim(),
+      p.andrewId || '',
+      (p.form === 'jumpkit' ? (p.bag || '') : (p.bike || '')),
+      p.verdict || '',
+      missing.length,                       // a NUMBER, so it sorts and filters
+      missing.join('\n'),
+      (p.form === 'jumpkit' ? expiryFlag(p.expiries) : (conditions.length ? 'YES' : '')),
+      (p.form === 'jumpkit' ? formatExpiries(p.expiries) : conditions.join('\n')),
+      p.notes || '',
+      p.submissionId || ''
+    ];
 
     sheet.appendRow(row);
-    sheet.getRange(sheet.getLastRow(), 1, 1, row.length).setVerticalAlignment('top');
-    highlightIfProblem(sheet, p, missing, conditions);
+    styleRow(sheet, sheet.getLastRow(), conf, missing.length, p.verdict || '');
     addToRestock(p, missing);
-    return ok('saved');
+    return json({ result: 'saved' });
 
   } catch (err) {
     // Never throw: the site cannot read the response anyway, and a thrown error
     // just loses the submission silently. Log it where you can actually find it.
     console.error('Bike Ops intake failed: ' + err + ' :: ' + rawOf(e));
-    return ok('error logged');
+    return json({ result: 'error logged' });
   }
 }
 
-// A submission carries an id. If the same id is already in the last column, this
-// is a retry or a double-fire of one that was written, not a new check. One
-// sitting produced five identical rows in the real Jumpkit sheet before this.
-function alreadyWritten(sheet, submissionId) {
+// Creates the tab if missing. If the header row does not match what this version
+// of the script writes, it is rewritten and the formatting reapplied — otherwise
+// adding a column silently shifts every later value one place left.
+function ensureSheet(conf) {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var sh = ss.getSheetByName(conf.name);
+  if (!sh) {
+    sh = ss.insertSheet(conf.name);
+    sh.appendRow(conf.headers);
+    formatSheet(sh, conf);
+    return sh;
+  }
+  var have = sh.getRange(1, 1, 1, Math.max(sh.getLastColumn(), 1)).getValues()[0];
+  if (have.join('|') !== conf.headers.join('|')) {
+    sh.getRange(1, 1, 1, conf.headers.length).setValues([conf.headers]);
+    formatSheet(sh, conf);
+  }
+  return sh;
+}
+
+// Everything that makes the tab pleasant to read, applied once and idempotent.
+function formatSheet(sh, conf) {
+  var n = conf.headers.length;
+  var head = sh.getRange(1, 1, 1, n);
+  head.setFontWeight('bold')
+      .setBackground('#8c1c2b')
+      .setFontColor('#ffffff')
+      .setVerticalAlignment('middle');
+  sh.setFrozenRows(1);
+  sh.setFrozenColumns(3);                       // date, time, name stay on screen
+  conf.widths.forEach(function (w, i) { sh.setColumnWidth(i + 1, w); });
+  sh.setRowHeight(1, 34);
+
+  // Long free text is clipped, not wrapped: one submission stays one line, and the
+  // full value is still there when you click the cell or widen the column.
+  sh.getRange(2, 1, Math.max(sh.getMaxRows() - 1, 1), n)
+    .setWrapStrategy(SpreadsheetApp.WrapStrategy.CLIP)
+    .setVerticalAlignment('top');
+
+  // The Submission ID is machinery, not information. Keep it for dedupe, hide it.
+  sh.hideColumns(n);
+
+  if (!sh.getFilter()) sh.getRange(1, 1, sh.getMaxRows(), n).createFilter();
+}
+
+// Colour carries meaning here, so it is backed by the Result text rather than
+// being the only signal: a clean check reads "…ready"/"Cleared", a bad one does not.
+function styleRow(sh, rowIdx, conf, missingCount, verdict) {
+  var n = conf.headers.length;
+  var v = String(verdict).toLowerCase();
+  var bad = missingCount > 0 || v.indexOf('expired') >= 0 ||
+            v.indexOf('not cleared') >= 0 || v.indexOf('grounded') >= 0 ||
+            v.indexOf('incomplete') >= 0;
+  var soon = !bad && (v.indexOf('expiring') >= 0 || v.indexOf('missing') >= 0);
+  var range = sh.getRange(rowIdx, 1, 1, n);
+  range.setBackground(bad ? '#fce8e6' : (soon ? '#fef7e0' : '#e6f4ea'));
+  range.setWrapStrategy(SpreadsheetApp.WrapStrategy.CLIP).setVerticalAlignment('top');
+  sh.getRange(rowIdx, 7).setHorizontalAlignment('center')
+    .setFontWeight(missingCount > 0 ? 'bold' : 'normal');
+}
+
+// A submission carries an id. If that id is already in the (hidden) last column,
+// this is a retry or a double-fire of a row that was written, not a new check.
+// One sitting produced five identical rows in the real Jumpkit sheet before this.
+function alreadyWritten(sheet, submissionId, colCount) {
   if (!submissionId) return false;
   var last = sheet.getLastRow();
   if (last < 2) return false;
-  var col = sheet.getLastColumn();
-  var start = Math.max(2, last - 50);           // recent rows are enough
+  var col = colCount || sheet.getLastColumn();
+  var start = Math.max(2, last - 100);
   var ids = sheet.getRange(start, col, last - start + 1, 1).getValues();
   for (var i = 0; i < ids.length; i++) {
     if (String(ids[i][0]) === String(submissionId)) return true;
@@ -284,61 +397,92 @@ function alreadyWritten(sheet, submissionId) {
   return false;
 }
 
-// The equipment manager's actual job is "what do I need to put back in the bag",
-// and reading that out of a comma-run inside one cell is miserable. This writes
-// ONE ROW PER MISSING ITEM to a Restock tab, with a real checkbox to tick when it
-// has been replaced. Nothing is auto-removed — ticking it is the record.
+// The restock worklist. One row per ITEM. Reporting the same item again bumps its
+// counter and its last-reported date rather than adding a duplicate line, so the
+// list length is the length of the actual job. Ticking Done greys the row out; if
+// the item is reported missing again afterwards the row reopens.
 function addToRestock(p, missing) {
   if (!missing || !missing.length) return;
   var ss = SpreadsheetApp.getActiveSpreadsheet();
-  var name = 'Restock';
-  var sh = ss.getSheetByName(name);
+  var sh = ss.getSheetByName(RESTOCK.name);
   if (!sh) {
-    sh = ss.insertSheet(name);
-    sh.appendRow(['Restocked?', 'Item', 'Reported', 'Bag', 'Reported By', 'Submission ID']);
-    sh.getRange(1, 1, 1, 6).setFontWeight('bold');
+    sh = ss.insertSheet(RESTOCK.name);
+    sh.appendRow(RESTOCK.headers);
+    sh.getRange(1, 1, 1, RESTOCK.headers.length)
+      .setFontWeight('bold').setBackground('#8c1c2b').setFontColor('#ffffff');
     sh.setFrozenRows(1);
-    sh.setColumnWidth(2, 380);
+    sh.setRowHeight(1, 34);
+    RESTOCK.widths.forEach(function (w, i) { sh.setColumnWidth(i + 1, w); });
+    sh.getRange(1, 1, sh.getMaxRows(), RESTOCK.headers.length).createFilter();
   }
-  if (alreadyWritten(sh, p.submissionId)) return;
 
-  var when = Utilities.formatDate(new Date(),
-    Session.getScriptTimeZone(), 'yyyy-MM-dd HH:mm');
+  var when = Utilities.formatDate(new Date(), Session.getScriptTimeZone(), 'yyyy-MM-dd');
   var who = ((p.firstName || '') + ' ' + (p.lastName || '')).trim();
-  var rows = missing.map(function (item) {
-    return [false, item, when, p.bag || '', who, p.submissionId || ''];
+  var where = p.bag || p.bike || '';
+
+  var last = sh.getLastRow();
+  var existing = last > 1 ? sh.getRange(2, 1, last - 1, RESTOCK.headers.length).getValues() : [];
+  var index = {};
+  for (var i = 0; i < existing.length; i++) index[String(existing[i][1])] = i + 2;  // item -> row
+
+  var fresh = [];
+  missing.forEach(function (item) {
+    var atRow = index[String(item)];
+    if (atRow) {
+      var wasDone = sh.getRange(atRow, 1).getValue() === true;
+      var count = Number(sh.getRange(atRow, 3).getValue()) || 0;
+      // Reported missing again after being restocked: reopen it rather than
+      // leaving a ticked row that is no longer true.
+      sh.getRange(atRow, 1).setValue(false);
+      sh.getRange(atRow, 3).setValue(wasDone ? 1 : count + 1);
+      sh.getRange(atRow, 5).setValue(when);
+      sh.getRange(atRow, 6).setValue(where);
+      sh.getRange(atRow, 7).setValue(who);
+      if (wasDone) sh.getRange(atRow, 4).setValue(when);
+    } else {
+      fresh.push([false, item, 1, when, when, where, who]);
+    }
   });
-  var first = sh.getLastRow() + 1;
-  sh.getRange(first, 1, rows.length, 6).setValues(rows);
-  sh.getRange(first, 1, rows.length, 1).insertCheckboxes();
-}
 
-// Creates the tab and header row the first time a form type is submitted.
-function getSheet(conf) {
-  var ss = SpreadsheetApp.getActiveSpreadsheet();
-  var sheet = ss.getSheetByName(conf.name);
-  if (!sheet) {
-    sheet = ss.insertSheet(conf.name);
-    sheet.appendRow(conf.headers);
-    sheet.getRange(1, 1, 1, conf.headers.length).setFontWeight('bold');
-    sheet.setFrozenRows(1);
+  if (fresh.length) {
+    var start = sh.getLastRow() + 1;
+    sh.getRange(start, 1, fresh.length, RESTOCK.headers.length).setValues(fresh);
+    sh.getRange(start, 1, fresh.length, 1).insertCheckboxes();
   }
-  return sheet;
+  paintRestock(sh);
 }
 
-// Red row = something needs a manager's attention.
-function highlightIfProblem(sheet, p, missing, conditions) {
-  var v = String(p.verdict || '').toLowerCase();
-  var bad = missing.length > 0 ||
-            conditions.length > 0 ||
-            v.indexOf('expired') >= 0 ||
-            v.indexOf('not cleared') >= 0 ||
-            v.indexOf('grounded') >= 0 ||
-            v.indexOf('incomplete') >= 0;
-  if (!bad) return;
-  sheet.getRange(sheet.getLastRow(), 1, 1, sheet.getLastColumn())
-       .setBackground('#fce8e6');
+// A ticked row is done, so it should stop competing for attention. Outstanding
+// items stay plain; the count is emphasised when something has been asked for
+// more than once, because that is the one worth chasing.
+function paintRestock(sh) {
+  var last = sh.getLastRow();
+  if (last < 2) return;
+  var n = RESTOCK.headers.length;
+  var vals = sh.getRange(2, 1, last - 1, n).getValues();
+  for (var i = 0; i < vals.length; i++) {
+    var r = i + 2;
+    var done = vals[i][0] === true;
+    var range = sh.getRange(r, 1, 1, n);
+    range.setBackground(done ? '#f1f3f4' : '#ffffff')
+         .setFontColor(done ? '#9aa0a6' : '#202124')
+         .setFontLine(done ? 'line-through' : 'none');
+    sh.getRange(r, 3).setHorizontalAlignment('center')
+      .setFontWeight(!done && Number(vals[i][2]) > 1 ? 'bold' : 'normal');
+  }
 }
+
+// Run this by hand (Run ▸ tidyUp) after pasting an updated script, to reformat
+// tabs that already exist and repaint the restock list.
+function tidyUp() {
+  var conf = SHEETS[EXPECTED_FORM];
+  var sh = ensureSheet(conf);
+  formatSheet(sh, conf);
+  var rs = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(RESTOCK.name);
+  if (rs) paintRestock(rs);
+}
+
+// ---------------------------------------------------------------- helpers
 
 // "EXPIRED: oral glucose" / "expires within 30 days" / ""
 function expiryFlag(expiries) {
@@ -361,13 +505,8 @@ function expiryFlag(expiries) {
 function formatExpiries(expiries) {
   if (!expiries) return '';
   return Object.keys(expiries).map(function (k) {
-    return k + '=' + (expiries[k] || 'not entered');
-  }).join('; ');
-}
-
-function ok(msg) {
-  return ContentService.createTextOutput(JSON.stringify({ result: msg }))
-                       .setMimeType(ContentService.MimeType.JSON);
+    return k + ' = ' + (expiries[k] || 'not entered');
+  }).join('\n');
 }
 
 function rawOf(e) {

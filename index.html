@@ -1668,9 +1668,9 @@ function setWeb(on){
    Script running server-side, not this. The boundary becomes real only when a
    server verifies the token before accepting a write. */
 var GOOGLE_CLIENT_ID='';
-// Exactly as Michaela typed it — CONFIRM THIS before enabling sign-in, since a
-// wrong address here simply refuses the correct account with no explanation.
-var MANAGER_EMAILS=['bukecmuems@gmail.com'];
+// Confirmed by Michaela 2026-07-26. A wrong address here simply refuses the
+// correct account with no explanation, so it is worth re-reading before enabling.
+var MANAGER_EMAILS=['bikecmuems@gmail.com'];
 
 // Reads the email out of a Google ID token WITHOUT verifying its signature. That
 // is fine here and only here: the token is not being trusted as authorization,
@@ -2386,6 +2386,9 @@ function doSubmit(fid,fn,ln,aid){
     // column is read by a person, and it records whether the bag was in service.
     bag:fid==='jumpkit'?(function(){var s=document.getElementById('jk-bag');
       return s&&s.selectedIndex>=0?s.options[s.selectedIndex].text:'';})():'',
+    // Which bike this check is about. It was going into the local log only, so the
+    // Bike Safety Check spreadsheet recorded a verdict with nothing to attach it to.
+    bike:fid==='safety'?bikeName(activeBike):'',
     firstName:fn.trim(), lastName:ln.trim(),
     andrewId:(aid||'').toLowerCase(),
     submittedAt:new Date().toISOString(),
