@@ -199,6 +199,12 @@
   .webonly{display:none}
   body.is-web .webonly{display:inline-flex}
   body.is-web .webonly.blockonly{display:block}
+  /* `.webonly` was only ever designed for inline controls, so revealing it forces
+     inline-flex. On a card that turned the whole panel into a flex row and dealt
+     its heading, text and button out as columns. Block-level things that are gated
+     have to say so, or they come back visible but shaped wrong. */
+  body.is-web .card.webonly,
+  body.is-web .sharenote.webonly{display:block}
   /* The Site Settings nav item needs `flex`, which neither rule above gives it.
      It used to get that from an inline style set in setWeb() — a SECOND gating
      mechanism, which meant anything toggling `is-web` without going through
@@ -480,6 +486,11 @@
   .doneverdict{font-size:16px;font-weight:600;color:var(--ink-soft);margin:0 0 8px}
   .donetail{font-size:14px;color:var(--ink-mute);margin:0 0 8px}
   .donewhere{font-size:13px;color:var(--ink-faint);margin:0}
+  .donemissing{text-align:left;margin:16px auto;max-width:400px;padding:13px 16px;
+    border:1px solid var(--rule-strong);border-radius:var(--radius);background:var(--bg-2)}
+  .donemissing b{font-size:13px;color:var(--warn);display:block;margin-bottom:6px}
+  .donemissing ul{margin:0;padding-left:19px}
+  .donemissing li{font-size:13.5px;color:var(--ink-soft);margin-bottom:3px}
   /* Shown when a half-finished check is restored on this device. */
   .resumed{border:1px solid var(--rule-strong);border-radius:var(--radius);background:var(--bg-2);
     color:var(--ink-mute);font-size:13px;padding:10px 14px;margin-bottom:16px}
@@ -589,10 +600,10 @@
     <div class="sb-label">Ride</div>
     <button type="button" class="sb-item active" data-view="safety-check"><span class="ic">✔</span>Pre-Ride Check</button>
     <button type="button" class="sb-item" data-view="jumpkit-check"><span class="ic">✚</span>Jumpkit Check</button>
-    <button type="button" class="sb-item" data-view="bikes"><span class="ic">⚑</span>Report a Problem</button>
     <div class="sb-label">Fleet</div>
     <button type="button" class="sb-item" data-view="dash"><span class="ic">◉</span>Bike Status</button>
-    <button type="button" class="sb-item" data-view="oos"><span class="ic">⚠</span>Out-of-Service Tool</button>
+    <button type="button" class="sb-item webonly" data-view="bikes"><span class="ic">⚑</span>Bikes &amp; Issues</button>
+    <button type="button" class="sb-item webonly" data-view="oos"><span class="ic">⚠</span>Out-of-Service Tool</button>
     <div class="sb-label">Learn</div>
     <button type="button" class="sb-item" data-view="videos"><span class="ic">▶</span>Videos</button>
     <button type="button" class="sb-item" data-view="lectures"><span class="ic">▤</span>Lectures</button>
@@ -748,10 +759,7 @@
         </div>
         <div class="card">
           <h3>How-to fixes (in office)</h3>
-          <div class="checkline" style="border:0;padding:6px 0"><span class="lbl">▸ Adjust brake tension</span></div>
-          <div class="checkline" style="border:0;padding:6px 0"><span class="lbl">▸ Reseat a dropped chain</span></div>
-          <div class="checkline" style="border:0;padding:6px 0"><span class="lbl">▸ Inflate tires to correct PSI</span></div>
-          <div class="checkline" style="border:0;padding:6px 0"><span class="lbl">▸ Tighten seat &amp; handlebars</span></div>
+          <div id="fixList"></div>
         </div>
       </div>
     </section>
@@ -898,6 +906,11 @@ function openModal(opts){
     var f=opts.focus?w.querySelector(opts.focus):w.querySelector('[data-mok]');
     if(f&&f.focus) f.focus();
     if(f&&f.select) f.select();
+    // Anything that has to mount INTO the dialog (a third-party button, a chart)
+    // needs the body to already be in the document. It is, by here.
+    if(opts.onOpen) opts.onOpen(w,function(v){
+      _modalEsc=null;_modalEnter=null;_closeModal(resolve,v);
+    });
   });
 }
 function uiAlert(msg,title){
@@ -1495,6 +1508,14 @@ var DEFAULTS={
     {id:'bd4', k:'Red shirts',              v:'may ride · no jumpkits'},
     {id:'bd5', k:'Bike jumpkit',            v:'doubles as personal jumpkit'}
   ],
+  // Repairs that can be handled without a shop. Editable for the same reason the
+  // contacts are: the list changes as the fleet and the tools change.
+  fixes:[
+    {id:'fx1', k:'Adjust brake tension',       v:'in office'},
+    {id:'fx2', k:'Reseat a dropped chain',     v:'in office'},
+    {id:'fx3', k:'Inflate tires to correct PSI', v:'in office'},
+    {id:'fx4', k:'Tighten seat & handlebars',  v:'in office'}
+  ],
   contacts:[
     {id:'ct1', k:'Bike shop (primary)',     v:'TBD'},
     {id:'ct2', k:'Bike shop (backup)',      v:'TBD'},
@@ -1562,7 +1583,7 @@ var HOME='safety-check';
 // Views a member has no business in. Hiding the nav item is not enough on its own —
 // these are hash-addressable, so a stale bookmark or a shared link would walk
 // straight past the sidebar into the page.
-var MANAGER_VIEWS=['settings','inventory','repairs'];
+var MANAGER_VIEWS=['settings','inventory','repairs','bikes','oos'];
 function isManager(){ return document.body.classList.contains('is-web'); }
 function go(v,fromHash){
   if(VIEWS.indexOf(v)<0) v=HOME;
@@ -1630,10 +1651,95 @@ function setWeb(on){
   if(!on&&MANAGER_VIEWS.indexOf(location.hash.slice(1))>=0) go(HOME);
   renderAll();
 }
+/* ---------- Google sign-in for manager mode ----------
+   Set GOOGLE_CLIENT_ID to switch the unlock from a shared passcode to "sign in
+   with the bike account". Left blank it falls back to the passcode, so the site
+   keeps working until the OAuth client exists. Setup is in SETUP-BACKEND.md.
+
+   Read this before relying on it: signing in identifies WHO you are, which a
+   shared passcode never could, and that is a genuine gain — a passcode gets
+   handed around and never rotated. But the thing it unlocks is still a CSS class
+   on this page, so anyone who opens devtools can still turn manager mode on. It
+   is better identity, not a security boundary, for the same reason the passcode
+   was not one: a static page has no server to enforce the answer.
+
+   What that means in practice: never put anything behind this gate that would
+   actually hurt if a member saw it. What protects submitted data is the Apps
+   Script running server-side, not this. The boundary becomes real only when a
+   server verifies the token before accepting a write. */
+var GOOGLE_CLIENT_ID='';
+// Exactly as Michaela typed it — CONFIRM THIS before enabling sign-in, since a
+// wrong address here simply refuses the correct account with no explanation.
+var MANAGER_EMAILS=['bukecmuems@gmail.com'];
+
+// Reads the email out of a Google ID token WITHOUT verifying its signature. That
+// is fine here and only here: the token is not being trusted as authorization,
+// it is being read to decide whether to reveal UI on the user's own screen.
+// Anything that actually matters must verify server-side.
+function emailFromIdToken(jwt){
+  try{
+    var part=String(jwt).split('.')[1];
+    var b64=part.replace(/-/g,'+').replace(/_/g,'/');
+    while(b64.length%4) b64+='=';
+    var claims=JSON.parse(decodeURIComponent(escape(atob(b64))));
+    return claims.email_verified?String(claims.email||'').toLowerCase():'';
+  }catch(e){ return ''; }
+}
+function loadGis(){
+  if(window.google&&google.accounts&&google.accounts.id) return Promise.resolve(true);
+  return new Promise(function(res){
+    var t=document.createElement('script');
+    t.src='https://accounts.google.com/gsi/client';
+    t.async=true; t.onload=function(){res(true);}; t.onerror=function(){res(false);};
+    document.head.appendChild(t);
+  });
+}
+function googleUnlock(){
+  return loadGis().then(function(okLoaded){
+    if(!okLoaded){
+      return uiAlert('Could not reach Google to sign in. Check the connection, or use the passcode.','Sign-in unavailable');
+    }
+    return openModal({
+      title:'Bike Manager',
+      message:'Sign in with the bike program’s Google account to show manager controls.',
+      body:'<div id="gsiBtn" style="display:flex;justify-content:center;padding:6px 0 2px"></div>'+
+           '<p class="hint" style="text-align:center">Any other account stays in member view.</p>',
+      cancelText:'Cancel',okText:'Use passcode instead',
+      onOk:function(){ return 'passcode'; },
+      onOpen:function(w,close){
+        try{
+          google.accounts.id.initialize({
+            client_id:GOOGLE_CLIENT_ID,
+            callback:function(resp){
+              var email=emailFromIdToken(resp&&resp.credential);
+              var allowed=MANAGER_EMAILS.map(function(e){return e.toLowerCase();});
+              close(allowed.indexOf(email)>=0?'ok':('deny:'+email));
+            }
+          });
+          google.accounts.id.renderButton(w.querySelector('#gsiBtn'),
+            {theme:'outline',size:'large',text:'signin_with',shape:'pill'});
+        }catch(e){ console.error('Google sign-in failed to initialise:',e); }
+      }
+    }).then(function(r){
+      if(r==='ok'){ setWeb(true); return; }
+      if(r&&r.indexOf('deny:')===0){
+        var who=r.slice(5);
+        return uiAlert((who?'Signed in as '+who+'. That':'That')+
+          ' account is not the bike program account, so manager controls stay hidden.',
+          'Not the bike account');
+      }
+      if(r==='passcode') return passcodeUnlock();
+    });
+  });
+}
 function toggleWeb(){
   if(document.body.classList.contains('is-web')){setWeb(false);return;}
+  if(GOOGLE_CLIENT_ID) return googleUnlock();
+  return passcodeUnlock();
+}
+function passcodeUnlock(){
   // type=password so the code is not left legible on a shared bike-room screen.
-  openModal({
+  return openModal({
     title:'Bike Manager',
     message:'Enter the manager passcode to show the controls for editing forms, criteria and bike status.',
     body:'<div class="field"><label for="mPass">Passcode</label>'+
@@ -1935,7 +2041,7 @@ function renderForm(fid){
      // Andrew ID is the identifier that actually resolves to a person across EMS
      // records; two members can share a first and last name.
      '<div class="field"><label for="'+fid+'-aid">Andrew ID</label>'+
-     '<input type="text" id="'+fid+'-aid" placeholder="e.g. abockst" autocapitalize="none" '+
+     '<input type="text" id="'+fid+'-aid" maxlength="8" autocapitalize="none" '+
      'autocorrect="off" spellcheck="false" oninput="onFormInput(\''+fid+'\')"></div>'+
      '<p style="font-size:12px;color:var(--ink-faint);margin:0">Submitted date is recorded automatically.</p>';
 
@@ -2032,10 +2138,17 @@ function donePanel(fid){
     '<h3>'+esc(SHEET_LABEL[fid])+' complete</h3>'+
     '<p class="doneverdict">'+esc(r.verdict||'')+'</p>'+
     (r.tail?'<p class="donetail">'+esc(r.tail)+'</p>':'')+
+    // Repeat what was reported missing. The submitter is the last person who will
+    // ever have had the bag open, and this is their chance to notice a mis-tick.
+    ((r.missing||[]).length
+      ? '<div class="donemissing"><b>Recorded as missing — '+r.missing.length+' item'+
+        (r.missing.length===1?'':'s')+'</b><ul>'+
+        r.missing.map(function(m){return '<li>'+esc(m)+'</li>';}).join('')+'</ul></div>'
+      : '')+
     '<p class="donewhere">'+esc(r.where||'')+'</p>'+
     '<div class="row" style="justify-content:center;margin-top:18px">'+
       '<button class="btn solid" onclick="startNewCheck(\''+fid+'\')">Start another check</button>'+
-      '<button class="btn ghost" onclick="go(\'bikes\')">See bike status</button>'+
+      '<button class="btn ghost" onclick="go(\'dash\')">See bike status</button>'+
     '</div></div>';
 }
 function startNewCheck(fid){
@@ -2194,11 +2307,20 @@ function calcForm(fid){
   return {cls:cls, big:big, detail:detail, grounded:grounded, missing:missing};
 }
 
-/* ---------- submit ---------- */
+/* ---------- submit ----------
+   `sending` is the guard against duplicate rows. A submit that is already in
+   flight must not be startable again: five identical rows turned up in the real
+   Jumpkit sheet from one sitting, because a POST gives no visible feedback and
+   the natural response to that is to press the button again. The button is also
+   disabled on click, and the payload carries a submissionId the Apps Script uses
+   to ignore a repeat it has already written. */
+var sending={jumpkit:false,safety:false};
 function submitForm(fid){
+  if(sending[fid]) return;
   var host=document.getElementById(FORM_HOST[fid]);
   var fn=(document.getElementById(fid+'-fn')||{}).value||'';
   var ln=(document.getElementById(fid+'-ln')||{}).value||'';
+  var aid=((document.getElementById(fid+'-aid')||{}).value||'').trim();
   if(!fn.trim()||!ln.trim()){
     uiAlert('Add your first and last name before submitting — a check is a record of who cleared the bike.','Name required');
     var nf=document.getElementById(fid+'-fn'); if(nf&&nf.focus) nf.focus();
@@ -2214,6 +2336,31 @@ function submitForm(fid){
       });
     return;
   }
+  // Everything above is a hard stop. What follows is the confirmation, which also
+  // carries the two soft warnings — an unchecked item and an odd-length Andrew ID
+  // are both legitimate, so neither blocks a submission, but both are worth a
+  // second look before it becomes a record.
+  var res0=calcForm(fid)||{};
+  var missCount=(res0.missing||[]).length;
+  var warn='';
+  if(missCount) warn+='\n\n'+missCount+' item'+(missCount===1?' is':'s are')+
+    ' not checked off. That is fine — they will be recorded as missing so they can be restocked.';
+  // Andrew IDs are up to 8 characters; a longer or shorter one usually means a typo.
+  if(aid&&aid.length!==8) warn+='\n\nThe Andrew ID “'+aid+'” is '+aid.length+' characters. '+
+    'Andrew IDs are 8 characters — check it is not a typo.';
+  if(!aid) warn+='\n\nNo Andrew ID entered.';
+
+  uiConfirm('You are about to submit the '+SHEET_LABEL[fid]+'.'+warn,'Submit this check?',
+            {okText:'Submit'}).then(function(yes){
+    if(yes) doSubmit(fid,fn,ln,aid);
+  });
+}
+function doSubmit(fid,fn,ln,aid){
+  if(sending[fid]) return;
+  sending[fid]=true;
+  var host=document.getElementById(FORM_HOST[fid]);
+  var btn=host.querySelector('button.solid');
+  if(btn){ btn.disabled=true; btn.textContent='Submitting…'; }
 
   var items={},expiries={};
   host.querySelectorAll('[data-item]').forEach(function(b){items[b.getAttribute('data-label')]=b.checked;});
@@ -2240,10 +2387,14 @@ function submitForm(fid){
     bag:fid==='jumpkit'?(function(){var s=document.getElementById('jk-bag');
       return s&&s.selectedIndex>=0?s.options[s.selectedIndex].text:'';})():'',
     firstName:fn.trim(), lastName:ln.trim(),
-    andrewId:(document.getElementById(fid+'-aid')||{}).value.trim().toLowerCase(),
+    andrewId:(aid||'').toLowerCase(),
     submittedAt:new Date().toISOString(),
+    // Lets the Apps Script recognise a repeat of a row it already wrote, so a
+    // retry or a double-fire cannot become a second row.
+    submissionId:uid('sub')+'-'+Date.now(),
     verdict:res.big||'',
     missing:Object.keys(items).filter(function(k){return !items[k];}),
+    present:Object.keys(items).filter(function(k){return items[k];}),
     items:items, expiries:expiries, conditions:conds,
     notes:(document.getElementById(fid+'-notes')||{}).value||''
   };
@@ -2267,7 +2418,9 @@ function submitForm(fid){
   // The run is over the moment it is submitted: drop the saved answers so the
   // next visit is a clean form, and swap the page to the completion panel.
   var finish=function(where){
-    lastResult[fid]={cls:res.cls,verdict:payload.verdict,tail:tail,where:where};
+    sending[fid]=false;
+    lastResult[fid]={cls:res.cls,verdict:payload.verdict,tail:tail,where:where,
+                     missing:payload.missing};
     clearDraft(fid);
     formDone[fid]=true;
     renderForm(fid);
@@ -2727,7 +2880,9 @@ var KV_SETS={
   boundaries:{host:'boundaryList',noun:'boundary',
     hint:'Where bikes may go, who may ride, and what rides with them.'},
   contacts:  {host:'contactList', noun:'contact',
-    hint:'Who to reach for repairs, keys, and escalation.'}
+    hint:'Who to reach for repairs, keys, and escalation.'},
+  fixes:     {host:'fixList',     noun:'fix',
+    hint:'A repair that can be done in the office, and what it needs.'}
 };
 function renderKVSets(){ Object.keys(KV_SETS).forEach(renderKV); }
 function renderKV(key){

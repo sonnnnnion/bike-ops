@@ -111,6 +111,36 @@ Confirm three things:
 
 ---
 
+## Optional — Google sign-in instead of the shared passcode
+
+The code is in place and **switched off**. With `GOOGLE_CLIENT_ID` blank, the manager
+unlock stays a passcode. Fill it in and the unlock becomes "Sign in with Google",
+accepting only the addresses in `MANAGER_EMAILS`.
+
+**Read this before turning it on.** Signing in identifies *who* you are, which a shared
+passcode never could — a passcode gets handed around and never rotated, so this is a
+real improvement. But what it unlocks is still a CSS class on a static page, so anyone
+who opens devtools can still switch manager mode on. It is **better identity, not a
+security boundary**. Never put anything behind this gate that would genuinely hurt if a
+member saw it. What protects submitted data is the Apps Script running server-side.
+
+To enable it:
+
+1. <https://console.cloud.google.com/> → create a project (any name).
+2. **APIs & Services → OAuth consent screen** → External → fill in app name and support
+   email → Save. You do not need to publish or get it verified for your own account.
+3. **APIs & Services → Credentials → Create credentials → OAuth client ID → Web
+   application**.
+4. Under **Authorised JavaScript origins** add both:
+   - `https://sonnnnnion.github.io`
+   - `http://localhost:8848`
+5. Copy the **Client ID** (ends in `.apps.googleusercontent.com`).
+6. In `index.html`, set `var GOOGLE_CLIENT_ID='…'` and check `MANAGER_EMAILS` holds the
+   exact bike-account address. **A wrong address silently refuses the right account.**
+
+If Google cannot be reached, the dialog offers "Use passcode instead", so a network
+problem in a bike room never locks the manager out.
+
 ## The script
 
 ```javascript
@@ -138,13 +168,13 @@ var SHEETS = {
     name: 'Jumpkit Checks',
     headers: ['Submitted At', 'First Name', 'Last Name', 'Andrew ID', 'Bag', 'Verdict',
               'Anything Missing?', 'Missing Items', 'Expiring / Expired',
-              'Expiration Dates', 'Notes']
+              'Expiration Dates', 'Notes', 'Submission ID']
   },
   safety: {
     name: 'Bike Checks',
     headers: ['Submitted At', 'First Name', 'Last Name', 'Andrew ID', 'Verdict',
               'Anything Missing?', 'Missing Items', 'Grounded By Weather?',
-              'Conditions Flagged', 'Notes']
+              'Conditions Flagged', 'Notes', 'Submission ID']
   }
 };
 
@@ -204,24 +234,30 @@ function doPost(e) {
       row = [
         when, p.firstName || '', p.lastName || '', p.andrewId || '', p.bag || '', p.verdict || '',
         missing.length ? 'YES — ' + missing.length + ' missing' : 'no',
-        missing.join(', '),
+        missing.join('\n'),
         expiryFlag(p.expiries),
         formatExpiries(p.expiries),
-        p.notes || ''
+        p.notes || '',
+        p.submissionId || ''
       ];
     } else {
       row = [
         when, p.firstName || '', p.lastName || '', p.andrewId || '', p.verdict || '',
         missing.length ? 'YES — ' + missing.length + ' missing' : 'no',
-        missing.join(', '),
+        missing.join('\n'),
         conditions.length ? 'YES' : 'no',
         conditions.join(', '),
-        p.notes || ''
+        p.notes || '',
+        p.submissionId || ''
       ];
     }
 
+    if (alreadyWritten(sheet, p.submissionId)) return ok('duplicate ignored');
+
     sheet.appendRow(row);
+    sheet.getRange(sheet.getLastRow(), 1, 1, row.length).setVerticalAlignment('top');
     highlightIfProblem(sheet, p, missing, conditions);
+    addToRestock(p, missing);
     return ok('saved');
 
   } catch (err) {
@@ -230,6 +266,51 @@ function doPost(e) {
     console.error('Bike Ops intake failed: ' + err + ' :: ' + rawOf(e));
     return ok('error logged');
   }
+}
+
+// A submission carries an id. If the same id is already in the last column, this
+// is a retry or a double-fire of one that was written, not a new check. One
+// sitting produced five identical rows in the real Jumpkit sheet before this.
+function alreadyWritten(sheet, submissionId) {
+  if (!submissionId) return false;
+  var last = sheet.getLastRow();
+  if (last < 2) return false;
+  var col = sheet.getLastColumn();
+  var start = Math.max(2, last - 50);           // recent rows are enough
+  var ids = sheet.getRange(start, col, last - start + 1, 1).getValues();
+  for (var i = 0; i < ids.length; i++) {
+    if (String(ids[i][0]) === String(submissionId)) return true;
+  }
+  return false;
+}
+
+// The equipment manager's actual job is "what do I need to put back in the bag",
+// and reading that out of a comma-run inside one cell is miserable. This writes
+// ONE ROW PER MISSING ITEM to a Restock tab, with a real checkbox to tick when it
+// has been replaced. Nothing is auto-removed — ticking it is the record.
+function addToRestock(p, missing) {
+  if (!missing || !missing.length) return;
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var name = 'Restock';
+  var sh = ss.getSheetByName(name);
+  if (!sh) {
+    sh = ss.insertSheet(name);
+    sh.appendRow(['Restocked?', 'Item', 'Reported', 'Bag', 'Reported By', 'Submission ID']);
+    sh.getRange(1, 1, 1, 6).setFontWeight('bold');
+    sh.setFrozenRows(1);
+    sh.setColumnWidth(2, 380);
+  }
+  if (alreadyWritten(sh, p.submissionId)) return;
+
+  var when = Utilities.formatDate(new Date(),
+    Session.getScriptTimeZone(), 'yyyy-MM-dd HH:mm');
+  var who = ((p.firstName || '') + ' ' + (p.lastName || '')).trim();
+  var rows = missing.map(function (item) {
+    return [false, item, when, p.bag || '', who, p.submissionId || ''];
+  });
+  var first = sh.getLastRow() + 1;
+  sh.getRange(first, 1, rows.length, 6).setValues(rows);
+  sh.getRange(first, 1, rows.length, 1).insertCheckboxes();
 }
 
 // Creates the tab and header row the first time a form type is submitted.
