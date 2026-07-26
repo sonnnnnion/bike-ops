@@ -1224,7 +1224,16 @@ var DEFAULTS={
   // cadences and are read separately, so they stay separate; a single endpoint
   // would have to demultiplex by a `form` field and could not be handed to
   // someone as "here is the jumpkit sheet".
-  api:{jumpkit:'',safety:''},
+  // Committed on purpose, not typed in per-browser. These used to live only in the
+  // manager's localStorage, which meant every OTHER person's browser had empty
+  // endpoints — their checks saved to their own phone and reached no spreadsheet.
+  // The URL is not a secret (it ships in a public page either way); what protects
+  // the data is that the Apps Script runs server-side in the EMS Google account
+  // and can only append a row. Site Settings still overrides these.
+  api:{
+    jumpkit:'https://script.google.com/macros/s/AKfycbydJNw0_HbuCkHIL4p0YJJDL21DG4KjFkiqXdqMGcd5BlTPq8FXGZV9Dzij8I1Ym_4UFw/exec',
+    safety :'https://script.google.com/macros/s/AKfycbyJir08XlC9OAhT1gGUEmF3ep9h10ByGdgb5sFAWD7-ONzXrzIongk7Xt-NYp286t4KjA/exec'
+  },
   apiUrl:'',            // legacy single endpoint — migrated into `api` on load
   // Completed pre-ride checks, newest first. A bike's live status is derived
   // from its most recent entry here (see statusOf), so nobody hand-sets it.
@@ -1373,8 +1382,11 @@ var DEFAULTS={
     }
   },
   videos:[
-    {id:'v1', title:'Tying a Bike to the Rope Hooks', embed:'',
-     note:'Reference only — documents the OLD ceiling rope/hook storage, which is being phased out as unsafe. Not current practice.',
+    // 960x540 source, so the default 16:9 is already correct — any bar the Drive
+    // player draws is its own chrome, not a shape mismatch.
+    {id:'v1', title:'Tying a Bike to the Rope Hooks',
+     embed:'https://drive.google.com/file/d/1IAQsleB1-4s6dgLNGOkb1skqtS0TiVoI/view?usp=sharing',
+     note:'Hook Storage for Bikes',
      legacy:true}
   ],
   // One deck can serve all six modules: PowerPoint Online's embed URL honours
@@ -1473,7 +1485,7 @@ var DEFAULTS={
   boundaries:[
     {id:'bd1', k:'On-campus while on duty', v:'allowed'},
     {id:'bd2', k:'General bounds',          v:'Mudge · TCS · backside Scaife'},
-    {id:'bd3', k:'Keep between duty',       v:'confirm Ashley/Taimur (Mellon)'},
+    {id:'bd3', k:'Keep between duty',       v:'confirm with supervisors'},
     {id:'bd4', k:'Red shirts',              v:'may ride · no jumpkits'},
     {id:'bd5', k:'Bike jumpkit',            v:'doubles as personal jumpkit'}
   ],
