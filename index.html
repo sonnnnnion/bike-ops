@@ -1557,6 +1557,7 @@ function loadDB(){
 function saveDB(){
   try{localStorage.setItem(DB_KEY,JSON.stringify(DB));}
   catch(e){console.warn('Could not save locally:',e);}
+  markContentDirty();
 }
 function resetDB(){
   uiConfirm('This puts every form, criterion, video, lecture and bylaw back to the built-in defaults. '+
@@ -1640,7 +1641,13 @@ function setWeb(on){
   pill.className='role-pill'+(on?' web':'');
   document.getElementById('webBtn').textContent=on?'Exit manager':'\ud83d\udd12 Bike Manager';
   // Signing out drops the token too — a stale one cannot be reused to publish.
-  if(!on) googleIdToken='';
+  if(!on){
+    if(contentState.dirty&&contentState.loaded){
+      uiAlert('You made changes that were never published, so nobody else can see them. '+
+              'Sign in again and press Publish to everyone when you are ready.','Unpublished changes');
+    }
+    googleIdToken='';
+  }
   // The Site Settings nav item is gated purely by `.is-web` in CSS — see the
   // rule next to .webonly. Nothing to set here.
   // Leaving manager mode while standing in a manager-only view must not leave the
@@ -1746,7 +1753,17 @@ var CONTENT_ENDPOINT=function(){ return (DB.api||{}).jumpkit||''; };
 // are one person's half-filled form.
 var NO_SYNC={api:1,apiUrl:1,version:1};
 var googleIdToken='';
-var contentState={loaded:false,dirty:false,at:0};
+var contentState={loaded:false,dirty:false,at:0,everPublished:false};
+// Tracks whether this device holds edits that have not been published. The real
+// risk here is not a slow publish, it is a silent one: editing, forgetting, and
+// believing everyone can see it. Nothing auto-publishes — a half-typed bylaw
+// should not go live mid-sentence — but leaving unpublished work is now visible.
+function markContentDirty(){
+  if(!isManager()) return;
+  contentState.dirty=true;
+  var el=document.getElementById('publishMsg');
+  if(el) el.textContent='Unpublished changes on this device.';
+}
 
 function contentPayload(){
   var out={};
@@ -1775,9 +1792,12 @@ function pullContent(){
   fetch(url+(url.indexOf('?')>=0?'&':'?')+'content=1&t='+Date.now())
     .then(function(r){ return r.json(); })
     .then(function(j){
-      if(!j||!j.ok||!j.content) return;
-      contentState.loaded=true; contentState.at=j.updatedAt||0;
-      if(applyContent(j.content)){ saveDB(); renderAll(); }
+      if(!j||!j.ok) return;                     // genuinely could not read it
+      contentState.loaded=true;                  // read fine — even if empty
+      contentState.at=j.updatedAt||0;
+      contentState.everPublished=!!j.content;
+      if(j.content&&applyContent(j.content)){ saveDB(); renderAll(); }
+      else renderSettings();
     })
     .catch(function(){ /* offline, or the script has no doGet yet — keep local */ });
 }
@@ -1795,6 +1815,7 @@ function publishContent(){
     setTimeout(function(){
       fetch(url+'?content=1&t='+Date.now()).then(function(r){return r.json();}).then(function(j){
         var same=j&&j.content&&JSON.stringify(j.content)===JSON.stringify(contentPayload());
+        if(same){ contentState.dirty=false; contentState.everPublished=true; }
         if(out) out.textContent=same?'Published — everyone sees this now.'
                                     :'Sent, but the server copy does not match yet. Try again in a moment.';
       }).catch(function(){ if(out) out.textContent='Sent, but could not read it back to confirm.'; });
@@ -3533,8 +3554,17 @@ function renderSettings(){
    '<p style="font-size:13px;color:var(--ink-faint);margin:0 0 4px">Edits you make — bikes, forms, criteria, inventory, videos, bylaws, boundaries — '+
    'are saved on this device as you go. <b>Publish</b> sends them to the script so every other person sees them too.</p>'+
    '<p style="font-size:13px;color:var(--ink-faint);margin:0 0 12px">'+
-     (contentState.loaded?'This device last read the shared copy successfully.'
-                         :'The shared copy could not be read yet, so what you see here is local. Publishing will still work once the script is updated.')+'</p>'+
+     // Unpublished work is the actionable state, so it is checked first — it was
+     // being hidden behind "nothing published yet", which is exactly the case
+     // where a first-time publish matters most.
+     (!contentState.loaded
+        ? 'The shared copy could not be read, so what you see here is this device only.'
+        : (contentState.dirty
+            ? '<b>You have changes on this device that nobody else can see yet.</b>'+
+              (contentState.everPublished?'' : ' Nothing has ever been published, so everyone else is still on the built-in defaults.')
+            : (contentState.everPublished
+                ? 'Connected. This device matches what everyone else sees.'
+                : 'Connected. Nothing has been published yet, so everyone else still sees the built-in defaults.')))+'</p>'+
    '<button class="btn sm solid" onclick="publishContent()">Publish to everyone</button> '+
    '<button class="btn sm" onclick="pullContent();uiAlert(\'Re-reading the shared copy.\',\'Refreshing\')">Get latest</button>'+
    '<p class="hint" id="publishMsg"></p>'+
