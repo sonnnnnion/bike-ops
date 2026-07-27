@@ -252,6 +252,12 @@
   /* Each card sizes to its own content, so one tall embed does not stretch its
      neighbours into a column of empty space. */
   #videoGrid{align-items:start}
+  /* Google's preview players draw fixed-size chrome. Under roughly 380px the play
+     and popout buttons are cut off instead of shrinking, which makes the video
+     unwatchable in place — hence the floor, and the single column below it. */
+  .video{min-width:0}
+  @media(max-width:900px){ #videoGrid{grid-template-columns:1fr} }
+  .module .embed{min-height:220px}
   .video .meta{padding:12px 14px;flex:1;display:flex;flex-direction:column;gap:4px}
   .video .meta b{display:block;font-size:14px}
   .video .meta small{color:var(--ink-faint);font-size:12px}
@@ -724,7 +730,7 @@
         <span class="tag" id="videoCount">0 videos</span>
         <button class="btn sm solid webonly" onclick="addVideo()">+ Add video</button>
       </div>
-      <div class="grid cols-3" id="videoGrid"></div>
+      <div class="grid cols-2" id="videoGrid"></div>
     </section>
 
     <!-- ===== LECTURES ===== -->
@@ -2685,7 +2691,9 @@ function renderVideos(){
       '<b>'+esc(v.title)+'</b>'+
       (v.legacy?'<span class="tag warn" style="align-self:flex-start;margin:2px 0">Reference only</span>':'')+
       '<small>'+esc(v.note||'')+'</small>'+
-      '<div class="acts row"><button class="btn xs webonly" onclick="editVideo('+i+')">Edit</button>'+
+      '<div class="acts row">'+
+      (v.embed?'<a class="btn xs solid" href="'+esc(watchUrl(v.embed))+'" target="_blank" rel="noopener">Watch full size ↗</a>':'')+
+      '<button class="btn xs webonly" onclick="editVideo('+i+')">Edit</button>'+
       '<button class="btn xs danger webonly" onclick="delVideo('+i+')">Remove</button></div>'+
       '</div></div>';
   }).join('');
@@ -2735,6 +2743,21 @@ function delVideo(i){
    ".../edit?usp=sharing" and ".../view?usp=sharing", and neither embeds — they
    redirect to the full app UI or a sign-in wall. Paste whatever the Share button
    gives you; this converts it. */
+// The link a person should follow to watch this at full size in its own tab.
+// embedSrc() normalises a share link INTO an iframe URL; this goes the other way,
+// because /preview and /embed pages are deliberately stripped of the surrounding
+// player UI and are a poor thing to land on.
+function watchUrl(url){
+  var u=String(url==null?'':url).trim();
+  if(!u) return '';
+  var d=u.match(/drive\.google\.com\/file\/d\/([^/?#]+)/);
+  if(d) return 'https://drive.google.com/file/d/'+d[1]+'/view';
+  var y=u.match(/(?:youtube\.com\/(?:watch\?v=|embed\/)|youtu\.be\/)([\w-]{6,})/);
+  if(y) return 'https://www.youtube.com/watch?v='+y[1];
+  var g=u.match(/docs\.google\.com\/presentation\/d\/([^/?#]+)/);
+  if(g) return 'https://docs.google.com/presentation/d/'+g[1]+'/view';
+  return u;
+}
 function embedSrc(url){
   var u=String(url==null?'':url).trim();
   if(!u) return '';
@@ -2797,6 +2820,7 @@ function renderLectures(){
         '<span style="font-family:var(--font-mono);color:var(--ink-faint)">▸</span></div>'+
       '<div class="mbody">'+body+
         '<div class="row mt">'+
+          (src?'<a class="btn xs solid" href="'+esc(watchUrl(L.embed||(DB.deck&&DB.deck.url)||''))+'" target="_blank" rel="noopener">Open full size ↗</a>':'')+
           (editUrl?'<a class="btn xs webonly" href="'+esc(editUrl)+'" target="_blank" rel="noopener">Open to edit ↗</a>':'')+
           '<button class="btn xs webonly" onclick="editLecture('+i+')">Set links</button>'+
           '<button class="btn xs danger webonly" onclick="delLecture('+i+')">Remove</button>'+
