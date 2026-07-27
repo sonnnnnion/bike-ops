@@ -886,7 +886,9 @@ function openModal(opts){
       '<div class="modal-body">'+(opts.body||'')+'</div>'+
       '<div class="modal-foot">'+
         (opts.cancelText?'<button type="button" class="btn ghost" data-mcancel>'+esc(opts.cancelText)+'</button>':'')+
-        '<button type="button" class="btn '+(opts.plainOk?'ghost':'solid')+(opts.danger?' danger':'')+'" data-mok>'+esc(opts.okText||'OK')+'</button>'+
+        // A dialog whose action lives in its body (the Google button) has no OK of
+        // its own; a default one would read as the way to proceed and do nothing.
+        (opts.noOk?'':'<button type="button" class="btn '+(opts.plainOk?'ghost':'solid')+(opts.danger?' danger':'')+'" data-mok>'+esc(opts.okText||'OK')+'</button>')+
       '</div></div>';
     document.body.appendChild(w); _modalHost=w;
 
@@ -896,14 +898,14 @@ function openModal(opts){
       if(v===undefined) return;            // validation refused — stay open
       _modalEsc=null;_modalEnter=null;_closeModal(resolve,v);
     };
-    w.querySelector('[data-mok]').onclick=ok;
+    var okBtn=w.querySelector('[data-mok]'); if(okBtn) okBtn.onclick=ok;
     var c=w.querySelector('[data-mcancel]'); if(c) c.onclick=cancel;
     // Clicking the scrim cancels, but only the scrim itself — not a click that
     // started inside the dialog and drifted out while selecting text.
     w.addEventListener('mousedown',function(e){if(e.target===w) cancel();});
     _modalEsc=opts.cancelText?cancel:ok; _modalEnter=ok;
     document.addEventListener('keydown',_modalKey,true);
-    var f=opts.focus?w.querySelector(opts.focus):w.querySelector('[data-mok]');
+    var f=opts.focus?w.querySelector(opts.focus):(w.querySelector('[data-mok]')||w.querySelector('[data-mcancel]'));
     if(f&&f.focus) f.focus();
     if(f&&f.select) f.select();
     // Anything that has to mount INTO the dialog (a third-party button, a chart)
@@ -1564,6 +1566,7 @@ function resetDB(){
     try{localStorage.removeItem(DB_KEY);}catch(e){}
     DB=JSON.parse(JSON.stringify(DEFAULTS));
     renderAll();
+pullContent();
     uiAlert('Content is back to the built-in defaults.','Reset complete');
   });
 }
@@ -1630,24 +1633,18 @@ window.addEventListener('hashchange',function(){
    what protects your data. Writes to the Google Sheet are validated
    server-side by the Apps Script, which is the real gate.
    ============================================================ */
-var MGR_HASH='f3d8315d346f810b25e5ce43d829de40dac84f5a2176556dd44c374579c8372d';
-function sha256Hex(str){
-  if(!(window.crypto&&crypto.subtle)) return Promise.resolve(null);
-  return crypto.subtle.digest('SHA-256',new TextEncoder().encode(str)).then(function(buf){
-    return Array.prototype.map.call(new Uint8Array(buf),function(b){
-      return b.toString(16).padStart(2,'0');}).join('');
-  });
-}
 function setWeb(on){
   document.body.classList.toggle('is-web',on);
   var pill=document.getElementById('rolePill');
   pill.textContent=on?'Bike Manager':'Member view';
   pill.className='role-pill'+(on?' web':'');
-  document.getElementById('webBtn').textContent=on?'Exit manager':'🔒 Bike Manager';
+  document.getElementById('webBtn').textContent=on?'Exit manager':'\ud83d\udd12 Bike Manager';
+  // Signing out drops the token too — a stale one cannot be reused to publish.
+  if(!on) googleIdToken='';
   // The Site Settings nav item is gated purely by `.is-web` in CSS — see the
   // rule next to .webonly. Nothing to set here.
   // Leaving manager mode while standing in a manager-only view must not leave the
-  // page sitting there — Settings, Inventory and Repairs all drop back to home.
+  // page sitting there — those views all drop back to home.
   if(!on&&MANAGER_VIEWS.indexOf(location.hash.slice(1))>=0) go(HOME);
   renderAll();
 }
@@ -1697,23 +1694,21 @@ function loadGis(){
 function googleUnlock(){
   return loadGis().then(function(okLoaded){
     if(!okLoaded){
-      return uiAlert('Could not reach Google to sign in. Check the connection, or use the passcode.','Sign-in unavailable');
+      return uiAlert('Could not reach Google to sign in. Check the connection and try again.','Sign-in unavailable');
     }
     return openModal({
       title:'Bike Manager',
       message:'Sign in with the bike program’s Google account to show manager controls.',
       body:'<div id="gsiBtn" style="display:flex;justify-content:center;padding:6px 0 2px"></div>'+
            '<p class="hint" style="text-align:center">Any other account stays in member view.</p>',
-      cancelText:'Cancel',okText:'Use passcode instead',
-      // The Google button is the primary action; the fallback must not out-shout it.
-      plainOk:true,
-      onOk:function(){ return 'passcode'; },
+      cancelText:'Close', noOk:true,
       onOpen:function(w,close){
         try{
           google.accounts.id.initialize({
             client_id:GOOGLE_CLIENT_ID,
             callback:function(resp){
               var email=emailFromIdToken(resp&&resp.credential);
+              googleIdToken=(resp&&resp.credential)||'';
               var allowed=MANAGER_EMAILS.map(function(e){return e.toLowerCase();});
               close(allowed.indexOf(email)>=0?'ok':('deny:'+email));
             }
@@ -1730,37 +1725,88 @@ function googleUnlock(){
           ' account is not the bike program account, so manager controls stay hidden.',
           'Not the bike account');
       }
-      if(r==='passcode') return passcodeUnlock();
     });
   });
 }
+/* ---------- shared content ----------
+   Until now everything a manager edited lived in localStorage, so it was visible
+   to exactly one browser. A member opening the site saw the seeded defaults, and
+   the manager was the only person who would never notice.
+
+   Content is stored in the Jumpkit spreadsheet's script (PropertiesService) and
+   read by everyone on load. Writes are authorised by sending the Google ID token
+   from manager sign-in; the Apps Script verifies that token with Google and
+   checks the address before accepting anything. That check happens server-side,
+   which is what makes it an actual boundary rather than a hidden button.
+
+   Reads are public and unauthenticated. That is correct: this is the content of
+   a public site — the same words a visitor can already read on the page. */
+var CONTENT_ENDPOINT=function(){ return (DB.api||{}).jumpkit||''; };
+// Device-local or code-owned keys never sync. `api` lives in the page, and drafts
+// are one person's half-filled form.
+var NO_SYNC={api:1,apiUrl:1,version:1};
+var googleIdToken='';
+var contentState={loaded:false,dirty:false,at:0};
+
+function contentPayload(){
+  var out={};
+  Object.keys(DEFAULTS).forEach(function(k){ if(!NO_SYNC[k]) out[k]=DB[k]; });
+  return out;
+}
+// Applied over DEFAULTS the same way loadDB does, so a stored blob that is missing
+// a key added since it was written still gets that key's default.
+function applyContent(obj){
+  if(!obj||typeof obj!=='object') return false;
+  var changed=false;
+  Object.keys(DEFAULTS).forEach(function(k){
+    if(NO_SYNC[k]||!(k in obj)) return;
+    var want=DEFAULTS[k],got=obj[k];
+    var ok=Array.isArray(want)?Array.isArray(got)
+          :(want&&typeof want==='object')?(got&&typeof got==='object'&&!Array.isArray(got))
+          :(typeof got===typeof want);
+    if(ok&&JSON.stringify(DB[k])!==JSON.stringify(got)){ DB[k]=got; changed=true; }
+  });
+  return changed;
+}
+// Fired on load. The page has already rendered from local state by this point, so
+// a slow or failed fetch costs nothing — the site simply keeps what it had.
+function pullContent(){
+  var url=CONTENT_ENDPOINT(); if(!url) return;
+  fetch(url+(url.indexOf('?')>=0?'&':'?')+'content=1&t='+Date.now())
+    .then(function(r){ return r.json(); })
+    .then(function(j){
+      if(!j||!j.ok||!j.content) return;
+      contentState.loaded=true; contentState.at=j.updatedAt||0;
+      if(applyContent(j.content)){ saveDB(); renderAll(); }
+    })
+    .catch(function(){ /* offline, or the script has no doGet yet — keep local */ });
+}
+function publishContent(){
+  var url=CONTENT_ENDPOINT();
+  if(!url) return uiAlert('No endpoint is configured, so there is nowhere to publish to.','Cannot publish');
+  if(!googleIdToken) return uiAlert('Publishing needs a current Google sign-in. Exit manager mode and sign in again.','Sign in again');
+  var out=document.getElementById('publishMsg');
+  if(out) out.textContent='Publishing…';
+  fetch(url,{method:'POST',mode:'no-cors',
+    headers:{'Content-Type':'text/plain;charset=utf-8'},
+    body:JSON.stringify({type:'content',idToken:googleIdToken,content:contentPayload()})})
+  .then(function(){
+    // no-cors again, so this cannot confirm the write. Re-reading it can.
+    setTimeout(function(){
+      fetch(url+'?content=1&t='+Date.now()).then(function(r){return r.json();}).then(function(j){
+        var same=j&&j.content&&JSON.stringify(j.content)===JSON.stringify(contentPayload());
+        if(out) out.textContent=same?'Published — everyone sees this now.'
+                                    :'Sent, but the server copy does not match yet. Try again in a moment.';
+      }).catch(function(){ if(out) out.textContent='Sent, but could not read it back to confirm.'; });
+    },1200);
+  })
+  .catch(function(){ if(out) out.textContent='Could not reach the script.'; });
+}
+
 function toggleWeb(){
   if(document.body.classList.contains('is-web')){setWeb(false);return;}
-  if(GOOGLE_CLIENT_ID) return googleUnlock();
-  return passcodeUnlock();
-}
-function passcodeUnlock(){
-  // type=password so the code is not left legible on a shared bike-room screen.
-  return openModal({
-    title:'Bike Manager',
-    message:'Enter the manager passcode to show the controls for editing forms, criteria and bike status.',
-    body:'<div class="field"><label for="mPass">Passcode</label>'+
-         '<input type="password" id="mPass" autocomplete="off"></div>'+
-         '<p class="hint" id="mPassErr" style="color:var(--oos);display:none">That passcode is not right.</p>',
-    okText:'Unlock',cancelText:'Cancel',focus:'#mPass',
-    onOk:function(w){
-      var v=w.querySelector('#mPass').value;
-      if(!v.trim()) return undefined;
-      return v.trim();
-    }
-  }).then(function(p){
-    if(p===null) return;
-    return sha256Hex(p).then(function(h){
-      if(h===null) return uiAlert('This browser cannot verify the passcode — it needs a secure context (https or localhost).','Cannot verify');
-      if(h===MGR_HASH) setWeb(true);
-      else return uiAlert('That passcode is not right.','Incorrect passcode').then(toggleWeb);
-    });
-  });
+  if(!GOOGLE_CLIENT_ID) return uiAlert('Google sign-in is not configured yet, so manager mode cannot be opened.','Not configured');
+  return googleUnlock();
 }
 
 /* ============================================================
@@ -3483,16 +3529,24 @@ function renderSettings(){
    }).join('')+
    '</div>'+
 
-   '<div class="card mt"><h3>Saved content</h3>'+
-   '<p style="font-size:13px;color:var(--ink-faint);margin:0 0 10px">Form layouts, criteria, videos, lectures and bylaws you edit are saved in <b>this browser only</b> until the backend is connected. '+
-   'They will not appear for other people yet.</p>'+
-   '<button class="btn sm" onclick="exportDB()">Export content (JSON)</button> '+
-   '<button class="btn sm danger" onclick="resetDB()">Reset to defaults</button></div>'+
+   '<div class="card mt"><h3>Publish content</h3>'+
+   '<p style="font-size:13px;color:var(--ink-faint);margin:0 0 4px">Edits you make — bikes, forms, criteria, inventory, videos, bylaws, boundaries — '+
+   'are saved on this device as you go. <b>Publish</b> sends them to the script so every other person sees them too.</p>'+
+   '<p style="font-size:13px;color:var(--ink-faint);margin:0 0 12px">'+
+     (contentState.loaded?'This device last read the shared copy successfully.'
+                         :'The shared copy could not be read yet, so what you see here is local. Publishing will still work once the script is updated.')+'</p>'+
+   '<button class="btn sm solid" onclick="publishContent()">Publish to everyone</button> '+
+   '<button class="btn sm" onclick="pullContent();uiAlert(\'Re-reading the shared copy.\',\'Refreshing\')">Get latest</button>'+
+   '<p class="hint" id="publishMsg"></p>'+
+   '<div class="mt-sm"><button class="btn sm" onclick="exportDB()">Export content (JSON)</button> '+
+   '<button class="btn sm danger" onclick="resetDB()">Reset to defaults</button></div></div>'+
 
-   '<div class="card mt"><h3>Passcode</h3>'+
-   '<p style="font-size:13px;color:var(--ink-faint);margin:0">The Bike Manager passcode is stored as a SHA-256 hash, not as text. '+
-   'Because this is a public site, treat it as a way to keep manager controls out of the way — not as real security. '+
-   'What actually protects submitted data is the Apps Script running server-side in the EMS Google account.</p></div>';
+   '<div class="card mt"><h3>Manager access</h3>'+
+   '<p style="font-size:13px;color:var(--ink-faint);margin:0">Manager mode opens by signing in with '+
+   esc(MANAGER_EMAILS.join(' or '))+'. There is no shared passcode to hand on or rotate. '+
+   'Signing in identifies who you are; it does not by itself keep anyone out of this page, '+
+   'so what protects submitted content is the Apps Script checking that same sign-in server-side '+
+   'before it accepts a change.</p></div>';
 }
 function saveApi(){
   var vals={},odd=[];

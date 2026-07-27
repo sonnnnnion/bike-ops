@@ -207,6 +207,39 @@ without an origin on the list above.
 If Google cannot be reached, the dialog offers "Use passcode instead", so a network
 problem in a bike room never locks the manager out.
 
+## Shared content — so edits reach everyone
+
+Until now, everything a manager edited was saved to `localStorage`: visible in one
+browser, on one device. A member opening the site saw the seeded defaults, and the
+manager was the only person who would never notice, because theirs looked right.
+
+The **jumpkit** script now also stores the site's content:
+
+- **Reading is public.** Every visitor's browser fetches the content on load. That is
+  correct — this is the text of a public website, the same words already on the page.
+- **Writing requires a verified manager.** Site Settings ▸ **Publish to everyone** sends
+  the content along with the Google ID token from sign-in. The script asks Google
+  whether that token is genuine, whether it was issued for *this* site, and whose it is,
+  and refuses unless the address is in `MANAGER_EMAILS`.
+
+That check runs **inside Google, server-side**, where a browser cannot lie about it.
+This is the first thing in the project that is an actual permission boundary rather than
+hidden UI — devtools can still reveal manager buttons, but pressing Publish without a
+real sign-in gets a refusal from the script.
+
+**Only the jumpkit copy stores content** (`CONTENT_STORE`), so there is one source of
+truth. Leave the config lines identical in both copies; the safety copy simply never
+receives a content request.
+
+Publishing writes to Script Properties, not to a sheet tab, so nobody can break the site
+by editing a cell.
+
+### Working with two people
+
+There is no merge. Publishing replaces the stored copy wholesale, so if two managers
+edit at once the later Publish wins. With one Bike Manager that is not a real risk;
+press **Get latest** before a big editing session if it ever becomes one.
+
 ## The script
 
 ```javascript
@@ -228,6 +261,13 @@ problem in a bike room never locks the manager out.
 // stray tab to hold them — wrong, and silent, because the site cannot read the
 // reply. With it, the mismatch is refused and logged where you can find it.
 var EXPECTED_FORM = 'jumpkit';
+
+// Shared site content is stored by the JUMPKIT copy only, so there is one
+// source of truth. Leave these two lines identical in both copies; the safety
+// copy simply never gets a content request.
+var CONTENT_STORE = (EXPECTED_FORM === 'jumpkit');
+var MANAGER_EMAILS = ['bikecmuems@gmail.com'];
+var OAUTH_CLIENT_ID = '649290078556-l1p8l9qr5stjldgrs08c8eo0od6c727e.apps.googleusercontent.com';
 
 // Column layouts. Order is "who and what happened" first, detail after, so the
 // leftmost screenful answers the question an operations exec actually opens this
@@ -268,6 +308,16 @@ var RESTOCK = {
 // the site can tell a working deployment from a dead URL. It reports which form
 // this copy expects, which is what catches the two Web App URLs being swapped.
 function doGet(e) {
+  // Public read of the site's content. Unauthenticated on purpose: this is the
+  // text of a public website, the same words any visitor can already see.
+  if (e && e.parameter && e.parameter.content) {
+    var raw = PropertiesService.getScriptProperties().getProperty('siteContent');
+    return json({
+      ok: true,
+      content: raw ? JSON.parse(raw) : null,
+      updatedAt: Number(PropertiesService.getScriptProperties().getProperty('siteContentAt') || 0)
+    });
+  }
   var conf = SHEETS[EXPECTED_FORM] || {};
   var rows = 0;
   try {
@@ -290,6 +340,25 @@ function doPost(e) {
   try {
     if (!e || !e.postData || !e.postData.contents) return json({ result: 'no body' });
     var p = JSON.parse(e.postData.contents);
+
+    // Content save. THIS is the one place a real permission check happens: the
+    // ID token is verified with Google server-side, where the browser cannot lie
+    // about it, and the address on it has to be a manager's.
+    if (p.type === 'content') {
+      if (!CONTENT_STORE) return json({ result: 'content is stored by the jumpkit copy' });
+      var who = verifiedEmail(p.idToken);
+      if (!who) return json({ result: 'rejected: sign-in could not be verified' });
+      if (MANAGER_EMAILS.indexOf(who) < 0) {
+        console.warn('Content save refused for ' + who);
+        return json({ result: 'rejected: ' + who + ' is not a manager' });
+      }
+      PropertiesService.getScriptProperties()
+        .setProperty('siteContent', JSON.stringify(p.content || {}));
+      PropertiesService.getScriptProperties()
+        .setProperty('siteContentAt', String(Date.now()));
+      console.log('Content published by ' + who);
+      return json({ result: 'content saved' });
+    }
 
     var conf = SHEETS[p.form];
     if (!conf) return json({ result: 'unknown form: ' + p.form });
@@ -499,6 +568,27 @@ function tidyUp() {
   formatSheet(sh, conf);
   var rs = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(RESTOCK.name);
   if (rs) paintRestock(rs);
+}
+
+// Asks Google whether this token is real, who it belongs to, and whether it was
+// issued for THIS site. Without the audience check any valid Google token from
+// any app would be accepted, which is the classic way this goes wrong.
+function verifiedEmail(idToken) {
+  if (!idToken) return '';
+  try {
+    var res = UrlFetchApp.fetch(
+      'https://oauth2.googleapis.com/tokeninfo?id_token=' + encodeURIComponent(idToken),
+      { muteHttpExceptions: true });
+    if (res.getResponseCode() !== 200) return '';
+    var t = JSON.parse(res.getContentText());
+    if (OAUTH_CLIENT_ID && t.aud !== OAUTH_CLIENT_ID) return '';
+    if (String(t.email_verified) !== 'true') return '';
+    if (Number(t.exp) * 1000 < Date.now()) return '';
+    return String(t.email || '').toLowerCase();
+  } catch (err) {
+    console.error('Token check failed: ' + err);
+    return '';
+  }
 }
 
 // ---------------------------------------------------------------- helpers
