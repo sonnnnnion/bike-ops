@@ -551,6 +551,7 @@
   /* "reported 4x" — the signal that something keeps coming back and is worth
      chasing, without a row per report. */
   .rept{font-family:var(--font-mono);font-size:11px;color:var(--warn);font-weight:700;white-space:nowrap}
+  .editedby{font-size:11px;color:var(--ink-faint);font-style:italic}
   .issx{border:0;background:none;cursor:pointer;color:var(--ink-faint);font-size:13px;
     line-height:1;padding:3px 6px;border-radius:var(--r-sm);margin-left:auto;flex:0 0 auto}
   .issx:hover{background:var(--oos-wash);color:var(--oos)}
@@ -1611,6 +1612,9 @@ function loadDB(){
   // Migrate the old single endpoint. It only ever pointed at one Apps Script, and
   // whichever Sheet that was, it was receiving both forms — so it is carried onto
   // both slots rather than guessed at, and the manager re-points one of them.
+  // Issues predating the id field cannot be found by editIssue/resolveIssue, so
+  // both buttons did nothing at all on rows stored before that change. Backfill.
+  (base.issues||[]).forEach(function(i){ if(!i.id) i.id=uid('is'); });
   if(base.apiUrl&&!base.api.jumpkit&&!base.api.safety){
     base.api={jumpkit:base.apiUrl,safety:base.apiUrl};
     base.apiUrl='';
@@ -3319,18 +3323,20 @@ function issueSubject(i){
   return '—';
 }
 function issueById(id){ return DB.issues.filter(function(i){return i.id===id;})[0]; }
+var MANAGER_BY='bike manager';
 function issueFields(i){
   i=i||{};
   return [
     {key:'bike',label:'Which bike',type:'select',value:i.bike||'',
      options:[{v:'',t:'Not about a specific bike'}].concat(
        DB.bikes.map(function(b){return {v:b.id,t:b.name};}))},
-    {key:'problem',label:'Problem',required:true,value:i.problem||''},
+    {key:'problem',label:'Problem',required:true,value:i.problem||'',type:'textarea',rows:2},
     {key:'sev',label:'Severity',type:'select',value:i.sev||'warn',options:[
       {v:'crit',t:'Critical — bike is out of service'},
       {v:'warn',t:'Warning — needs attention'},
       {v:'minor',t:'Minor — note it'}]},
-    {key:'by',label:'Reported by',value:i.by||'bike manager'}
+    {key:'by',label:'Reported by',value:i.by||MANAGER_BY,
+     hint:'Who found it. Editing someone else’s report keeps their name and notes that you changed it.'}
   ];
 }
 function addIssue(){
@@ -3342,10 +3348,19 @@ function addIssue(){
   });
 }
 function editIssue(id){
-  var i=issueById(id); if(!i) return;
+  var i=issueById(id);
+  if(!i) return uiAlert('That issue could not be found — it may already have been resolved. Refresh and try again.','Not found');
+  var wasReportedBy=(i.by||'').trim();
   uiForm('Edit issue','',issueFields(i)).then(function(r){
     if(!r) return;
-    i.bike=r.bike; i.problem=r.problem.trim(); i.sev=r.sev; i.by=(r.by||'').trim();
+    i.bike=r.bike; i.problem=r.problem.trim(); i.sev=r.sev;
+    i.by=(r.by||'').trim()||MANAGER_BY;
+    // A member's report stays attributed to them. Recording that a manager changed
+    // it afterwards is the honest version — silently rewriting someone's report
+    // loses the fact that what is on the board is no longer what they wrote.
+    if(wasReportedBy&&wasReportedBy.toLowerCase()!==MANAGER_BY&&i.by===wasReportedBy){
+      i.editedBy=MANAGER_BY; i.editedOn=shortToday();
+    }
     saveDB();renderDash();
   });
 }
@@ -3399,22 +3414,26 @@ function issueFromCheck(fid,payload,who){
   var base={bike:bike,bag:bag,by:who||''};
   var missing=payload.missing||[];
 
-  // 1. Missing items, as ONE entry naming them — this is what needs replacing, and
-  //    it is the thing the equipment manager is actually looking for.
-  if(missing.length){
-    var shown=missing.slice(0,4).join(', ')+(missing.length>4?' +'+(missing.length-4)+' more':'');
-    upsertIssue('missing',Object.assign({},base,{
-      problem:missing.length+' missing: '+shown,
+  // 1. ONE ENTRY PER MISSING ITEM, not one combined line. Restocking NPAs and
+  //    restocking gauze are two separate jobs finished at two separate times; a
+  //    single "2 missing" row cannot be half-resolved, so it would sit there
+  //    still claiming both after one was dealt with.
+  missing.forEach(function(item){
+    upsertIssue('missing:'+item,Object.assign({},base,{
+      problem:'Missing: '+item,
       // Missing kit on a bike blocks the ride; a gap in the bag is for restocking.
       sev:fid==='safety'?'crit':'warn'
     }));
-  }else{
-    // Nothing missing this time — retire a previous missing entry for this subject
-    // rather than leaving a stale complaint on the board.
-    DB.issues=DB.issues.filter(function(x){
-      return !(x.key==='missing'&&(x.bike||'')===bike&&(x.bag||'')===bag);
-    });
-  }
+  });
+  // Retire the entries for items that came back — item by item, so restocking one
+  // clears one. Also drops the old combined 'missing' rows from before this change.
+  DB.issues=DB.issues.filter(function(x){
+    if(!x.key) return true;
+    if((x.bike||'')!==bike||(x.bag||'')!==bag) return true;
+    if(x.key==='missing') return false;
+    if(x.key.indexOf('missing:')!==0) return true;
+    return missing.indexOf(x.key.slice(8))>=0;
+  });
 
   // 2. Anything expired or close to it, named so it can be ordered.
   var exp=[],soon=[];
@@ -3527,7 +3546,9 @@ function renderDash(){
       ? DB.issues.map(function(i){
           return '<tr><td>'+esc(issueSubject(i))+'</td><td>'+esc(i.problem)+
             ((i.count||1)>1?' <span class="rept">reported '+i.count+'×</span>':'')+'</td><td>'+sevTag(i.sev)+'</td>'+
-            '<td>'+esc(i.by)+'</td><td>'+esc(i.date)+'</td>'+
+            '<td>'+esc(i.by)+
+              (i.editedBy?'<br><span class="editedby">edited by '+esc(i.editedBy)+' '+esc(i.editedOn||'')+'</span>':'')+
+            '</td><td>'+esc(i.date)+'</td>'+
             '<td><span class="row webonly" style="gap:6px;justify-content:flex-end">'+
               '<button class="btn xs" onclick="editIssue(\''+esc(i.id)+'\')">Edit</button>'+
               '<button class="btn xs solid" onclick="resolveIssue(\''+esc(i.id)+'\')">Resolve</button>'+
