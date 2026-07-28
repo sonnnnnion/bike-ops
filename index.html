@@ -546,6 +546,19 @@
   .isslist{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:9px}
   .isslist li{display:flex;align-items:flex-start;gap:9px;font-size:13.5px;
     color:var(--ink-soft);line-height:1.45}
+  /* Touch targets. On a phone the manager controls came out 19-24px tall — under
+     the 24px WCAG floor, and well under the ~44px that is actually comfortable —
+     while being the destructive ones (remove an issue, take a bag out of service).
+     Keyed on pointer:coarse rather than width, because the problem is the finger,
+     not the screen: a small laptop keeps the compact buttons, a large tablet does
+     not. Padding grows rather than font size, so nothing reflows. */
+  @media (pointer:coarse){
+    .btn.xs{min-height:38px;padding-left:12px;padding-right:12px}
+    .issx{min-width:38px;min-height:38px;padding:0;justify-content:center}
+    .kvacts .btn{min-height:38px}
+    .isslist li{align-items:center}
+  }
+
   /* The x is not inside a .row, so it carries its own gate rather than relying on
      .row.webonly. Quiet by default, red on hover — destructive but not shouty. */
   /* "reported 4x" — the signal that something keeps coming back and is worth
