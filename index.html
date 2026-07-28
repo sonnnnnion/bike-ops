@@ -141,9 +141,14 @@
   body.nav-open .bars span:nth-child(1){transform:translateY(5.5px) rotate(45deg)}
   body.nav-open .bars span:nth-child(2){opacity:0}
   body.nav-open .bars span:nth-child(3){transform:translateY(-5.5px) rotate(-45deg)}
+  /* pointer-events is the whole reason this works. The scrim is present but
+     transparent whenever the drawer is shut, and a transparent element still
+     receives taps — so without this it sat over the entire page at z-index 29,
+     above the topbar, and swallowed every tap including the one on the hamburger
+     meant to open it. Opacity alone is invisible, not intangible. */
   .navscrim{display:none;position:fixed;inset:0;z-index:29;background:rgba(36,26,29,.42);
-    opacity:0;transition:opacity .22s var(--ease)}
-  body.nav-open .navscrim{opacity:1}
+    opacity:0;pointer-events:none;transition:opacity .22s var(--ease)}
+  body.nav-open .navscrim{opacity:1;pointer-events:auto}
 
   /* Narrow screens: the sidebar becomes a slide-in drawer rather than a horizontal
      strip. The strip technically worked but showed three items at a time and hid
@@ -451,12 +456,20 @@
 
   /* ---------- bike picker ---------- */
   .bikepick{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:12px;margin-top:6px}
+  /* iOS gives <button> its own colour and font — the system accent blue and the
+     system font — unless both are stated. Every bike name was rendering blue on
+     iPhone and correct everywhere else, which is why it survived desktop review.
+     -webkit-text-fill-color is needed as well; on iOS `color` alone is not always
+     enough inside a button. */
+  button{color:inherit;font-family:inherit;-webkit-text-fill-color:currentColor}
   .pick{display:flex;flex-direction:column;align-items:flex-start;gap:9px;text-align:left;
+    color:var(--ink);-webkit-text-fill-color:var(--ink);font-family:var(--font-body);
     padding:15px 16px;border:1.5px solid var(--rule-strong);border-radius:var(--radius);
     background:var(--card);cursor:pointer;transition:border-color .16s var(--ease),box-shadow .16s var(--ease),background .16s var(--ease)}
   .pick:hover{border-color:var(--brand);box-shadow:var(--shadow-md)}
   .pick.on{border-color:var(--brand);border-width:2px;background:var(--brand-tint);box-shadow:var(--shadow-md)}
-  .pname{font-family:var(--font-display);font-size:17px;font-weight:600;letter-spacing:-.01em}
+  .pname{font-family:var(--font-display);font-size:17px;font-weight:600;letter-spacing:-.01em;
+    color:var(--ink);-webkit-text-fill-color:var(--ink)}
   .prec,.brec{font-size:12.5px;color:var(--ink-faint);margin:0}
   .brec{margin:0 0 10px}
   .prec.stale,.brec.stale{color:var(--warn);font-weight:600}
@@ -533,6 +546,17 @@
   .isslist{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:9px}
   .isslist li{display:flex;align-items:flex-start;gap:9px;font-size:13.5px;
     color:var(--ink-soft);line-height:1.45}
+  /* The x is not inside a .row, so it carries its own gate rather than relying on
+     .row.webonly. Quiet by default, red on hover — destructive but not shouty. */
+  /* "reported 4x" — the signal that something keeps coming back and is worth
+     chasing, without a row per report. */
+  .rept{font-family:var(--font-mono);font-size:11px;color:var(--warn);font-weight:700;white-space:nowrap}
+  .issx{border:0;background:none;cursor:pointer;color:var(--ink-faint);font-size:13px;
+    line-height:1;padding:3px 6px;border-radius:var(--r-sm);margin-left:auto;flex:0 0 auto}
+  .issx:hover{background:var(--oos-wash);color:var(--oos)}
+  .issx:focus-visible{outline:2px solid var(--brand);outline-offset:1px}
+  .webonly.issx{display:none}
+  body.is-web .webonly.issx{display:inline-flex;align-items:center}
   .isslist .tag{flex:0 0 auto;margin-top:1px}
   .noissues{font-size:13.5px;color:var(--ok);font-weight:600;margin:0}
   .bnote{font-size:13.5px;color:var(--ink-mute);margin:8px 0 0}
@@ -1310,17 +1334,17 @@ var DEFAULTS={
   // change without breaking a single reference.
   bikes:[
     {id:'curtain', name:'Diane',  status:'warn', note:'Needs air in tires; bell mounted backwards; side light uncharged.'},
-    {id:'ceiling', name:'Kevin',  status:'oos',  note:'Still on the rope/hook system. Latch will not stay unlocked — unsafe to retrieve alone.'},
-    {id:'oosbike', name:'Cheryl', status:'oos',  note:'Front brake needs bleeding; missing rack bolt (~50mm) and spacer (~30mm).'}
+    {id:'ceiling', name:'Kevin',  status:'oos',  note:'Front brake needs bleeding; missing rack bolt (~50mm) and spacer (~30mm).'},
+    {id:'oosbike', name:'Cheryl', status:'oos',  note:'Still on the rope/hook system. Latch will not stay unlocked — unsafe to retrieve alone.'}
   ],
   // `bike` is a bike ID, never a name — renaming a bike must not orphan its
   // issues. issuesFor() still accepts a stored name for rows saved before this.
   // `id` so a row can be edited or resolved without relying on its position, which
   // shifts the moment anything above it is removed.
   issues:[
-    {id:'is1', bike:'ceiling', problem:'Ceiling latch will not stay unlocked', sev:'crit', by:'bike manager', date:'Jul 23'},
-    {id:'is2', bike:'oosbike', problem:'Front brake needs bleeding',           sev:'crit', by:'bike manager', date:'Jul 23'},
-    {id:'is3', bike:'oosbike', problem:'Rack missing bolt + spacer',           sev:'warn', by:'bike manager', date:'Jul 23'},
+    {id:'is1', bike:'oosbike', problem:'Ceiling latch will not stay unlocked', sev:'crit', by:'bike manager', date:'Jul 23'},
+    {id:'is2', bike:'ceiling', problem:'Front brake needs bleeding',           sev:'crit', by:'bike manager', date:'Jul 23'},
+    {id:'is3', bike:'ceiling', problem:'Rack missing bolt + spacer',           sev:'crit', by:'bike manager', date:'Jul 23'},
     {id:'is4', bike:'curtain', problem:'Tires low / need air',                 sev:'warn', by:'bike manager', date:'Jul 23'},
     {id:'is5', bike:'curtain', problem:'Bell mounted backwards',               sev:'minor',by:'bike manager', date:'Jul 23'}
   ],
@@ -2545,7 +2569,7 @@ function doSubmit(fid,fn,ln,aid){
   var logged=recordSafetyCheck(fid,res,fn.trim()+' '+ln.trim());
   // Anything written in "Is there anything else to note?" is a problem report —
   // file it where the manager actually reads, not only into the payload.
-  issueFromCheckNote(fid,payload.notes,fn.trim()+' '+ln.trim(),activeBike,payload.bag);
+  issueFromCheck(fid,Object.assign({},payload,{bikeId:activeBike}),fn.trim()+' '+ln.trim());
   var tail=logged
     ? bikeName(activeBike)+' is now marked “'+(STATUS_MAP[res.cls]||STATUS_MAP.warn)[1]+'”.'
     : (res.grounded?'No bike status was changed — this verdict is about conditions, not the bike.':'');
@@ -3339,20 +3363,84 @@ function resolveIssue(id){
     saveDB();renderDash();
   });
 }
-// Called from submitForm. A note is only a report if somebody wrote something.
-function issueFromCheckNote(fid,note,who,bikeId,bagLabel){
-  var t=String(note||'').trim(); if(!t) return;
-  DB.issues.push({
-    id:uid('is'),
-    bike:fid==='safety'?(bikeId||''):'',
-    bag:fid==='jumpkit'?(bagLabel||''):'',
-    problem:t,
-    // Severity is a judgement the manager makes when they read it. Free text from
-    // a check is filed as Minor so it never silently grounds a bike on its own.
-    sev:'minor',
-    by:who||'',
-    date:shortToday()
+// Called from submitForm. Three things a check can report, and none of them
+// should ever produce a second identical row:
+//
+//   1. what is MISSING from the bag or the bike — the actionable one
+//   2. what has EXPIRED
+//   3. free text somebody typed
+//
+// The first version pushed a row unconditionally, so nine test submissions of the
+// same bag produced nine identical "just testing" lines and buried the real
+// faults. Everything here is keyed on subject + problem: a repeat bumps a counter
+// and refreshes the date instead of adding a line, so the length of the list is
+// the number of distinct problems, not the number of submissions.
+function upsertIssue(key,fields){
+  var found=null;
+  for(var i=0;i<DB.issues.length;i++){
+    var x=DB.issues[i];
+    if((x.bike||'')===(fields.bike||'')&&(x.bag||'')===(fields.bag||'')&&x.key===key){ found=x; break; }
+  }
+  if(found){
+    found.count=(found.count||1)+1;
+    found.problem=fields.problem;      // refresh: the item list may have changed
+    found.sev=fields.sev;
+    found.by=fields.by; found.date=shortToday();
+    return found;
+  }
+  var row={id:uid('is'),key:key,count:1,bike:fields.bike||'',bag:fields.bag||'',
+           problem:fields.problem,sev:fields.sev,by:fields.by||'',date:shortToday()};
+  DB.issues.push(row);
+  return row;
+}
+function issueFromCheck(fid,payload,who){
+  var bike=fid==='safety'?(payload.bikeId||''):'';
+  var bag =fid==='jumpkit'?(payload.bag||''):'';
+  var base={bike:bike,bag:bag,by:who||''};
+  var missing=payload.missing||[];
+
+  // 1. Missing items, as ONE entry naming them — this is what needs replacing, and
+  //    it is the thing the equipment manager is actually looking for.
+  if(missing.length){
+    var shown=missing.slice(0,4).join(', ')+(missing.length>4?' +'+(missing.length-4)+' more':'');
+    upsertIssue('missing',Object.assign({},base,{
+      problem:missing.length+' missing: '+shown,
+      // Missing kit on a bike blocks the ride; a gap in the bag is for restocking.
+      sev:fid==='safety'?'crit':'warn'
+    }));
+  }else{
+    // Nothing missing this time — retire a previous missing entry for this subject
+    // rather than leaving a stale complaint on the board.
+    DB.issues=DB.issues.filter(function(x){
+      return !(x.key==='missing'&&(x.bike||'')===bike&&(x.bag||'')===bag);
+    });
+  }
+
+  // 2. Anything expired or close to it, named so it can be ordered.
+  var exp=[],soon=[];
+  Object.keys(payload.expiries||{}).forEach(function(k){
+    var d=daysUntil(payload.expiries[k]);
+    if(d===null) return;
+    if(d<0) exp.push(k); else if(d<=30) soon.push(k+' ('+d+'d)');
   });
+  if(exp.length||soon.length){
+    upsertIssue('expiry',Object.assign({},base,{
+      problem:(exp.length?'EXPIRED: '+exp.join(', '):'')+
+              (exp.length&&soon.length?' — ':'')+
+              (soon.length?'expiring soon: '+soon.join(', '):''),
+      sev:exp.length?'crit':'warn'
+    }));
+  }else{
+    DB.issues=DB.issues.filter(function(x){
+      return !(x.key==='expiry'&&(x.bike||'')===bike&&(x.bag||'')===bag);
+    });
+  }
+
+  // 3. Free text last, and deduped on its own words. Minor, because severity is a
+  //    judgement the manager makes when they read it.
+  var t=String(payload.notes||'').trim();
+  if(t) upsertIssue('note:'+t.toLowerCase(),Object.assign({},base,{problem:t,sev:'minor'}));
+
   saveDB();
 }
 
@@ -3409,7 +3497,10 @@ function renderDash(){
     // not colour-only, so the card needs no extra legend to be understood.
     var body=iss.length
       ? '<ul class="isslist">'+iss.map(function(i){
-          return '<li>'+sevTag(i.sev)+'<span>'+esc(i.problem)+'</span></li>';
+          return '<li>'+sevTag(i.sev)+'<span>'+esc(i.problem)+
+            ((i.count||1)>1?' <span class="rept">'+i.count+'×</span>':'')+'</span>'+
+            '<button class="issx webonly" title="Remove this problem" '+
+            'onclick="resolveIssue(\''+esc(i.id)+'\')">✕</button></li>';
         }).join('')+'</ul>'
       : '<p class="noissues">No open issues.</p>'+
         (noteOf(b)?'<p class="bnote">'+esc(noteOf(b))+'</p>':'');
@@ -3434,7 +3525,8 @@ function renderDash(){
   if(rows){
     rows.innerHTML=DB.issues.length
       ? DB.issues.map(function(i){
-          return '<tr><td>'+esc(issueSubject(i))+'</td><td>'+esc(i.problem)+'</td><td>'+sevTag(i.sev)+'</td>'+
+          return '<tr><td>'+esc(issueSubject(i))+'</td><td>'+esc(i.problem)+
+            ((i.count||1)>1?' <span class="rept">reported '+i.count+'×</span>':'')+'</td><td>'+sevTag(i.sev)+'</td>'+
             '<td>'+esc(i.by)+'</td><td>'+esc(i.date)+'</td>'+
             '<td><span class="row webonly" style="gap:6px;justify-content:flex-end">'+
               '<button class="btn xs" onclick="editIssue(\''+esc(i.id)+'\')">Edit</button>'+
