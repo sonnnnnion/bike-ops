@@ -488,6 +488,16 @@
   @media print{
     body{background:#fff!important;background-image:none!important}
     .topbar,.sidebar,.banner,.view-sub,.noprint,.sharenote{display:none!important}
+    /* On the exam view, print the certificate alone — that is what "save it and
+       send it to the Bike Manager" has to produce. */
+    .view[data-view="exam"] .examcard,
+    .view[data-view="exam"] h2.view-title,
+    .view[data-view="exam"] .examq,
+    .view[data-view="exam"] .examsection,
+    .view[data-view="exam"] .examfoot,
+    .view[data-view="exam"] .builder{display:none!important}
+    .cert{margin:0 auto;padding:0}
+    .certinner{border-width:2px}
     #app{display:block}
     main{padding:0;max-width:none}
     .card{border:1px solid #999;box-shadow:none;break-inside:avoid;page-break-inside:avoid}
@@ -611,6 +621,62 @@
     .statnum{font-size:27px}
   }
 
+  /* ---------- practical exam ---------- */
+  .examcta{display:flex;align-items:center;justify-content:space-between;gap:20px;flex-wrap:wrap;
+    margin-top:30px;padding:22px 24px;border:1.5px solid var(--brand);border-radius:var(--r-md);
+    background:var(--brand-tint)}
+  .examcta h3{font-family:var(--font-display);font-size:20px;margin:0 0 4px;color:var(--brand-deep)}
+  .examcta p{font-size:13.5px;color:var(--ink-soft);margin:0;max-width:52ch}
+  .examcard{max-width:640px;margin:0 auto;text-align:center}
+  .examcard h3{font-family:var(--font-display);font-size:22px;margin:0 0 6px}
+  .examsub{font-size:13.5px;color:var(--ink-mute);margin:0 0 16px}
+  .examcard .field-row,.examcard .field{text-align:left}
+  .gaterow{display:flex;align-items:center;gap:12px;margin-bottom:12px;text-align:left}
+  .gateletter{font-family:var(--font-display);font-size:22px;font-weight:700;color:var(--brand);
+    width:24px;flex:0 0 auto}
+  .gaterow input{flex:1;min-width:0}
+  .gatetail{font-size:15px;color:var(--ink-mute);white-space:nowrap;flex:0 0 auto}
+  .examsection{font-family:var(--font-display);font-size:20px;color:var(--brand-deep);
+    margin:30px 0 2px;padding-bottom:7px;border-bottom:2px solid var(--brand)}
+  .examq{margin-bottom:14px}
+  .examqhead{display:flex;gap:12px;align-items:flex-start;margin-bottom:12px}
+  .examnum{font-family:var(--font-mono);font-size:12px;font-weight:700;color:#fff;background:var(--brand);
+    min-width:26px;height:26px;border-radius:var(--r-sm);display:grid;place-items:center;flex:0 0 auto}
+  .examnum.okn{background:var(--ok)} .examnum.badn{background:var(--oos)}
+  .examqtext{font-size:15.5px;font-weight:600;color:var(--ink);line-height:1.45}
+  /* The global label rule is uppercase and tracked; an answer is a sentence. */
+  .examopt{display:flex;gap:11px;align-items:flex-start;padding:10px 12px;border-radius:var(--radius);
+    cursor:pointer;font-size:14.5px;color:var(--ink-soft);text-transform:none;letter-spacing:0;
+    font-weight:500;margin:0}
+  .examopt:hover{background:var(--bg-2)}
+  .examopt input{margin:2px 0 0;flex:none;width:17px;height:17px;accent-color:var(--brand)}
+  .examopt.correct{background:var(--ok-wash);color:#1F5C36;font-weight:600}
+  .examopt.chosen{background:var(--oos-wash);color:#8a1020}
+  .examwhy{font-size:13px;color:var(--ink-mute);margin:10px 0 0;padding-left:12px;font-style:italic}
+  .examfoot{display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;
+    margin-top:22px;padding-top:18px;border-top:1px solid var(--rule)}
+  .examfoot .examsub{margin:0}
+  .examscore{font-family:var(--font-display);font-size:56px;font-weight:700;line-height:1;margin-bottom:6px}
+  .examcard.pass{border-color:var(--ok)} .examcard.pass .examscore{color:var(--ok)}
+  .examcard.fail{border-color:var(--warn)} .examcard.fail .examscore{color:var(--warn)}
+
+  /* Certificate. Deliberately plain — it is a record, and an over-designed one
+     reads as a joke rather than something you send to the Bike Manager. */
+  .cert{max-width:640px;margin:24px auto 0;padding:8px}
+  .certinner{border:2px solid var(--brand);border-radius:var(--r-md);padding:34px 30px;text-align:center;
+    background:#fff}
+  .certmark{font-family:var(--font-display);font-size:22px;font-weight:700;color:var(--brand);letter-spacing:.04em}
+  .certkicker{font-family:var(--font-mono);font-size:11px;color:var(--gold);letter-spacing:.18em;
+    text-transform:uppercase;margin-top:2px}
+  .certline{font-size:18px;line-height:1.6;color:var(--ink);margin:24px 0 0}
+  .certmeta{display:flex;justify-content:center;gap:22px;flex-wrap:wrap;margin-top:20px;
+    font-family:var(--font-mono);font-size:11.5px;color:var(--ink-faint)}
+  .certnote{font-size:12.5px;color:var(--ink-mute);margin:18px 0 0}
+  @media(max-width:620px){
+    .examcta{flex-direction:column;align-items:stretch}
+    .gatetail{white-space:normal}
+  }
+
   /* ---------- in-site dialog ----------
      Replaces window.alert/confirm/prompt. The native ones render as
      "sonnnnnion.github.io says", which reads like a browser warning rather than
@@ -683,7 +749,8 @@
     <button type="button" class="sb-item webonly" data-view="oos"><span class="ic">⚠</span>Out-of-Service Tool</button>
     <div class="sb-label">Learn</div>
     <button type="button" class="sb-item" data-view="videos"><span class="ic">▶</span>Videos</button>
-    <button type="button" class="sb-item" data-view="lectures"><span class="ic">▤</span>Lectures</button>
+    <button type="button" class="sb-item" data-view="lectures"><span class="ic">▤</span>Bike Lecture</button>
+    <button type="button" class="sb-item" data-view="exam"><span class="ic">✎</span>Practical Exam</button>
     <div class="sb-label">Reference</div>
     <button type="button" class="sb-item webonly" data-view="repairs"><span class="ic">✱</span>Repairs &amp; Fixes</button>
     <button type="button" class="sb-item webonly" data-view="inventory"><span class="ic">▦</span>Inventory</button>
@@ -806,23 +873,36 @@
 
     <!-- ===== LECTURES ===== -->
     <section class="view" data-view="lectures">
-      <h2 class="view-title">Lectures</h2>
-      <p class="view-sub">The bike lecture, by module.</p>
+      <h2 class="view-title">Bike Lecture</h2>
+      <p class="view-sub">Work through the deck, then take the practical exam.</p>
       <div class="sharenote webonly blockonly">
-        <b>One deck, six modules.</b>
-        Link the deck once below and each module opens it at its own slide. Paste the normal
-        Slides share link — it's converted to an embed automatically — but set the deck to
-        <b style="display:inline">“Anyone with the link → Viewer”</b> first, or every module shows
-        a sign-in wall. If a module lands on the wrong slide, open that slide in Slides and paste
-        its own <code>#slide=…</code> URL into the module instead: Slides addresses slides by
-        internal id, and a deck imported from PowerPoint doesn't get sequential ids.
+        <b>One deck.</b>
+        Paste the normal Slides share link — it is converted to an embed automatically — but set
+        the deck to <b style="display:inline">“Anyone with the link → Viewer”</b> first, or it
+        shows a sign-in wall instead of the slides.
       </div>
-      <div class="row" style="justify-content:space-between;margin-bottom:16px">
-        <span class="tag" id="lectureCount">0 modules</span>
-        <button class="btn sm solid webonly" onclick="addLecture()">+ Add module</button>
+      <div id="deckHost"></div>
+      <div class="row mt" id="deckActions"></div>
+
+      <div class="examcta">
+        <div>
+          <h3>Practical Exam</h3>
+          <p>Ten questions once you have been through the lecture. You will need the passcode
+             from the lecture to start.</p>
+        </div>
+        <button class="btn solid" onclick="go('exam')">Open the practical exam →</button>
       </div>
-      <div class="grid" id="lectureList"></div>
-      <div class="placeholder" id="lectureNote"></div>
+    </section>
+
+    <!-- ===== PRACTICAL EXAM ===== -->
+    <section class="view" data-view="exam">
+      <h2 class="view-title">Practical <em>exam</em></h2>
+      <p class="view-sub">Ten questions. All of them on one page, answer in any order.</p>
+      <div class="row webonly" style="justify-content:flex-end;margin-bottom:14px">
+        <button class="btn xs" onclick="toggleExamEdit()" id="examEditBtn">Edit questions</button>
+      </div>
+      <div id="examBuilder"></div>
+      <div id="examBody"></div>
     </section>
 
     <!-- ===== REPAIRS ===== -->
@@ -1491,7 +1571,53 @@ var DEFAULTS={
   // &wdSlideIndex=N, so each module points at the same file at a different slide.
   // Set deck.url once and give each module its `slide`. A module may still carry
   // its own `embed` (a separate deck), which wins over the shared one.
-  deck:{url:'', edit:''},
+  deck:{url:'https://docs.google.com/presentation/d/10OoYVNMAqRiIJ5upYGxzRBevrUgV202KmOkS542CCXw/edit', edit:'', aspect:'16/9'},
+
+  /* ---------- practical exam ----------
+     Ten multiple-choice questions: five on operations, five scenarios. Every
+     answer here is drawn from something already on this site — the out-of-service
+     criteria, the weather thresholds, the jumpkit contents, the Bike Response
+     bylaws — so studying the site is studying for the exam.
+
+     `a` is the index of the correct option. `why` is shown only after submitting,
+     and only if the member asks to see answers. Editable in manager mode. */
+  exam:{
+    passMark:80,
+    questions:[
+      {id:'q1', kind:'ops', q:'How often must every bike be checked, whether or not anyone has ridden it?',
+       opts:['Once a week','Once a month','Only before it is ridden','Only when a fault is reported'], a:0,
+       why:'The Bike Manager inspects every bicycle at least weekly, ridden or not.'},
+      {id:'q2', kind:'ops', q:'Which of these puts a bike out of service immediately?',
+       opts:['Bell missing','Low tire pressure','No working lock','A scratched frame'], a:2,
+       why:'A bike without a working lock is not available for service. The others need attention but do not ground the bike.'},
+      {id:'q3', kind:'ops', q:'Which jumpkit items carry an expiration date?',
+       opts:['Oral glucose and petroleum gauze','Trauma shears and the BVM','Ice packs and eyewash','The tourniquet only'], a:0,
+       why:'Those two are the only dated items in the bag, and the check asks for their dates.'},
+      {id:'q4', kind:'ops', q:'You find a fault. Where does it get recorded so the Bike Manager sees it?',
+       opts:['Text a friend on the crew','The notes field at the bottom of either check','Nowhere — tell them in person next week','Write it on the whiteboard'], a:1,
+       why:'Anything written in that notes field is filed straight into the issue list.'},
+      {id:'q5', kind:'ops', q:'Who may ride a bike but may not carry a jumpkit?',
+       opts:['Anyone in their first semester','Red shirts','Crew chiefs','Nobody — everyone carries one'], a:1,
+       why:'Red shirts may ride; the jumpkit is not theirs to carry.'},
+
+      {id:'q6', kind:'scenario', q:'The bike is in perfect condition. There is lightning about two miles away. What do you do?',
+       opts:['Ride, since the bike is sound','Ride, but take a shorter route','Do not ride — conditions ground bike response','Ask the patient to come to you'], a:2,
+       why:'An active thunderstorm grounds bike response entirely. The verdict is about conditions, not the bike.'},
+      {id:'q7', kind:'scenario', q:'A bike is marked out of service, but you look it over and it seems fine. What do you do?',
+       opts:['Take it — your assessment is current','Take it and note that you disagreed','Do not take it','Take it only for a short call'], a:2,
+       why:'You do not take a bike marked out of service regardless of how it appears to you.'},
+      {id:'q8', kind:'scenario', q:'Mid-shift you find the front brake will not grip. What is the correct action?',
+       opts:['Finish the shift and report it after','Mark it out of service immediately','Wait for the Bike Manager to confirm','Use the rear brake only'], a:1,
+       why:'A critical defect is marked out of service immediately — you do not wait for the Bike Manager.'},
+      {id:'q9', kind:'scenario', q:'You used the last two cold packs on a call. What do you owe the next rider?',
+       opts:['Nothing — supplies get checked weekly','Report what you used so the bag is restocked','Buy replacements yourself','Move packs over from another bag'], a:1,
+       why:'What you used is what the next person will not have. Report it, or return the bag stocked.'},
+      {id:'q10', kind:'scenario', q:'You nearly struck a pedestrian. Nobody was touched and nobody was hurt. Do you report it?',
+       opts:['No — nothing actually happened','Only if someone else saw it','Yes — report the near miss','Only if it happens twice'], a:2,
+       why:'Near misses are reported. The near miss is the free lesson, and reporting is never a fault.'}
+    ]
+  },
+
   lectures:[
     {id:'L1', title:'Bike Equipment',  embed:'', edit:'', slide:0},
     {id:'L2', title:'Bike Safety',     embed:'', edit:'', slide:0},
@@ -1655,7 +1781,7 @@ pullContent();
 /* ============================================================
    ROUTER — hash-based so every form has a linkable URL for QR
    ============================================================ */
-var VIEWS=['dash','bikes','oos','checks','jumpkit-check','safety-check','videos',
+var VIEWS=['dash','bikes','oos','checks','jumpkit-check','safety-check','videos','exam',
            'lectures','repairs','inventory','bylaws','docs','settings'];
 // Both check views now have their own top-level sidebar entry under "Ride", so
 // a QR deep-link lights itself and this map is empty. Kept because any future
@@ -2908,40 +3034,18 @@ function lectureAspect(L){
   return aspectOf(DB.deck);
 }
 function renderLectures(){
-  var el=document.getElementById('lectureList'); if(!el) return;
-  document.getElementById('lectureCount').textContent=DB.lectures.length+' module'+(DB.lectures.length===1?'':'s');
-  el.innerHTML=DB.lectures.map(function(L,i){
-    var src=lectureSrc(L);
-    var editUrl=L.edit||((DB.deck&&DB.deck.edit)||'');
-    var body=src
-      ? '<div class="embed" style="aspect-ratio:'+lectureAspect(L)+'"><iframe src="'+esc(src)+'" allowfullscreen title="'+esc(L.title)+'"></iframe></div>'
-      : '<div class="noembed">Deck not yet linked.<br>Link one deck for every module below, or give this module its own embed URL.</div>';
-    return '<div class="module" id="mod-'+esc(L.id)+'">'+
-      '<div class="mhead" onclick="toggleModule(\''+esc(L.id)+'\')">'+
-        '<span class="mnum">'+(i+1)+'</span><span class="mtitle">'+esc(L.title)+'</span>'+
-        (src?(L.embed?'':'<span class="tag ok">Slide '+esc(L.slide)+'</span>'):'<span class="tag warn">Not linked</span>')+
-        '<span style="font-family:var(--font-mono);color:var(--ink-faint)">▸</span></div>'+
-      '<div class="mbody">'+body+
-        '<div class="row mt">'+
-          (src?'<a class="btn xs solid" href="'+esc(watchUrl(L.embed||(DB.deck&&DB.deck.url)||''))+'" target="_blank" rel="noopener">Open full size ↗</a>':'')+
-          (editUrl?'<a class="btn xs webonly" href="'+esc(editUrl)+'" target="_blank" rel="noopener">Open to edit ↗</a>':'')+
-          '<button class="btn xs webonly" onclick="editLecture('+i+')">Set links</button>'+
-          '<button class="btn xs danger webonly" onclick="delLecture('+i+')">Remove</button>'+
-        '</div>'+
-      '</div></div>';
-  }).join('');
-  var shared=DB.deck&&DB.deck.url;
-  var anyLinked=DB.lectures.some(function(L){return lectureSrc(L);});
-  // Entirely manager-facing: it is setup instruction, not something a member
-  // reading the lecture needs. `.row.webonly` is the already-correct gate.
-  document.getElementById('lectureNote').innerHTML=
-    '<div class="row webonly" style="justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap">'+
-      '<span>'+(anyLinked
-        ? 'Slides are edited in Google Slides.'
-        : 'No deck linked yet. Upload it to Google Slides, set it to “Anyone with the link → Viewer”, then link it below.')+'</span>'+
-      '<button class="btn xs" onclick="editDeck()">'+(shared?'Change shared deck':'Link one deck for all modules')+'</button>'+
-    '</div>'+
-    (shared?'<div class="sharenote webonly mt-sm">Each module opens the deck at its own start slide. If you insert or reorder slides, update the slide numbers to match.</div>':'');
+  var host=document.getElementById('deckHost'); if(!host) return;
+  var url=(DB.deck&&DB.deck.url)||'';
+  var src=url?embedSrc(url):'';
+  host.innerHTML=src
+    ? '<div class="embed" style="aspect-ratio:'+aspectOf(DB.deck)+'"><iframe src="'+esc(src)+
+      '" allowfullscreen title="Bike Lecture"></iframe></div>'
+    : '<div class="noembed">The lecture deck is not linked yet.</div>';
+  var acts=document.getElementById('deckActions');
+  if(acts) acts.innerHTML=
+    (src?'<a class="btn solid" href="'+esc(watchUrl(url))+'" target="_blank" rel="noopener">Open the deck full size ↗</a>':'')+
+    '<button class="btn webonly" onclick="editDeck()">'+(url?'Change the deck link':'Link the deck')+'</button>'+
+    (DB.deck&&DB.deck.edit?'<a class="btn webonly" href="'+esc(DB.deck.edit)+'" target="_blank" rel="noopener">Open to edit ↗</a>':'');
 }
 /* Shared deck: one upload, six modules, each starting at its own slide. */
 function editDeck(){
@@ -2956,11 +3060,6 @@ function editDeck(){
   ]).then(function(r){
     if(!r) return;
     DB.deck.url=r.url.trim(); DB.deck.edit=r.edit.trim(); DB.deck.aspect=r.aspect;
-    if(DB.deck.url&&!DB.lectures.some(function(L){return L.slide>0;})){
-      // Nothing has a start slide yet — seed 1..N so the deck is visible immediately
-      // rather than silently staying "Not linked" after a successful link.
-      DB.lectures.forEach(function(L,i){L.slide=i+1;});
-    }
     saveDB();renderLectures();
   });
 }
@@ -3002,6 +3101,266 @@ function delLecture(i){
     if(!yes) return;
     DB.lectures.splice(i,1);saveDB();renderLectures();
   });
+}
+
+/* ============================================================
+   PRACTICAL EXAM
+   ============================================================ */
+/* The gate is the primary-survey mnemonic from the lecture: Air in the tires,
+   Brakes working, Chain intact. It is a knowledge check, not a secret — anybody
+   who sat the lecture knows it, and the point is only that someone who wandered
+   onto the site cannot sit the exam. Stored as a weak hash so it is not sitting
+   in the page in plain words; that raises the effort from "read the source" to
+   "actually try", which is all a quiz gate needs to do. It is not security and
+   nothing behind it is sensitive. */
+function weakHash(str){
+  var h=2166136261;
+  for(var i=0;i<str.length;i++){ h^=str.charCodeAt(i); h=Math.imul(h,16777619); }
+  return (h>>>0).toString(36);
+}
+var EXAM_GATE=weakHash('air|brakes|chain');
+
+// Exam state lives in memory only. Reloading restarts it, which is correct for an
+// examination — a half-finished attempt should not be resumable from a cache.
+var exam={stage:'locked', name:'', andrew:'', answers:{}, result:null, showAnswers:false};
+var examEdit=false;
+
+function renderExam(){
+  var el=document.getElementById('examBody'); if(!el) return;
+  var b=document.getElementById('examBuilder');
+  if(b) b.innerHTML=examEdit?examBuilder():'';
+  var eb=document.getElementById('examEditBtn');
+  if(eb) eb.textContent=examEdit?'Done editing':'Edit questions';
+  if(exam.stage==='locked')  el.innerHTML=examGate();
+  else if(exam.stage==='who') el.innerHTML=examIdentity();
+  else if(exam.stage==='taking') el.innerHTML=examQuestions();
+  else el.innerHTML=examResult();
+}
+
+function examGate(){
+  return '<div class="card examcard">'+
+    '<h3>What is the primary survey for Bike EMS?</h3>'+
+    '<p class="examsub">Three words, from the lecture. Fill each blank.</p>'+
+    '<div class="gaterow"><span class="gateletter">A</span>'+
+      '<input type="text" id="gA" autocomplete="off" autocapitalize="none" spellcheck="false" placeholder="">'+
+      '<span class="gatetail">in the tires</span></div>'+
+    '<div class="gaterow"><span class="gateletter">B</span>'+
+      '<input type="text" id="gB" autocomplete="off" autocapitalize="none" spellcheck="false" placeholder="">'+
+      '<span class="gatetail">working</span></div>'+
+    '<div class="gaterow"><span class="gateletter">C</span>'+
+      '<input type="text" id="gC" autocomplete="off" autocapitalize="none" spellcheck="false" placeholder="">'+
+      '<span class="gatetail">intact</span></div>'+
+    '<p class="hint" id="gateErr" style="color:var(--oos);display:none">That is not it. Check the lecture and try again.</p>'+
+    '<button class="btn solid mt" onclick="checkExamGate()">Unlock the exam</button></div>';
+}
+function checkExamGate(){
+  var v=function(id){ return (document.getElementById(id).value||'').trim().toLowerCase(); };
+  var got=[v('gA'),v('gB'),v('gC')].join('|');
+  if(weakHash(got)===EXAM_GATE){ exam.stage='who'; renderExam(); return; }
+  var e=document.getElementById('gateErr'); if(e) e.style.display='block';
+}
+
+function examIdentity(){
+  return '<div class="card examcard">'+
+    '<h3>Who is taking this?</h3>'+
+    '<p class="examsub">Your name goes on the certificate, so spell it the way you want it to read.</p>'+
+    '<div class="field-row">'+
+      '<div class="field"><label for="exName">Full name</label>'+
+      '<input type="text" id="exName" value="'+esc(exam.name)+'"></div>'+
+      '<div class="field"><label for="exAid">Andrew ID</label>'+
+      '<input type="text" id="exAid" maxlength="8" autocapitalize="none" spellcheck="false" value="'+esc(exam.andrew)+'"></div>'+
+    '</div>'+
+    '<p class="hint" id="whoErr" style="color:var(--oos);display:none">Both are needed before you start.</p>'+
+    '<button class="btn solid" onclick="startExam()">Start the exam</button></div>';
+}
+function startExam(){
+  var n=(document.getElementById('exName').value||'').trim();
+  var a=(document.getElementById('exAid').value||'').trim();
+  if(!n||!a){ document.getElementById('whoErr').style.display='block'; return; }
+  exam.name=n; exam.andrew=a.toLowerCase();
+  exam.stage='taking'; exam.answers={}; exam.result=null; exam.showAnswers=false;
+  renderExam(); window.scrollTo(0,0);
+}
+
+// Every question on one page, NREMT style — nothing is revealed until the whole
+// paper is submitted, so an early answer cannot be corrected by later feedback.
+function examQuestions(){
+  var qs=DB.exam.questions;
+  var ops=qs.filter(function(q){return q.kind!=='scenario';});
+  var scn=qs.filter(function(q){return q.kind==='scenario';});
+  var n=0;
+  var block=function(list,heading,note){
+    if(!list.length) return '';
+    var h='<h3 class="examsection">'+esc(heading)+'</h3><p class="examsub">'+esc(note)+'</p>';
+    list.forEach(function(q){
+      n++;
+      h+='<div class="card examq" id="eq-'+esc(q.id)+'">'+
+         '<div class="examqhead"><span class="examnum">'+n+'</span>'+
+         '<span class="examqtext">'+esc(q.q)+'</span></div>';
+      (q.opts||[]).forEach(function(o,oi){
+        h+='<label class="examopt"><input type="radio" name="'+esc(q.id)+'" value="'+oi+'"'+
+           (exam.answers[q.id]===oi?' checked':'')+' onchange="setExamAnswer(\''+esc(q.id)+'\','+oi+')">'+
+           '<span>'+esc(o)+'</span></label>';
+      });
+      h+='</div>';
+    });
+    return h;
+  };
+  return block(ops,'Part 1 — Operations','How the programme runs, and what the rules are.')+
+         block(scn,'Part 2 — Scenarios','What you actually do.')+
+         '<div class="examfoot">'+
+           '<p id="examProgress" class="examsub"></p>'+
+           '<button class="btn solid" onclick="submitExam()">Submit exam</button></div>';
+}
+function setExamAnswer(id,i){ exam.answers[id]=i; updateExamProgress(); }
+function updateExamProgress(){
+  var el=document.getElementById('examProgress'); if(!el) return;
+  var total=DB.exam.questions.length, done=Object.keys(exam.answers).length;
+  el.textContent=done+' of '+total+' answered'+(done<total?' — you can submit with blanks, they count as wrong.':'');
+}
+
+function submitExam(){
+  var qs=DB.exam.questions, total=qs.length;
+  var wrong=qs.filter(function(q){ return exam.answers[q.id]!==q.a; });
+  var score=Math.round(((total-wrong.length)/total)*100);
+  var pass=score>=(DB.exam.passMark||80);
+  var unanswered=qs.length-Object.keys(exam.answers).length;
+  var go=function(){
+    exam.result={score:score,pass:pass,wrong:wrong.map(function(q){return q.id;}),
+                 total:total,when:new Date()};
+    exam.stage='done'; renderExam(); window.scrollTo(0,0);
+  };
+  if(unanswered){
+    uiConfirm(unanswered+' question'+(unanswered===1?' is':'s are')+' still blank, and blanks count as wrong.',
+              'Submit anyway?',{okText:'Submit'}).then(function(y){ if(y) go(); });
+  } else go();
+}
+
+function examResult(){
+  var r=exam.result, qs=DB.exam.questions;
+  var head='<div class="card examcard '+(r.pass?'pass':'fail')+'">'+
+    '<div class="examscore">'+r.score+'%</div>'+
+    '<h3>'+(r.pass?'Passed':'Not passed')+'</h3>'+
+    '<p class="examsub">'+(r.total-r.wrong.length)+' of '+r.total+' correct. '+
+      (DB.exam.passMark||80)+'% is needed to pass.</p>';
+  if(r.pass){
+    head+='<p class="examsub">Your certificate is below. <b>Save or print it and send it to the Bike Manager</b> — this site does not send it for you.</p>'+
+      '<div class="row" style="justify-content:center">'+
+      '<button class="btn solid" onclick="window.print()">Print or save certificate</button>'+
+      '<button class="btn" onclick="toggleExamAnswers()">'+(exam.showAnswers?'Hide answers':'Review answers')+'</button></div>';
+  }else{
+    head+='<p class="examsub">Review the answers, go back through the lecture, and take it again.</p>'+
+      '<div class="row" style="justify-content:center">'+
+      '<button class="btn solid" onclick="toggleExamAnswers()">'+(exam.showAnswers?'Hide answers':'Review answers')+'</button>'+
+      '<button class="btn" onclick="restartExam()">Take it again</button></div>';
+  }
+  head+='</div>';
+
+  if(r.pass) head+=certificate();
+
+  if(exam.showAnswers){
+    var n=0;
+    head+='<h3 class="examsection noprint">Answers</h3>';
+    qs.forEach(function(q){
+      n++;
+      var mine=exam.answers[q.id], right=mine===q.a;
+      head+='<div class="card examq noprint '+(right?'right':'wrong')+'">'+
+        '<div class="examqhead"><span class="examnum '+(right?'okn':'badn')+'">'+n+'</span>'+
+        '<span class="examqtext">'+esc(q.q)+'</span></div>';
+      (q.opts||[]).forEach(function(o,oi){
+        var cls=oi===q.a?'examopt correct':(oi===mine?'examopt chosen':'examopt');
+        var mark=oi===q.a?'✓ ':(oi===mine?'✕ ':'');
+        head+='<div class="'+cls+'"><span>'+mark+esc(o)+'</span></div>';
+      });
+      if(q.why) head+='<p class="examwhy">'+esc(q.why)+'</p>';
+      head+='</div>';
+    });
+  }
+  return head;
+}
+function toggleExamAnswers(){ exam.showAnswers=!exam.showAnswers; renderExam(); }
+function restartExam(){
+  exam.stage='taking'; exam.answers={}; exam.result=null; exam.showAnswers=false;
+  renderExam(); window.scrollTo(0,0);
+}
+
+// Printable. Everything else on the page is .noprint, so File > Print gives just
+// this — which is what "save it and send it to the Bike Manager" needs to mean.
+function certificate(){
+  var r=exam.result;
+  var d=r.when.toLocaleDateString(undefined,{year:'numeric',month:'long',day:'numeric'});
+  return '<div class="cert" id="cert">'+
+    '<div class="certinner">'+
+      '<div class="certmark">CMU EMS</div>'+
+      '<div class="certkicker">Bike Response</div>'+
+      '<p class="certline">'+
+        '<b>'+esc(exam.name)+'</b> ('+esc(exam.andrew)+') has passed the '+
+        '<b>CMU Bike EMS Practical Exam</b>!</p>'+
+      '<div class="certmeta"><span>'+esc(String(r.score))+'% · '+(r.total-r.wrong.length)+'/'+r.total+' correct</span>'+
+      '<span>'+esc(d)+'</span></div>'+
+      '<p class="certnote">Save this and send it to the Bike Manager.</p>'+
+    '</div></div>';
+}
+
+/* ---------- question editing (manager mode) ---------- */
+function toggleExamEdit(){ examEdit=!examEdit; renderExam(); }
+function examBuilder(){
+  var h='<div class="builder"><h4>Editing the exam</h4>'+
+    '<p class="bsub">Questions save as you type. The ticked option is the correct one.</p>'+
+    '<div class="field" style="max-width:220px"><label for="passMark">Pass mark (%)</label>'+
+    '<input type="number" id="passMark" min="0" max="100" value="'+esc(String(DB.exam.passMark||80))+'" '+
+    'oninput="DB.exam.passMark=Math.max(0,Math.min(100,Number(this.value)||0));saveDB()"></div>';
+  DB.exam.questions.forEach(function(q,qi){
+    h+='<div class="bsection"><div class="bhead">'+
+       '<input type="text" value="'+esc(q.q)+'" oninput="DB.exam.questions['+qi+'].q=this.value;saveDB()">'+
+       '<select onchange="DB.exam.questions['+qi+'].kind=this.value;saveDB();renderExam()">'+
+         '<option value="ops"'+(q.kind!=='scenario'?' selected':'')+'>Operations</option>'+
+         '<option value="scenario"'+(q.kind==='scenario'?' selected':'')+'>Scenario</option></select>'+
+       '<button class="btn xs" title="Move up"'+(qi===0?' disabled':'')+' onclick="moveExamQ('+qi+',-1)">↑</button>'+
+       '<button class="btn xs" title="Move down"'+(qi===DB.exam.questions.length-1?' disabled':'')+' onclick="moveExamQ('+qi+',1)">↓</button>'+
+       '<button class="btn xs danger" onclick="delExamQ('+qi+')">Delete</button></div>';
+    (q.opts||[]).forEach(function(o,oi){
+      h+='<div class="bitem">'+
+         '<label class="expflag"><input type="radio" name="ans-'+esc(q.id)+'"'+(q.a===oi?' checked':'')+
+         ' onchange="DB.exam.questions['+qi+'].a='+oi+';saveDB()"> correct</label>'+
+         '<input type="text" value="'+esc(o)+'" oninput="DB.exam.questions['+qi+'].opts['+oi+']=this.value;saveDB()">'+
+         '<button class="btn xs danger"'+((q.opts||[]).length<3?' disabled':'')+' onclick="delExamOpt('+qi+','+oi+')">✕</button>'+
+         '</div>';
+    });
+    h+='<div class="bitem"><span class="expflag">Why</span>'+
+       '<input type="text" value="'+esc(q.why||'')+'" placeholder="Shown when someone reviews their answers" '+
+       'oninput="DB.exam.questions['+qi+'].why=this.value;saveDB()"></div>'+
+       '<button class="btn xs mt-sm" onclick="addExamOpt('+qi+')">+ Add option</button></div>';
+  });
+  h+='<button class="btn sm" onclick="addExamQ()">+ Add question</button> '+
+     '<button class="btn sm solid" onclick="toggleExamEdit()">Done</button></div>';
+  return h;
+}
+function addExamQ(){
+  DB.exam.questions.push({id:uid('q'),kind:'ops',q:'New question',
+    opts:['Option A','Option B','Option C','Option D'],a:0,why:''});
+  saveDB(); renderExam();
+}
+function delExamQ(i){
+  var q=DB.exam.questions[i];
+  uiConfirm('“'+q.q+'” will be removed from the exam.','Delete this question?',
+            {okText:'Delete',danger:true}).then(function(y){
+    if(!y) return; DB.exam.questions.splice(i,1); saveDB(); renderExam();
+  });
+}
+function moveExamQ(i,d){
+  var a=DB.exam.questions, j=i+d; if(j<0||j>=a.length) return;
+  a.splice(j,0,a.splice(i,1)[0]); saveDB(); renderExam();
+}
+function addExamOpt(qi){ DB.exam.questions[qi].opts.push('New option'); saveDB(); renderExam(); }
+function delExamOpt(qi,oi){
+  var q=DB.exam.questions[qi];
+  if(q.opts.length<3) return;
+  q.opts.splice(oi,1);
+  // The correct-answer index has to follow its option, or deleting an earlier
+  // option silently makes a different answer "correct".
+  if(q.a===oi) q.a=0; else if(q.a>oi) q.a--;
+  saveDB(); renderExam();
 }
 
 /* ============================================================
@@ -3882,7 +4241,7 @@ function exportDB(){
 function renderAll(){
   renderDash();renderBikePicker();renderChecks();renderOOS();renderWeather();
   renderForm('jumpkit');renderForm('safety');renderExpiryAlert();
-  renderVideos();renderLectures();renderBylaws();renderKVSets();renderBags();
+  renderVideos();renderLectures();renderBylaws();renderKVSets();renderBags();renderExam();
   renderSettings();
 }
 renderAll();
