@@ -3118,7 +3118,10 @@ function weakHash(str){
   for(var i=0;i<str.length;i++){ h^=str.charCodeAt(i); h=Math.imul(h,16777619); }
   return (h>>>0).toString(36);
 }
-var EXAM_GATE=weakHash('air|brakes|chain');
+// The hash VALUE, not weakHash('the answer') — computing it from the literal at
+// runtime would have left the three words sitting in the page in plain sight,
+// which is exactly what storing a hash is meant to avoid.
+var EXAM_GATE='1hxkwew';
 
 // Exam state lives in memory only. Reloading restarts it, which is correct for an
 // examination — a half-finished attempt should not be resumable from a cache.
