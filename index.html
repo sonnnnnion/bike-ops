@@ -290,7 +290,7 @@
      unwatchable in place — hence the floor, and the single column below it. */
   .video{min-width:0}
   @media(max-width:900px){ #videoGrid{grid-template-columns:1fr} }
-  .module .embed{min-height:220px}
+  .embed{min-height:220px}
   .video .meta{padding:12px 14px;flex:1;display:flex;flex-direction:column;gap:4px}
   .video .meta b{display:block;font-size:14px}
   .video .meta small{color:var(--ink-faint);font-size:12px}
@@ -367,8 +367,9 @@
   .module .mtitle{font-weight:700;font-size:15px;flex:1}
   .module .mbody{display:none;border-top:1.5px solid var(--rule-soft);padding:12px 14px}
   .module.open .mbody{display:block}
-  .module .embed{aspect-ratio:16/9;width:100%;border:1.5px solid var(--rule);background:#000;overflow:hidden}
-  .module .embed iframe{width:100%;height:100%;border:0;display:block}
+  .embed{aspect-ratio:16/9;width:100%;border:1.5px solid var(--rule);border-radius:var(--r-md);
+    background:#000;overflow:hidden;box-shadow:var(--shadow-md)}
+  .embed iframe{width:100%;height:100%;border:0;display:block}
   /* Compact notice, NOT 16/9 — an unlinked module shouldn't open into a
      screen-tall empty box just because a real slide deck would be that shape. */
   .noembed{min-height:104px;display:grid;place-items:center;text-align:center;padding:20px 16px;background:var(--bg-2);
@@ -620,6 +621,14 @@
     .fstats{gap:26px}
     .statnum{font-size:27px}
   }
+
+  /* ---------- bike lecture ---------- */
+  .decklede{max-width:62ch}
+  .deckwrap{max-width:900px;margin:0 auto}
+  .deckwrap .row{justify-content:center;margin-top:14px}
+  /* Below the fold the exam call-to-action is the only thing left, so it gets the
+     page's full width rather than being trapped in the deck's column. */
+  .examcta{max-width:900px;margin-left:auto;margin-right:auto}
 
   /* ---------- practical exam ---------- */
   .examcta{display:flex;align-items:center;justify-content:space-between;gap:20px;flex-wrap:wrap;
@@ -874,15 +883,17 @@
     <!-- ===== LECTURES ===== -->
     <section class="view" data-view="lectures">
       <h2 class="view-title">Bike Lecture</h2>
-      <p class="view-sub">Work through the deck, then take the practical exam.</p>
+      <p class="view-sub decklede">Work through the deck, then take the practical exam.</p>
       <div class="sharenote webonly blockonly">
         <b>One deck.</b>
         Paste the normal Slides share link — it is converted to an embed automatically — but set
         the deck to <b style="display:inline">“Anyone with the link → Viewer”</b> first, or it
         shows a sign-in wall instead of the slides.
       </div>
-      <div id="deckHost"></div>
-      <div class="row mt" id="deckActions"></div>
+      <div class="deckwrap">
+        <div id="deckHost"></div>
+        <div class="row mt" id="deckActions"></div>
+      </div>
 
       <div class="examcta">
         <div>
@@ -1584,37 +1595,79 @@ var DEFAULTS={
   exam:{
     passMark:80,
     questions:[
-      {id:'q1', kind:'ops', q:'How often must every bike be checked, whether or not anyone has ridden it?',
-       opts:['Once a week','Once a month','Only before it is ridden','Only when a fault is reported'], a:0,
-       why:'The Bike Manager inspects every bicycle at least weekly, ridden or not.'},
-      {id:'q2', kind:'ops', q:'Which of these puts a bike out of service immediately?',
-       opts:['Bell missing','Low tire pressure','No working lock','A scratched frame'], a:2,
-       why:'A bike without a working lock is not available for service. The others need attention but do not ground the bike.'},
-      {id:'q3', kind:'ops', q:'Which jumpkit items carry an expiration date?',
-       opts:['Oral glucose and petroleum gauze','Trauma shears and the BVM','Ice packs and eyewash','The tourniquet only'], a:0,
-       why:'Those two are the only dated items in the bag, and the check asks for their dates.'},
-      {id:'q4', kind:'ops', q:'You find a fault. Where does it get recorded so the Bike Manager sees it?',
-       opts:['Text a friend on the crew','The notes field at the bottom of either check','Nowhere — tell them in person next week','Write it on the whiteboard'], a:1,
-       why:'Anything written in that notes field is filed straight into the issue list.'},
-      {id:'q5', kind:'ops', q:'Who may ride a bike but may not carry a jumpkit?',
-       opts:['Anyone in their first semester','Red shirts','Crew chiefs','Nobody — everyone carries one'], a:1,
-       why:'Red shirts may ride; the jumpkit is not theirs to carry.'},
+      // Part 1 is judgement under the rules, not recall of them. Every one has a
+      // distractor that is defensible if you have not thought it through.
+      {id:'q1', kind:'ops', q:'You are the last person to ride today. The bike is sound but the front tire is noticeably soft. What do you do before you walk away?',
+       opts:['Inflate it and note it on the check — soft is not out of service',
+             'Mark the bike out of service; low pressure is a critical fault',
+             'Leave it — the next rider does a pre-ride check anyway',
+             'Deflate it fully so nobody rides it'], a:0,
+       why:'Low pressure is a warning, not a critical fault. Fix what you can and record it, so the next rider is not rediscovering it and the Bike Manager sees the pattern.'},
 
-      {id:'q6', kind:'scenario', q:'The bike is in perfect condition. There is lightning about two miles away. What do you do?',
-       opts:['Ride, since the bike is sound','Ride, but take a shorter route','Do not ride — conditions ground bike response','Ask the patient to come to you'], a:2,
-       why:'An active thunderstorm grounds bike response entirely. The verdict is about conditions, not the bike.'},
-      {id:'q7', kind:'scenario', q:'A bike is marked out of service, but you look it over and it seems fine. What do you do?',
-       opts:['Take it — your assessment is current','Take it and note that you disagreed','Do not take it','Take it only for a short call'], a:2,
-       why:'You do not take a bike marked out of service regardless of how it appears to you.'},
-      {id:'q8', kind:'scenario', q:'Mid-shift you find the front brake will not grip. What is the correct action?',
-       opts:['Finish the shift and report it after','Mark it out of service immediately','Wait for the Bike Manager to confirm','Use the rear brake only'], a:1,
-       why:'A critical defect is marked out of service immediately — you do not wait for the Bike Manager.'},
-      {id:'q9', kind:'scenario', q:'You used the last two cold packs on a call. What do you owe the next rider?',
-       opts:['Nothing — supplies get checked weekly','Report what you used so the bag is restocked','Buy replacements yourself','Move packs over from another bag'], a:1,
-       why:'What you used is what the next person will not have. Report it, or return the bag stocked.'},
-      {id:'q10', kind:'scenario', q:'You nearly struck a pedestrian. Nobody was touched and nobody was hurt. Do you report it?',
-       opts:['No — nothing actually happened','Only if someone else saw it','Yes — report the near miss','Only if it happens twice'], a:2,
-       why:'Near misses are reported. The near miss is the free lesson, and reporting is never a fault.'}
+      {id:'q2', kind:'ops', q:'Which of these bikes is the ONLY one you may take on a call?',
+       opts:['Rear brake grips, front brake does not',
+             'Bell missing, everything else sound',
+             'Wheel wobbles slightly under load',
+             'Lock is missing but the bike rides fine'], a:1,
+       why:'A missing bell is cosmetic. A brake that does not grip, a wheel out of true, and no working lock are each disqualifying on their own.'},
+
+      {id:'q3', kind:'ops', q:'You open the jumpkit and the oral glucose expired last week. Nothing else is wrong. What is the correct outcome of the check?',
+       opts:['Bag is fine — one expired item does not matter',
+             'Swap it from another bag and say nothing',
+             'Record it as expired and notify the Equipment Manager',
+             'Discard the glucose and submit the bag as complete'], a:2,
+       why:'Expired kit is recorded, not quietly moved or hidden. Robbing another bag makes the shortage somebody else\u2019s surprise.'},
+
+      {id:'q4', kind:'ops', q:'A member tells you in passing that a bike\u2019s gears skip. What does the programme need you to do so it does not get lost?',
+       opts:['Remember it and mention it at the next meeting',
+             'Write it in the notes field of a check so it reaches the issue list',
+             'Nothing — they should report it themselves',
+             'Tell the next rider verbally'], a:1,
+       why:'A report that lives in someone\u2019s memory is not a report. The notes field on either check files it where the Bike Manager actually looks.'},
+
+      {id:'q5', kind:'ops', q:'You return a bike having used the tourniquet and both cold packs. You are late for class. What is the minimum you owe?',
+       opts:['Nothing — the weekly check will catch it',
+             'Restock it yourself before leaving, however long that takes',
+             'Report what you used, even if you cannot restock it now',
+             'Text a friend to restock it for you'], a:2,
+       why:'Returning it stocked is best, but the non-negotiable is that what you used is recorded. Silence is what leaves the next responder short.'},
+
+      // Part 2: decisions where more than one option is defensible and the
+      // difference is judgement, which is what an NREMT scenario actually tests.
+      {id:'q6', kind:'scenario', q:'Dispatched to a possible syncope two buildings away. Skies are clear, but a thunderstorm warning was issued ten minutes ago and you can hear thunder. What do you do?',
+       opts:['Ride — the storm has not arrived and the call is close',
+             'Ride, but take the covered route',
+             'Do not ride; respond another way',
+             'Ride and shelter if it starts'], a:2,
+       why:'Thunder you can hear means lightning in the area, and that grounds bike response outright. Proximity of the call does not change the hazard to you.'},
+
+      {id:'q7', kind:'scenario', q:'Mid-call, a patient needs more than your bag holds and is not walking anywhere. What is the correct action?',
+       opts:['Improvise with what is in the bag',
+             'Ride back for equipment and return',
+             'Escalate for a vehicle and stay with the patient',
+             'Walk the patient toward the nearest building'], a:2,
+       why:'You do not leave a patient to fetch equipment, and a bike cannot transport. Escalating is the correct outcome, not a failed response.'},
+
+      {id:'q8', kind:'scenario', q:'You are riding to a call and the chain drops off the chainring. The call is urgent. What do you do?',
+       opts:['Keep pedalling and hope it reseats',
+             'Stop, reseat the chain, then continue',
+             'Abandon the bike where it is and run',
+             'Stop, get the bike out of the way, and report the delay while continuing on foot'], a:3,
+       why:'A dropped chain is fixable, but not while a patient is waiting and not in traffic. Clear the hazard, keep the response moving, and say you are delayed so somebody else can be sent.'},
+
+      {id:'q9', kind:'scenario', q:'You take a corner too fast, go down, and are unhurt. The bike looks fine and you are close to the call. What do you do?',
+       opts:['Continue — you and the bike are fine',
+             'Continue, and report the fall at the end of shift',
+             'Check the bike over before continuing, and report the fall',
+             'Report the fall and take the bike out of service immediately'], a:2,
+       why:'A fall is reported whether or not anyone was hurt. But a crash is exactly when a fault appears, so the bike gets looked over before it carries you anywhere else.'},
+
+      {id:'q10', kind:'scenario', q:'A member who has passed the written exam but not the competency exam offers to take a call by bike because you are busy. What do you do?',
+       opts:['Let them — they passed the written exam',
+             'Let them if you brief them first',
+             'Do not let them ride on a call',
+             'Let them ride without the jumpkit'], a:2,
+       why:'Both examinations are required, and neither substitutes for the other. The competency exam is what establishes they can physically handle the bike.'}
     ]
   },
 
