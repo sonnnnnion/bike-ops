@@ -189,7 +189,13 @@
   .dot{width:8px;height:8px;border-radius:50%;display:inline-block;flex:0 0 auto}
   .st-ok{color:#1F5C36;background:var(--ok-wash);border-color:#BFDECA} .st-ok .dot{background:var(--ok)}
   .st-warn{color:#7A4D00;background:var(--warn-wash);border-color:#E8D3A8} .st-warn .dot{background:var(--warn)}
-  .st-oos{color:#fff;background:var(--oos)} .st-oos .dot{background:#fff}
+  /* Same construction as its siblings: wash, dark text, coloured dot. It was a
+     solid red pill with a WHITE dot, which read as a stray mark rather than a
+     status light and disagreed with the legend, where out-of-service is a red
+     dot. Severity still carries — red on red is the loudest of the three — but
+     the three now read as one scale instead of two designs. */
+  .st-oos{color:#8A1020;background:var(--oos-wash);border-color:#F0BFC7}
+  .st-oos .dot{background:var(--oos)}
 
   /* wrap the pill onto its own line rather than letting a long bike name break */
   .bike-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px;flex-wrap:wrap}
@@ -4008,7 +4014,7 @@ function renderBags(){
   el.innerHTML=DB.bags.map(function(b,i){
     return '<div class="kv"><span>'+esc(b.label)+'</span>'+
       '<span class="kvval">'+
-        '<span class="status '+(b.active?'ok':'oos')+'"><span class="dot"></span>'+
+        '<span class="status '+(b.active?'st-ok':'st-oos')+'"><span class="dot"></span>'+
           (b.active?'In service':'Dormant')+'</span>'+
         '<span class="row kvacts webonly">'+
           '<button class="btn xs" onclick="toggleBag('+i+')">'+(b.active?'Take out of service':'Put in service')+'</button>'+
@@ -4097,7 +4103,7 @@ function weeklyCard(){
     '<p style="font-size:13px;color:var(--ink-mute)">Once a week, every bike, whether or not anyone rode. '+
     'This is the Bike Safety Check — same form.</p>'+
     '<div class="kv" style="margin-top:12px"><span>Status</span>'+
-      '<span class="status '+tone+'"><span class="dot"></span>'+(tone==='ok'?'Up to date':'Due')+'</span></div>'+
+      '<span class="status st-'+tone+'"><span class="dot"></span>'+(tone==='ok'?'Up to date':'Due')+'</span></div>'+
     '<p style="font-size:13px;color:var(--ink-soft);margin:10px 0 0">'+esc(body)+'</p>'+
     '<button class="btn sm mt block solid" onclick="go(\'safety-check\')">Open the Bike Safety Check</button></div>';
 }
