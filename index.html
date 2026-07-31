@@ -3268,6 +3268,10 @@ function examQuestions(){
     });
     return h;
   };
+  if(!qs.length) return '<div class="card examcard">'+
+    '<h3>No questions yet</h3>'+
+    '<p class="examsub">The exam has not been written yet. A Bike Manager can add questions '+
+    'from this page.</p></div>';
   return block(ops,'Part 1 — Operations','How the programme runs, and what the rules are.')+
          block(scn,'Part 2 — Scenarios','What you actually do.')+
          '<div class="examfoot">'+
@@ -3281,11 +3285,22 @@ function updateExamProgress(){
   el.textContent=done+' of '+total+' answered'+(done<total?' — you can submit with blanks, they count as wrong.':'');
 }
 
+// A pass mark of 0 is a legitimate setting, so this cannot use `|| 80`.
+function passMark(){
+  var m=DB.exam&&DB.exam.passMark;
+  return (typeof m==='number'&&isFinite(m))?Math.max(0,Math.min(100,m)):80;
+}
 function submitExam(){
   var qs=DB.exam.questions, total=qs.length;
+  // No questions means no paper. Scoring it divided by zero and produced "NaN%",
+  // which is reachable simply by deleting every question in manager mode.
+  if(!total){
+    uiAlert('This exam has no questions yet, so there is nothing to score.','Nothing to submit');
+    return;
+  }
   var wrong=qs.filter(function(q){ return exam.answers[q.id]!==q.a; });
   var score=Math.round(((total-wrong.length)/total)*100);
-  var pass=score>=(DB.exam.passMark||80);
+  var pass=score>=passMark();
   var unanswered=qs.length-Object.keys(exam.answers).length;
   var go=function(){
     exam.result={score:score,pass:pass,wrong:wrong.map(function(q){return q.id;}),
@@ -3304,7 +3319,7 @@ function examResult(){
     '<div class="examscore">'+r.score+'%</div>'+
     '<h3>'+(r.pass?'Passed':'Not passed')+'</h3>'+
     '<p class="examsub">'+(r.total-r.wrong.length)+' of '+r.total+' correct. '+
-      (DB.exam.passMark||80)+'% is needed to pass.</p>';
+      passMark()+'% is needed to pass.</p>';
   if(r.pass){
     head+='<p class="examsub">Your certificate is below. <b>Save or print it and send it to the Bike Manager</b> — this site does not send it for you.</p>'+
       '<div class="row" style="justify-content:center">'+
