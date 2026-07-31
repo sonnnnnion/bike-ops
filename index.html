@@ -636,6 +636,34 @@
      page's full width rather than being trapped in the deck's column. */
   .examcta{max-width:900px;margin-left:auto;margin-right:auto}
 
+  /* ---------- exam builder ----------
+     Its own layout rather than .bitem, which is a four-column grid built for the
+     jumpkit form (label / qty / expires / delete). Reusing it put the repeated
+     word "correct" in the widest column and squeezed the option text — the thing
+     you are actually editing — into 74px. */
+  .exq{border:1.5px solid var(--rule);border-radius:var(--r-sm);background:#fff;
+    padding:14px 14px 12px;margin-bottom:12px}
+  .exqtop{display:flex;gap:10px;align-items:flex-start}
+  .exqn{font-family:var(--font-mono);font-size:12px;font-weight:700;color:#fff;background:var(--brand);
+    min-width:24px;height:24px;border-radius:var(--r-sm);display:grid;place-items:center;flex:0 0 auto;margin-top:5px}
+  .exqbox{flex:1;min-width:0;font-size:14.5px;font-weight:600;line-height:1.4;resize:vertical}
+  .exqmeta{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:9px 0 12px 34px}
+  .exqmeta select{width:auto;min-width:150px;flex:0 0 auto}
+  .exqacts{display:flex;gap:6px;margin-left:auto}
+  /* radio, then the option text taking everything left, then remove. */
+  .exopt{display:flex;align-items:center;gap:10px;margin:0 0 7px 34px;padding:0;
+    text-transform:none;letter-spacing:0;font-weight:400}
+  .exopt input[type=radio]{flex:0 0 auto;width:17px;height:17px;accent-color:var(--ok);margin:0}
+  .exopttext{flex:1;min-width:0;font-size:14px}
+  .exopt.on .exopttext{border-color:var(--ok);background:var(--ok-wash);font-weight:600}
+  .exwhy{margin:12px 0 10px 34px}
+  .exwhy label{margin-bottom:5px}
+  .exq>.btn.xs{margin-left:34px}
+  @media(max-width:640px){
+    .exqmeta,.exopt,.exwhy,.exq>.btn.xs{margin-left:0}
+    .exqacts{margin-left:0;width:100%}
+  }
+
   /* ---------- practical exam ---------- */
   .examcta{display:flex;align-items:center;justify-content:space-between;gap:20px;flex-wrap:wrap;
     margin-top:30px;padding:22px 24px;border:1.5px solid var(--brand);border-radius:var(--r-md);
@@ -3383,34 +3411,45 @@ function certificate(){
 function toggleExamEdit(){ examEdit=!examEdit; renderExam(); }
 function examBuilder(){
   var h='<div class="builder"><h4>Editing the exam</h4>'+
-    '<p class="bsub">Questions save as you type. The ticked option is the correct one.</p>'+
-    '<div class="field" style="max-width:220px"><label for="passMark">Pass mark (%)</label>'+
-    '<input type="number" id="passMark" min="0" max="100" value="'+esc(String(DB.exam.passMark||80))+'" '+
-    'oninput="DB.exam.passMark=Math.max(0,Math.min(100,Number(this.value)||0));saveDB()"></div>';
+    '<p class="bsub">Everything saves as you type. Select the radio beside the correct option.</p>'+
+    '<div class="field" style="max-width:200px"><label for="passMark">Pass mark (%)</label>'+
+    '<input type="number" id="passMark" min="0" max="100" value="'+esc(String(passMark()))+'" '+
+    'oninput="DB.exam.passMark=Number(this.value);saveDB()"></div>';
   DB.exam.questions.forEach(function(q,qi){
-    h+='<div class="bsection"><div class="bhead">'+
-       '<input type="text" value="'+esc(q.q)+'" oninput="DB.exam.questions['+qi+'].q=this.value;saveDB()">'+
-       '<select onchange="DB.exam.questions['+qi+'].kind=this.value;saveDB();renderExam()">'+
-         '<option value="ops"'+(q.kind!=='scenario'?' selected':'')+'>Operations</option>'+
-         '<option value="scenario"'+(q.kind==='scenario'?' selected':'')+'>Scenario</option></select>'+
-       '<button class="btn xs" title="Move up"'+(qi===0?' disabled':'')+' onclick="moveExamQ('+qi+',-1)">↑</button>'+
-       '<button class="btn xs" title="Move down"'+(qi===DB.exam.questions.length-1?' disabled':'')+' onclick="moveExamQ('+qi+',1)">↓</button>'+
-       '<button class="btn xs danger" onclick="delExamQ('+qi+')">Delete</button></div>';
+    h+='<div class="exq">'+
+       // The question is the widest thing here, so it gets its own full-width row
+       // rather than sharing one with the controls.
+       '<div class="exqtop"><span class="exqn">'+(qi+1)+'</span>'+
+       '<textarea class="exqbox" rows="2" oninput="DB.exam.questions['+qi+'].q=this.value;saveDB()">'+esc(q.q)+'</textarea>'+
+       '</div>'+
+       '<div class="exqmeta">'+
+         '<select onchange="DB.exam.questions['+qi+'].kind=this.value;saveDB();renderExam()">'+
+           '<option value="ops"'+(q.kind!=='scenario'?' selected':'')+'>Operations</option>'+
+           '<option value="scenario"'+(q.kind==='scenario'?' selected':'')+'>Scenario</option></select>'+
+         '<span class="exqacts">'+
+           '<button class="btn xs" title="Move up"'+(qi===0?' disabled':'')+' onclick="moveExamQ('+qi+',-1)">↑</button>'+
+           '<button class="btn xs" title="Move down"'+(qi===DB.exam.questions.length-1?' disabled':'')+' onclick="moveExamQ('+qi+',1)">↓</button>'+
+           '<button class="btn xs danger" onclick="delExamQ('+qi+')">Delete question</button>'+
+         '</span></div>';
     (q.opts||[]).forEach(function(o,oi){
-      h+='<div class="bitem">'+
-         '<label class="expflag"><input type="radio" name="ans-'+esc(q.id)+'"'+(q.a===oi?' checked':'')+
-         ' onchange="DB.exam.questions['+qi+'].a='+oi+';saveDB()"> correct</label>'+
-         '<input type="text" value="'+esc(o)+'" oninput="DB.exam.questions['+qi+'].opts['+oi+']=this.value;saveDB()">'+
-         '<button class="btn xs danger"'+((q.opts||[]).length<3?' disabled':'')+' onclick="delExamOpt('+qi+','+oi+')">✕</button>'+
-         '</div>';
+      // radio, then the option text taking all remaining width, then remove.
+      h+='<label class="exopt'+(q.a===oi?' on':'')+'">'+
+         '<input type="radio" name="ans-'+esc(q.id)+'"'+(q.a===oi?' checked':'')+
+         ' title="Mark this option correct"'+
+         ' onchange="DB.exam.questions['+qi+'].a='+oi+';saveDB();renderExam()">'+
+         '<input type="text" class="exopttext" value="'+esc(o)+'" '+
+         'oninput="DB.exam.questions['+qi+'].opts['+oi+']=this.value;saveDB()">'+
+         '<button class="btn xs danger"'+((q.opts||[]).length<3?' disabled title="An exam question needs at least two options"':'')+
+         ' onclick="delExamOpt('+qi+','+oi+')">✕</button></label>';
     });
-    h+='<div class="bitem"><span class="expflag">Why</span>'+
-       '<input type="text" value="'+esc(q.why||'')+'" placeholder="Shown when someone reviews their answers" '+
+    h+='<div class="exwhy"><label for="why-'+esc(q.id)+'">Why this is the answer</label>'+
+       '<input type="text" id="why-'+esc(q.id)+'" value="'+esc(q.why||'')+'" '+
+       'placeholder="Shown when someone reviews their answers" '+
        'oninput="DB.exam.questions['+qi+'].why=this.value;saveDB()"></div>'+
-       '<button class="btn xs mt-sm" onclick="addExamOpt('+qi+')">+ Add option</button></div>';
+       '<button class="btn xs" onclick="addExamOpt('+qi+')">+ Add option</button></div>';
   });
-  h+='<button class="btn sm" onclick="addExamQ()">+ Add question</button> '+
-     '<button class="btn sm solid" onclick="toggleExamEdit()">Done</button></div>';
+  h+='<div class="row mt"><button class="btn sm" onclick="addExamQ()">+ Add question</button>'+
+     '<button class="btn sm solid" onclick="toggleExamEdit()">Done</button></div></div>';
   return h;
 }
 function addExamQ(){
