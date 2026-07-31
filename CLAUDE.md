@@ -56,6 +56,13 @@ rather than reading it whole; re-read the exact region immediately before each E
 - The global `label{}` rule is uppercase/tracked/faint. Any `<label>` holding a
   sentence (e.g. `.mcheck`) must undo `text-transform` and `letter-spacing`.
 
+## Voice
+
+- **US spelling throughout.** Michaela flagged "programme" (2026-07-29). No -ise/-isation,
+  no colour/behaviour/centre/licence/defence, no judgement (use judgment), no whilst or
+  amongst. `aria-labelledby` is a required HTML attribute and stays as it is.
+- No self-referential or process-narrating copy — see the DRAFT-notice note below.
+
 ## Constraints
 
 - Raw source material in this folder is gitignored and contains PII (a phone number

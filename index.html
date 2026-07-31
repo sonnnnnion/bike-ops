@@ -189,7 +189,7 @@
   .dot{width:8px;height:8px;border-radius:50%;display:inline-block;flex:0 0 auto}
   .st-ok{color:#1F5C36;background:var(--ok-wash);border-color:#BFDECA} .st-ok .dot{background:var(--ok)}
   .st-warn{color:#7A4D00;background:var(--warn-wash);border-color:#E8D3A8} .st-warn .dot{background:var(--warn)}
-  /* Same construction as its siblings: wash, dark text, coloured dot. It was a
+  /* Same construction as its siblings: wash, dark text, colored dot. It was a
      solid red pill with a WHITE dot, which read as a stray mark rather than a
      status light and disagreed with the legend, where out-of-service is a red
      dot. Severity still carries — red on red is the loudest of the three — but
@@ -450,7 +450,7 @@
 
   /* ---------- fleet readiness bar ---------- */
   /* The headline operational fact. "0 of 3 rideable" is an emergency and has to
-     read as one, so the left rule and note colour follow the worst case. */
+     read as one, so the left rule and note color follow the worst case. */
   .fleetbar{border:1px solid var(--rule);border-radius:var(--r-md);background:var(--card);
     box-shadow:var(--shadow-md);padding:20px 22px;margin-bottom:18px;border-left:4px solid var(--ok)}
   .fleetbar.warn{border-left-color:var(--warn)}
@@ -463,7 +463,7 @@
 
   /* ---------- bike picker ---------- */
   .bikepick{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:12px;margin-top:6px}
-  /* iOS gives <button> its own colour and font — the system accent blue and the
+  /* iOS gives <button> its own color and font — the system accent blue and the
      system font — unless both are stated. Every bike name was rendering blue on
      iPhone and correct everywhere else, which is why it survived desktop review.
      -webkit-text-fill-color is needed as well; on iOS `color` alone is not always
@@ -527,7 +527,7 @@
 
   /* Pre-ride reminder at the foot of the jumpkit check. Deliberately louder than
      a hint and quieter than the verdict — it is a prompt to go do something
-     physical, not a judgement on what was just filled in. */
+     physical, not a judgment on what was just filled in. */
   .rideprompt{margin-top:18px;padding:15px 18px;border:1.5px solid var(--brand);
     border-left-width:5px;border-radius:var(--radius);background:var(--brand-tint)}
   .rideprompt b{font-family:var(--font-display);font-size:15.5px;color:var(--brand-deep)}
@@ -1058,7 +1058,7 @@ function uid(p){return (p||'id')+'-'+Math.random().toString(36).slice(2,8);}
 
    All four return a Promise, so callers `await`/`.then()` instead of assuming a
    value is on hand. Only one dialog can be open at a time — that matches the
-   native behaviour these replace and keeps focus handling simple. ---- */
+   native behavior these replace and keeps focus handling simple. ---- */
 var _modalHost=null,_modalPrev=null;
 function _closeModal(resolve,value){
   if(!_modalHost) return;
@@ -1126,8 +1126,8 @@ function uiConfirm(msg,title,opts){
     okText:opts.okText||'Yes',cancelText:opts.cancelText||'Cancel',
     danger:opts.danger,cancelValue:false,onOk:function(){return true;}});
 }
-// Resolves to the string, or null if cancelled. Empty input is refused rather
-// than resolved as '' — every caller here treats '' as "user cancelled" anyway.
+// Resolves to the string, or null if canceled. Empty input is refused rather
+// than resolved as '' — every caller here treats '' as "user canceled" anyway.
 function uiPrompt(msg,def,title,opts){
   opts=opts||{};
   var multi=!!opts.multiline, allowEmpty=!!opts.allowEmpty;
@@ -1146,7 +1146,7 @@ function uiPrompt(msg,def,title,opts){
 // Several editors used to fire three or four prompts back to back, so you could
 // not see what you had already typed and a cancel four dialogs in lost the lot.
 // fields: [{key,label,value,type:'text'|'textarea'|'number'|'url',hint,required}]
-// Resolves to an object keyed by `key`, or null if cancelled.
+// Resolves to an object keyed by `key`, or null if canceled.
 function uiForm(title,message,fields,opts){
   opts=opts||{};
   var body=fields.map(function(f){
@@ -1629,7 +1629,7 @@ var DEFAULTS={
   exam:{
     passMark:80,
     questions:[
-      // Part 1 is judgement under the rules, not recall of them. Every one has a
+      // Part 1 is judgment under the rules, not recall of them. Every one has a
       // distractor that is defensible if you have not thought it through.
       {id:'q1', kind:'ops', q:'You are the last person to ride today. The bike is sound but the front tire is noticeably soft. What do you do before you walk away?',
        opts:['Inflate it and note it on the check — soft is not out of service',
@@ -1652,7 +1652,7 @@ var DEFAULTS={
              'Discard the glucose and submit the bag as complete'], a:2,
        why:'Expired kit is recorded, not quietly moved or hidden. Robbing another bag makes the shortage somebody else\u2019s surprise.'},
 
-      {id:'q4', kind:'ops', q:'A member tells you in passing that a bike\u2019s gears skip. What does the programme need you to do so it does not get lost?',
+      {id:'q4', kind:'ops', q:'A member tells you in passing that a bike\u2019s gears skip. What does the program need you to do so it does not get lost?',
        opts:['Remember it and mention it at the next meeting',
              'Write it in the notes field of a check so it reaches the issue list',
              'Nothing — they should report it themselves',
@@ -1667,7 +1667,7 @@ var DEFAULTS={
        why:'Returning it stocked is best, but the non-negotiable is that what you used is recorded. Silence is what leaves the next responder short.'},
 
       // Part 2: decisions where more than one option is defensible and the
-      // difference is judgement, which is what an NREMT scenario actually tests.
+      // difference is judgment, which is what an NREMT scenario actually tests.
       {id:'q6', kind:'scenario', q:'Dispatched to a possible syncope two buildings away. Skies are clear, but a thunderstorm warning was issued ten minutes ago and you can hear thunder. What do you do?',
        opts:['Ride — the storm has not arrived and the call is close',
              'Ride, but take the covered route',
@@ -2063,7 +2063,7 @@ function googleUnlock(){
    the manager was the only person who would never notice.
 
    Content is stored in the Jumpkit spreadsheet's script (PropertiesService) and
-   read by everyone on load. Writes are authorised by sending the Google ID token
+   read by everyone on load. Writes are authorized by sending the Google ID token
    from manager sign-in; the Apps Script verifies that token with Google and
    checks the address before accepting anything. That check happens server-side,
    which is what makes it an actual boundary rather than a hidden button.
@@ -2364,11 +2364,11 @@ function renderWeather(){
   el.innerHTML=h;
 }
 function addWeather(){
-  uiForm('Add a weather condition','Conditions appear on the safety check. A grounding condition stops the ride outright; a caution is judgement.',[
+  uiForm('Add a weather condition','Conditions appear on the safety check. A grounding condition stops the ride outright; a caution is judgment.',[
     {key:'t',label:'Condition',required:true,value:'',hint:'e.g. "Lightning within 10 miles"'},
     {key:'tier',label:'Effect',type:'select',value:'ground',options:[
       {v:'ground',t:'Ground — do not ride'},
-      {v:'caution',t:'Caution — rider judgement'}]}
+      {v:'caution',t:'Caution — rider judgment'}]}
   ],{okText:'Add condition'}).then(function(r){
     if(!r) return;
     DB.weather.push({id:uid('w'),t:r.t.trim(),tier:r.tier});
@@ -2689,7 +2689,7 @@ function calcForm(fid){
     detail='All items checked, but at least one expiration date has not been entered.';
   } else {
     cls='ok'; big=(fid==='jumpkit')?'Bag ready ✓':'Cleared for bike response ✓';
-    detail=(cautions?'Note: a caution-tier condition is checked — use judgement.':'Everything checked, nothing expired.');
+    detail=(cautions?'Note: a caution-tier condition is checked — use judgment.':'Everything checked, nothing expired.');
   }
   v.className='verdict '+cls;
   v.innerHTML='<div><span class="big">'+esc(big)+'</span><span class="detail">'+esc(detail)+'</span></div>';
@@ -2783,7 +2783,7 @@ function doSubmit(fid,fn,ln,aid){
     firstName:fn.trim(), lastName:ln.trim(),
     andrewId:(aid||'').toLowerCase(),
     submittedAt:new Date().toISOString(),
-    // Lets the Apps Script recognise a repeat of a row it already wrote, so a
+    // Lets the Apps Script recognize a repeat of a row it already wrote, so a
     // retry or a double-fire cannot become a second row.
     submissionId:uid('sub')+'-'+Date.now(),
     verdict:res.big||'',
@@ -2988,7 +2988,7 @@ var ASPECTS=[
   {v:'9/16', t:'Portrait 9:16 — filmed upright on a phone'}
 ];
 var ASPECT_VALUES=ASPECTS.map(function(a){return a.v;});
-// Anything unrecognised falls back to widescreen rather than being interpolated
+// Anything unrecognized falls back to widescreen rather than being interpolated
 // into the style attribute, which would let stored data inject CSS.
 function aspectOf(o){
   var a=(o&&o.aspect)||'16/9';
@@ -3060,7 +3060,7 @@ function delVideo(i){
    redirect to the full app UI or a sign-in wall. Paste whatever the Share button
    gives you; this converts it. */
 // The link a person should follow to watch this at full size in its own tab.
-// embedSrc() normalises a share link INTO an iframe URL; this goes the other way,
+// embedSrc() normalizes a share link INTO an iframe URL; this goes the other way,
 // because /preview and /embed pages are deliberately stripped of the surrounding
 // player UI and are a poor thing to land on.
 function watchUrl(url){
@@ -3300,7 +3300,7 @@ function examQuestions(){
     '<h3>No questions yet</h3>'+
     '<p class="examsub">The exam has not been written yet. A Bike Manager can add questions '+
     'from this page.</p></div>';
-  return block(ops,'Part 1 — Operations','How the programme runs, and what the rules are.')+
+  return block(ops,'Part 1 — Operations','How the program runs, and what the rules are.')+
          block(scn,'Part 2 — Scenarios','What you actually do.')+
          '<div class="examfoot">'+
            '<p id="examProgress" class="examsub"></p>'+
@@ -3944,7 +3944,7 @@ function issueFromCheck(fid,payload,who){
   }
 
   // 3. Free text last, and deduped on its own words. Minor, because severity is a
-  //    judgement the manager makes when they read it.
+  //    judgment the manager makes when they read it.
   var t=String(payload.notes||'').trim();
   if(t) upsertIssue('note:'+t.toLowerCase(),Object.assign({},base,{problem:t,sev:'minor'}));
 
@@ -4001,7 +4001,7 @@ function renderDash(){
     var iss=issuesFor(b);
     // Each problem carries its own severity tag, so "bell mounted backwards"
     // can't read the same as "front brake needs bleeding". The tags are worded,
-    // not colour-only, so the card needs no extra legend to be understood.
+    // not color-only, so the card needs no extra legend to be understood.
     var body=iss.length
       ? '<ul class="isslist">'+iss.map(function(i){
           return '<li>'+sevTag(i.sev)+'<span>'+esc(i.problem)+

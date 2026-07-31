@@ -79,7 +79,7 @@ Work through Steps 1–3 completely for **Bike Jumpkit Check**, then repeat them
 
 1. Open the site, click **🔒 Bike Manager**, enter the passphrase.
 2. Go to **Site Settings** in the sidebar.
-3. There are **two** fields, labelled with the spreadsheet names. Paste each URL into
+3. There are **two** fields, labeled with the spreadsheet names. Paste each URL into
    its matching field and save.
 4. The banner stops saying the sheets are unconnected. If you fill in only one, the
    banner says **"Partly connected"** and names which half is live — that is deliberate,
@@ -127,7 +127,7 @@ Confirm three things:
 
 Date, time and name are frozen, so they stay on screen as you scroll right. A filter
 is already on. Rows are shaded: green if clean, amber if something is expiring, red if
-anything is missing or the bike was not cleared. The colour is never the only signal —
+anything is missing or the bike was not cleared. The color is never the only signal —
 the `Result` text says the same thing. The `Submission ID` column is hidden; it exists
 so a double-tapped submit cannot become a second row.
 
@@ -143,7 +143,7 @@ so a double-tapped submit cannot become a second row.
 
 The important part: **reporting the same item again does not add a row.** It bumps the
 counter and the last-reported date, so the length of the list is the length of the
-actual job. Ticking `Done` greys the row and strikes it through. If that item is later
+actual job. Ticking `Done` grays the row and strikes it through. If that item is later
 reported missing again, the row reopens by itself.
 
 ### After pasting an updated script
@@ -186,11 +186,11 @@ To enable it, signed in as the bike account:
    you do **not** need to publish it or pass verification to sign in as the owner.
 5. **Contact information:** your email. Then agree and create.
 6. Go to **Clients → Create client → Application type: Web application**.
-7. Under **Authorised JavaScript origins** add both, exactly, with no trailing slash:
+7. Under **Authorized JavaScript origins** add both, exactly, with no trailing slash:
    - `https://sonnnnnion.github.io`
    - `http://localhost:8848`
 
-   Leave **Authorised redirect URIs** empty — Google Identity Services returns the token
+   Leave **Authorized redirect URIs** empty — Google Identity Services returns the token
    to the page itself and never redirects.
 8. Create, then copy the **Client ID**. It ends in `.apps.googleusercontent.com`.
 9. In `index.html`, set `var GOOGLE_CLIENT_ID='…'` and check `MANAGER_EMAILS` holds the
@@ -453,7 +453,7 @@ function formatSheet(sh, conf) {
   if (!sh.getFilter()) sh.getRange(1, 1, sh.getMaxRows(), n).createFilter();
 }
 
-// Colour carries meaning here, so it is backed by the Result text rather than
+// Color carries meaning here, so it is backed by the Result text rather than
 // being the only signal: a clean check reads "…ready"/"Cleared", a bad one does not.
 function styleRow(sh, rowIdx, conf, missingCount, verdict) {
   var n = conf.headers.length;
@@ -487,7 +487,7 @@ function alreadyWritten(sheet, submissionId, colCount) {
 
 // The restock worklist. One row per ITEM. Reporting the same item again bumps its
 // counter and its last-reported date rather than adding a duplicate line, so the
-// list length is the length of the actual job. Ticking Done greys the row out; if
+// list length is the length of the actual job. Ticking Done grays the row out; if
 // the item is reported missing again afterwards the row reopens.
 function addToRestock(p, missing) {
   if (!missing || !missing.length) return;
