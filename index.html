@@ -1519,6 +1519,22 @@ var DEFAULTS={
     {id:'w6', t:'Standing water or flooding on route', tier:'ground'},
     {id:'w7', t:'Heat index ≥100°F (38°C)', tier:'caution'}
   ],
+  // From the ops site's checkout form. 'Other' opens a text box. Manager-editable.
+  radioIds:['P1','P2','Tech 1','Tech 2'],
+
+  /* ---------- who gets in ----------------------------------------------
+     `officer` is the shared bike account and is always allowed. `people` is
+     everyone else the Bike Manager has added, by their own Google address, so
+     a handover does not mean sharing one password.
+
+     This is a convenience gate, not authentication — it decides which buttons
+     are on screen. The Apps Script is what protects data: it verifies the
+     Google token server-side before accepting a publish. */
+  access:{
+    officer:'bikecmuems@gmail.com',
+    people:[]                      // [{email}]
+  },
+
   bags:[
     {id:'bag2', label:'Bag 2', active:true},
     {id:'bag3', label:'Bag 3', active:false},
@@ -1994,9 +2010,34 @@ function setWeb(on){
    Script running server-side, not this. The boundary becomes real only when a
    server verifies the token before accepting a write. */
 var GOOGLE_CLIENT_ID='649290078556-l1p8l9qr5stjldgrs08c8eo0od6c727e.apps.googleusercontent.com';
-// Confirmed by Michaela 2026-07-26. A wrong address here simply refuses the
-// correct account with no explanation, so it is worth re-reading before enabling.
-var MANAGER_EMAILS=['bikecmuems@gmail.com'];
+function normEmail(e){ return String(e||'').trim().toLowerCase(); }
+// The shared bike account plus everyone the Bike Manager has added under
+// Site Settings > People. The officer address is always allowed, so removing
+// every person cannot lock the role out of its own site.
+function managerEmails(){
+  var a=(DB&&DB.access)||{};
+  var out=[normEmail(a.officer)].filter(Boolean);
+  (a.people||[]).forEach(function(p){ var e=normEmail(p&&p.email); if(e&&out.indexOf(e)<0) out.push(e); });
+  return out;
+}
+function isAllowedEmail(e){ return managerEmails().indexOf(normEmail(e))>=0; }
+
+/* ---- Google sign-in is currently BROKEN, and this is the way in --------------
+   bikecmuems@gmail.com was disabled by Google on 2026-07-30 — the ops site hit
+   the same wall and recorded it. The OAuth client belongs to that account, so it
+   answers `disabled_client` and NOBODY can sign in, including the officer.
+
+   The passcode was removed before that was known, which would leave the Bike
+   Manager locked out of their own site entirely. So manager mode can be unlocked
+   locally while this is true.
+
+   This unlocks BUTTONS, not data. Publishing still posts a Google ID token that
+   the Apps Script verifies server-side, so a locally unlocked device edits its
+   own copy and cannot write shared content. That boundary is unchanged.
+
+   SET BACK TO false once a working OAuth client exists — leaving it on means any
+   visitor can open the manager views. Site Settings shows a warning while it is on. */
+var LOCAL_MANAGER_UNLOCK=true;
 
 // Reads the email out of a Google ID token WITHOUT verifying its signature. That
 // is fine here and only here: the token is not being trusted as authorization,
@@ -2029,8 +2070,14 @@ function googleUnlock(){
       title:'Bike Manager',
       message:'Sign in with the bike program’s Google account to show manager controls.',
       body:'<div id="gsiBtn" style="display:flex;justify-content:center;padding:6px 0 2px"></div>'+
-           '<p class="hint" style="text-align:center">Any other account stays in member view.</p>',
-      cancelText:'Close', noOk:true,
+           '<p class="hint" style="text-align:center">Any other account stays in member view.</p>'+
+           (LOCAL_MANAGER_UNLOCK?'<div class="sharenote mt-sm"><b>Sign-in is currently down.</b>'+
+            'The Google account this site\u2019s login belongs to was disabled, so the button above '+
+            'will not work until a new one is set up.</div>':''),
+      cancelText:'Close',
+      okText:LOCAL_MANAGER_UNLOCK?'Open manager mode without signing in':'',
+      noOk:!LOCAL_MANAGER_UNLOCK, plainOk:true,
+      onOk:function(){ return 'local'; },
       onOpen:function(w,close){
         try{
           google.accounts.id.initialize({
@@ -2038,8 +2085,7 @@ function googleUnlock(){
             callback:function(resp){
               var email=emailFromIdToken(resp&&resp.credential);
               googleIdToken=(resp&&resp.credential)||'';
-              var allowed=MANAGER_EMAILS.map(function(e){return e.toLowerCase();});
-              close(allowed.indexOf(email)>=0?'ok':('deny:'+email));
+              close(isAllowedEmail(email)?'ok':('deny:'+email));
             }
           });
           google.accounts.id.renderButton(w.querySelector('#gsiBtn'),
@@ -2048,6 +2094,12 @@ function googleUnlock(){
       }
     }).then(function(r){
       if(r==='ok'){ setWeb(true); return; }
+      if(r==='local'){
+        return uiConfirm('Google sign-in is unavailable because the bike account it belongs to was '+
+          'disabled. Opening manager mode here shows the controls on THIS device only — publishing '+
+          'to everyone still needs a working sign-in, and the script will refuse it.',
+          'Open manager mode locally?',{okText:'Open it'}).then(function(y){ if(y) setWeb(true); });
+      }
       if(r&&r.indexOf('deny:')===0){
         var who=r.slice(5);
         return uiAlert((who?'Signed in as '+who+'. That':'That')+
@@ -2148,7 +2200,8 @@ function publishContent(){
 
 function toggleWeb(){
   if(document.body.classList.contains('is-web')){setWeb(false);return;}
-  if(!GOOGLE_CLIENT_ID) return uiAlert('Google sign-in is not configured yet, so manager mode cannot be opened.','Not configured');
+  if(!GOOGLE_CLIENT_ID&&!LOCAL_MANAGER_UNLOCK)
+    return uiAlert('Google sign-in is not configured yet, so manager mode cannot be opened.','Not configured');
   return googleUnlock();
 }
 
@@ -2453,6 +2506,16 @@ function renderForm(fid){
     h+='</select>'+
        (live.length>1?'<p class="hint">Pick the bag you actually checked.</p>':'')+
        '</div>';
+    // Which radio you are carrying. Same field as the ops site's checkout form,
+    // so the two forms agree and a member sees one pattern across both sites.
+    var rid=DB.radioIds||[];
+    h+='<div class="field"><label for="jk-radio">Radio</label>'+
+       '<select id="jk-radio" onchange="onFormInput(\'jumpkit\')">'+
+       '<option value="">\u2014 pick one \u2014</option>'+
+       rid.map(function(r){return '<option value="'+esc(r)+'">'+esc(r)+'</option>';}).join('')+
+       '<option value="__other">Other \u2014 type it</option></select>'+
+       '<input type="text" id="jk-radioother" placeholder="Which radio?" hidden '+
+       'oninput="onFormInput(\'jumpkit\')"></div>';
   }
   h+='</div>';
 
@@ -2566,7 +2629,13 @@ function readDrafts(){
 function writeDrafts(d){
   try{ localStorage.setItem(DRAFT_KEY,JSON.stringify(d)); }catch(e){}
 }
-function onFormInput(fid){ calcForm(fid); saveDraft(fid); }
+function onFormInput(fid){
+  if(fid==='jumpkit'){
+    var sel=document.getElementById('jk-radio'), oth=document.getElementById('jk-radioother');
+    if(sel&&oth) oth.hidden = sel.value!=='__other';
+  }
+  calcForm(fid); saveDraft(fid);
+}
 function saveDraft(fid){
   var host=document.getElementById(FORM_HOST[fid]); if(!host) return;
   var val=function(id){var e=document.getElementById(id);return e?e.value:'';};
@@ -2576,7 +2645,7 @@ function saveDraft(fid){
   host.querySelectorAll('[data-cond]').forEach(function(c,i){ if(c.checked) conds.push(i); });
   var entry={fn:val(fid+'-fn'),ln:val(fid+'-ln'),aid:val(fid+'-aid'),
              notes:val(fid+'-notes'),items:items,conds:conds,at:Date.now()};
-  if(fid==='jumpkit') entry.bag=val('jk-bag');
+  if(fid==='jumpkit'){ entry.bag=val('jk-bag'); entry.radio=val('jk-radio'); entry.radioOther=val('jk-radioother'); }
   if(fid==='safety')  entry.bike=activeBike||'';
   // An untouched form is not a draft — storing one would make every visit look
   // like a resumed run and show the "picked up where you left off" note forever.
@@ -2590,7 +2659,11 @@ function restoreDraft(fid){
   var host=document.getElementById(FORM_HOST[fid]); if(!host) return;
   var set=function(id,v){var e=document.getElementById(id);if(e&&v) e.value=v;};
   set(fid+'-fn',d.fn); set(fid+'-ln',d.ln); set(fid+'-aid',d.aid); set(fid+'-notes',d.notes);
-  if(fid==='jumpkit') set('jk-bag',d.bag);
+  if(fid==='jumpkit'){
+    set('jk-bag',d.bag); set('jk-radio',d.radio); set('jk-radioother',d.radioOther);
+    var oth=document.getElementById('jk-radioother');
+    if(oth) oth.hidden = d.radio!=='__other';
+  }
   host.querySelectorAll('[data-item]').forEach(function(b){
     if(d.items&&d.items[b.getAttribute('data-item')]) b.checked=true; });
   host.querySelectorAll('[data-cond]').forEach(function(c,i){
@@ -2780,6 +2853,14 @@ function doSubmit(fid,fn,ln,aid){
     // Which bike this check is about. It was going into the local log only, so the
     // Bike Safety Check spreadsheet recorded a verdict with nothing to attach it to.
     bike:fid==='safety'?bikeName(activeBike):'',
+    // Toggling the "other" box lives here because it is the same read that
+    // decides what gets sent — one place, so the box cannot be shown but ignored.
+    radio:fid==='jumpkit'?(function(){
+      var sel=document.getElementById('jk-radio'), oth=document.getElementById('jk-radioother');
+      if(!sel) return '';
+      if(oth) oth.hidden = sel.value!=='__other';
+      return sel.value==='__other' ? (oth?oth.value.trim():'') : sel.value;
+    })():'',
     firstName:fn.trim(), lastName:ln.trim(),
     andrewId:(aid||'').toLowerCase(),
     submittedAt:new Date().toISOString(),
@@ -4228,6 +4309,30 @@ function renderSettings(){
    // it. It is repeated here because Site Settings is where a manager goes to
    // configure the site, and a name you can only change from a card you have to
    // scroll to is a name most people will never find.
+   (LOCAL_MANAGER_UNLOCK?
+     '<div class="card mt" style="border-color:var(--warn)"><h3>Sign-in is bypassed</h3>'+
+     '<p style="font-size:13px;color:var(--ink-soft);margin:0">Manager mode can currently be opened '+
+     'without signing in, because the Google account this site\u2019s login belongs to was disabled. '+
+     '<b>Anyone visiting can open these controls.</b> They still cannot publish — the script checks a '+
+     'real sign-in before accepting one — but the buttons are visible. Set '+
+     '<code>LOCAL_MANAGER_UNLOCK=false</code> in index.html once a new login exists.</p></div>':'')+
+
+   '<div class="card mt"><h3>Who can open manager mode</h3>'+
+   '<p style="font-size:13px;color:var(--ink-faint);margin:0 0 12px">The bike account is always allowed. '+
+   'Add anyone else by the Google address they sign in with, so handing the role on does not mean '+
+   'sharing one password.</p>'+
+   '<div class="field"><label for="accOfficer">Bike account (always allowed)</label>'+
+   '<input type="email" id="accOfficer" value="'+esc((DB.access||{}).officer||'')+'" '+
+   'oninput="DB.access.officer=this.value.trim();saveDB()"></div>'+
+   '<div id="peopleList"></div>'+
+   '<button class="btn sm mt" onclick="addPerson()">+ Add person</button></div>'+
+
+   '<div class="card mt"><h3>Radios</h3>'+
+   '<p style="font-size:13px;color:var(--ink-faint);margin:0 0 12px">Offered on the Jumpkit Check. '+
+   'Anything not listed can still be typed in under \u201cOther\u201d.</p>'+
+   '<div id="radioList"></div>'+
+   '<button class="btn sm mt" onclick="addRadio()">+ Add radio</button></div>'+
+
    '<div class="card mt"><h3>Bike names</h3>'+
    '<p style="font-size:13px;color:var(--ink-faint);margin:0 0 12px">Type to rename. Everything else keys on the bike’s storage location, so renaming is safe — past checks and open issues follow the new name.</p>'+
    DB.bikes.map(function(b,i){
@@ -4260,10 +4365,75 @@ function renderSettings(){
 
    '<div class="card mt"><h3>Manager access</h3>'+
    '<p style="font-size:13px;color:var(--ink-faint);margin:0">Manager mode opens by signing in with '+
-   esc(MANAGER_EMAILS.join(' or '))+'. There is no shared passcode to hand on or rotate. '+
+   esc(managerEmails().join(' or ')||'nobody yet')+'. There is no shared passcode to hand on or rotate. '+
    'Signing in identifies who you are; it does not by itself keep anyone out of this page, '+
    'so what protects submitted content is the Apps Script checking that same sign-in server-side '+
    'before it accepts a change.</p></div>';
+}
+function renderPeople(){
+  var el=document.getElementById('peopleList'); if(!el) return;
+  var list=(DB.access&&DB.access.people)||[];
+  el.innerHTML=list.length
+    ? list.map(function(p,i){
+        return '<div class="kv"><span>'+esc(p.email||'')+'</span>'+
+          '<span class="kvval"><span class="row kvacts">'+
+          '<button class="btn xs" onclick="editPerson('+i+')">Edit</button>'+
+          '<button class="btn xs danger" onclick="delPerson('+i+')">\u2715</button>'+
+          '</span></span></div>';
+      }).join('')
+    : '<div class="placeholder">Nobody else added yet.</div>';
+}
+function addPerson(){
+  uiPrompt('The Google address they sign in with.','','Add a person',{okText:'Add'}).then(function(v){
+    if(!v) return;
+    DB.access.people=DB.access.people||[];
+    DB.access.people.push({email:normEmail(v)});
+    saveDB(); renderSettings();
+  });
+}
+function editPerson(i){
+  var p=DB.access.people[i]; if(!p) return;
+  uiPrompt('The Google address they sign in with.',p.email,'Edit person',{okText:'Save'}).then(function(v){
+    if(!v) return; p.email=normEmail(v); saveDB(); renderSettings();
+  });
+}
+function delPerson(i){
+  var p=DB.access.people[i]; if(!p) return;
+  uiConfirm(p.email+' will no longer be able to open manager mode.','Remove this person?',
+            {okText:'Remove',danger:true}).then(function(y){
+    if(!y) return; DB.access.people.splice(i,1); saveDB(); renderSettings();
+  });
+}
+function renderRadios(){
+  var el=document.getElementById('radioList'); if(!el) return;
+  var list=DB.radioIds||[];
+  el.innerHTML=list.length
+    ? list.map(function(r,i){
+        return '<div class="kv"><span>'+esc(r)+'</span>'+
+          '<span class="kvval"><span class="row kvacts">'+
+          '<button class="btn xs" onclick="editRadio('+i+')">Rename</button>'+
+          '<button class="btn xs danger" onclick="delRadio('+i+')">\u2715</button>'+
+          '</span></span></div>';
+      }).join('')
+    : '<div class="placeholder">No radios listed. The check will still offer \u201cOther\u201d.</div>';
+}
+function addRadio(){
+  uiPrompt('As it is labelled on the radio itself.','','Add a radio',{okText:'Add'}).then(function(v){
+    if(!v) return; DB.radioIds=DB.radioIds||[]; DB.radioIds.push(v.trim());
+    saveDB(); renderSettings(); renderForm('jumpkit');
+  });
+}
+function editRadio(i){
+  uiPrompt('As it is labelled on the radio itself.',DB.radioIds[i],'Rename radio',{okText:'Save'}).then(function(v){
+    if(!v) return; DB.radioIds[i]=v.trim(); saveDB(); renderSettings(); renderForm('jumpkit');
+  });
+}
+function delRadio(i){
+  var r=DB.radioIds[i];
+  uiConfirm('\u201c'+r+'\u201d will no longer be offered on the Jumpkit Check.','Remove this radio?',
+            {okText:'Remove',danger:true}).then(function(y){
+    if(!y) return; DB.radioIds.splice(i,1); saveDB(); renderSettings(); renderForm('jumpkit');
+  });
 }
 function saveApi(){
   var vals={},odd=[];

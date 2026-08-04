@@ -276,17 +276,17 @@ var OAUTH_CLIENT_ID = '649290078556-l1p8l9qr5stjldgrs08c8eo0od6c727e.apps.google
 var SHEETS = {
   jumpkit: {
     name: 'Jumpkit Checks',
-    headers: ['Date', 'Time', 'Name', 'Andrew ID', 'Bag', 'Result',
+    headers: ['Date', 'Time', 'Name', 'Andrew ID', 'Bag', 'Radio', 'Result',
               'Missing', 'What Was Missing', 'Expiry Flag',
               'Expiration Dates', 'Notes', 'Submission ID'],
-    widths:  [92, 62, 150, 92, 96, 210, 74, 320, 190, 220, 260, 90]
+    widths:  [92, 62, 150, 92, 96, 90, 210, 74, 320, 190, 220, 260, 90]
   },
   safety: {
     name: 'Bike Checks',
-    headers: ['Date', 'Time', 'Name', 'Andrew ID', 'Bike', 'Result',
+    headers: ['Date', 'Time', 'Name', 'Andrew ID', 'Bike', 'Radio', 'Result',
               'Missing', 'What Was Missing', 'Weather Grounded',
               'Conditions Flagged', 'Notes', 'Submission ID'],
-    widths:  [92, 62, 150, 92, 96, 210, 74, 320, 130, 240, 260, 90]
+    widths:  [92, 62, 150, 92, 96, 90, 210, 74, 320, 130, 240, 260, 90]
   }
 };
 
@@ -386,6 +386,7 @@ function doPost(e) {
       ((p.firstName || '') + ' ' + (p.lastName || '')).trim(),
       p.andrewId || '',
       (p.form === 'jumpkit' ? (p.bag || '') : (p.bike || '')),
+      (p.form === 'jumpkit' ? (p.radio || '') : ''),   // which radio was carried
       p.verdict || '',
       missing.length,                       // a NUMBER, so it sorts and filters
       missing.join('\n'),
