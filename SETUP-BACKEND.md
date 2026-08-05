@@ -1,5 +1,25 @@
 # Connecting Bike Ops to its Google Sheets
 
+> **This site no longer has a backend of its own — there is nothing to set up
+> here, and the script printed further down this page is retired.**
+>
+> Both bike checks now write into the **CMU EMS Operations** spreadsheet, as tabs
+> called *Bike Jumpkit Checks* and *Bike Safety Checks*, through the same Apps
+> Script deployment the operations site uses. One file, so a bike check and a room
+> check can sit side by side in one formula.
+>
+> The script to deploy is **`apps-script/Code.gs` in the `ems-ops` repo**, and the
+> instructions are at the top of **that** repo's `SETUP-BACKEND.md`. Do not paste
+> the script below over it — it knows nothing about the operations tabs and would
+> take the room checks, checkouts, bag checks, post-call and reports with it.
+>
+> The endpoint is already baked into this page, so there is nothing to paste into
+> Site Settings either. A device that still holds the old bike URL is moved onto
+> the shared one automatically the next time it loads the site.
+>
+> The rest of this page is kept for the reasoning — why a script rather than a
+> stored password, how the permission check works, what each column means.
+
 This wires the Jumpkit Check and Bike Safety Check forms so submissions land in a
 spreadsheet automatically. Takes about 25 minutes, done once.
 

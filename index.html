@@ -1454,9 +1454,14 @@ var DEFAULTS={
   // the data is that the Apps Script runs server-side in the EMS Google account
   // and can only append a row. Site Settings still overrides these.
   api:{
-    // One deployment now serves both checks, so both slots hold the same URL.
-    jumpkit:'https://script.google.com/macros/s/AKfycbwXy8JEeLeI0Dnb2cnhPpY9tTXt1T79rpRQGwF3ev09jH8m7Nqoo9Ndt5uyr19VJ0VM8w/exec',
-    safety :'https://script.google.com/macros/s/AKfycbwXy8JEeLeI0Dnb2cnhPpY9tTXt1T79rpRQGwF3ev09jH8m7Nqoo9Ndt5uyr19VJ0VM8w/exec'
+    // Both checks, and the operations site's five forms, now land in ONE
+    // spreadsheet — 'CMU EMS Operations' — as tabs of their own. Bike checks used
+    // to go to a file of their own, which meant no formula could put a bike check
+    // beside a room check and each file had to be opened separately to answer one
+    // question. Both slots hold the same URL because one deployment serves
+    // everything; the `form` field in the payload picks the tab.
+    jumpkit:'https://script.google.com/macros/s/AKfycbywonXptEPr_o-OKQZvwYv3cAoX8plAjtlT81r2JKPvoEkX6L4EyRYoV_QJo3b52k7b/exec',
+    safety :'https://script.google.com/macros/s/AKfycbywonXptEPr_o-OKQZvwYv3cAoX8plAjtlT81r2JKPvoEkX6L4EyRYoV_QJo3b52k7b/exec'
   },
   apiUrl:'',            // legacy single endpoint — migrated into `api` on load
   // Completed pre-ride checks, newest first. A bike's live status is derived
@@ -1836,7 +1841,16 @@ var DEFAULTS={
 /* ---------- store (localStorage, guarded) ---------- */
 // Web App deployments that have been archived or replaced. Anything matching is
 // swapped for the current default on load — see the migration in loadDB.
-var DEAD_ENDPOINTS=['AKfycbydJNw0_','AKfycbyJir08'];
+/* Endpoints that must not be used again, matched on a fragment of the URL.
+   loadDB() replaces any stored `api` entry containing one of these with the
+   built-in default, because Site Settings is per-browser: a phone that pasted an
+   old URL months ago would otherwise go on posting to a spreadsheet nobody reads
+   any more, and the check would look filed.
+
+   AKfycbwXy8JE is the standalone bike spreadsheet, retired when both checks moved
+   into 'CMU EMS Operations'. Leaving it here is what actually moves the devices
+   that already have it. */
+var DEAD_ENDPOINTS=['AKfycbydJNw0_','AKfycbyJir08','AKfycbwXy8JE'];
 var DB_KEY='bikeops_db_v3';
 var DB=loadDB();
 function loadDB(){
@@ -2321,7 +2335,7 @@ function applyContent(obj){
 function refreshAccess(){
   var url=CONTENT_ENDPOINT();
   if(!url) return Promise.resolve(false);
-  return fetch(url+(url.indexOf('?')>=0?'&':'?')+'content=1&t='+Date.now())
+  return fetch(url+(url.indexOf('?')>=0?'&':'?')+'content=1&site=bike&t='+Date.now())
     .then(function(r){ return r.json(); })
     .then(function(j){
       var a=j&&j.content&&j.content.access;
@@ -2344,7 +2358,7 @@ function refreshAccess(){
 // a slow or failed fetch costs nothing — the site simply keeps what it had.
 function pullContent(){
   var url=CONTENT_ENDPOINT(); if(!url) return;
-  fetch(url+(url.indexOf('?')>=0?'&':'?')+'content=1&t='+Date.now())
+  fetch(url+(url.indexOf('?')>=0?'&':'?')+'content=1&site=bike&t='+Date.now())
     .then(function(r){ return r.json(); })
     .then(function(j){
       if(!j||!j.ok) return;                     // genuinely could not read it
@@ -2428,12 +2442,15 @@ function publishContent(opts){
   if(out) out.textContent='Publishing…';
   fetch(url,{method:'POST',mode:'no-cors',
     headers:{'Content-Type':'text/plain;charset=utf-8'},
-    body:JSON.stringify({type:'content',idToken:googleIdToken,key:publishKey(),
+    // `site` tells the shared script which copy this is. Without it both sites
+    // would publish into one slot and each would wipe the other's entire content,
+    // which shows up as a site silently reverting to its built-in defaults.
+    body:JSON.stringify({type:'content',site:'bike',idToken:googleIdToken,key:publishKey(),
                          content:contentPayload()})})
   .then(function(){
     // no-cors again, so this cannot confirm the write. Re-reading it can.
     setTimeout(function(){
-      fetch(url+'?content=1&t='+Date.now()).then(function(r){return r.json();}).then(function(j){
+      fetch(url+'?content=1&site=bike&t='+Date.now()).then(function(r){return r.json();}).then(function(j){
         var same=j&&j.content&&JSON.stringify(j.content)===JSON.stringify(contentPayload());
         // Only on a confirmed match: the baseline must never claim the server holds
         // something it does not, or the next pull silently discards the difference.
