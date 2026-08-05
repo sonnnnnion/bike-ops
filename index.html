@@ -1871,6 +1871,14 @@ function loadDB(){
   // posting checks into nothing. Because the POST reply cannot be read, it says
   // "Sent" every time. Named explicitly, since a dead URL is indistinguishable
   // from a live one without asking it.
+  // Duplicates crept in before addPerson checked, and a repeated address in the
+  // list is a repeated row in the UI that cannot be told apart.
+  if(base.access&&Array.isArray(base.access.people)){
+    var seen={};
+    base.access.people=base.access.people.filter(function(x){
+      var e=normEmail(x&&x.email); if(!e||seen[e]) return false; seen[e]=1; return true;
+    });
+  }
   ['jumpkit','safety'].forEach(function(k){
     var u=base.api[k]||'';
     if(DEAD_ENDPOINTS.some(function(d){ return u.indexOf(d)>=0; })) base.api[k]=DEFAULTS.api[k];
@@ -4501,6 +4509,14 @@ function renderSettings(){
    'Signing in identifies who you are; it does not by itself keep anyone out of this page, '+
    'so what protects submitted content is the Apps Script checking that same sign-in server-side '+
    'before it accepts a change.</p></div>';
+
+  // The markup above only leaves empty containers behind. Without these the People
+  // and Radios lists render as nothing at all, whatever is actually stored — which
+  // looks exactly like adding someone having failed, and was read as that for a
+  // long time. Anything writing an id="…List" placeholder needs its filler called
+  // here, in this function, or it silently stays blank.
+  renderPeople();
+  renderRadios();
 }
 function renderPeople(){
   var el=document.getElementById('peopleList'); if(!el) return;
@@ -4517,9 +4533,16 @@ function renderPeople(){
 }
 function addPerson(){
   uiPrompt('The Google address they sign in with.','','Add a person',{okText:'Add'}).then(function(v){
-    if(!v) return;
+    var e=normEmail(v); if(!e) return;
     DB.access.people=DB.access.people||[];
-    DB.access.people.push({email:normEmail(v)});
+    // Already listed — including as the bike account. Adding twice reads as the
+    // first attempt not having worked, which is how it happened.
+    if(managerEmails().indexOf(e)>=0)
+      return uiAlert(e+' can already open manager mode.','Already on the list');
+    if(e.indexOf('@')<0||e.indexOf('.')<0)
+      return uiAlert('That does not look like an email address. It has to be the Google '+
+                     'address they sign in with.','Check the address');
+    DB.access.people.push({email:e});
     saveDB(); renderSettings();
   });
 }

@@ -374,9 +374,10 @@ function book() {
 // request, and a combined copy is the only copy.
 var CONTENT_STORE = SERVES.indexOf('jumpkit') >= 0;
 
-// Who may publish site content. This list is what actually decides — the site's
-// own list runs in a browser the visitor controls, so it only chooses which
-// buttons appear.
+// The addresses that can ALWAYS publish, whatever the site says. Bootstrap only:
+// everyone else is added from the site under Site Settings. Keep at least one
+// address here that you control, or removing the wrong person from the site
+// locks the role out of its own content with no way back.
 var MANAGER_EMAILS = ['bikecmuems@gmail.com', 'mbocksta@andrew.cmu.edu'];
 var OAUTH_CLIENT_ID = '56106295898-0if2a9uvtsl0815n3hgtdpph93goq0ck.apps.googleusercontent.com';
 
@@ -728,10 +729,34 @@ function tidyUp() {
 // account owning the OAuth client was disabled once, and with no fallback the
 // site could not be updated at all. Set one: Project Settings > Script
 // Properties > add PUBLISH_KEY. Leave it unset and only sign-in works.
+// Everyone allowed to publish: the bootstrap list above, plus whoever the site
+// has been told is a manager. Reading the published copy is what makes adding a
+// manager on the site actually grant anything — otherwise the list decides which
+// buttons appear and nothing more, and a new manager's edits would be refused by
+// the server with the site insisting they were a manager.
+//
+// Managers adding managers, which is the point. Someone has to already be allowed
+// to change that list, because changing it is itself a publish.
+function allowedPublishers() {
+  var out = MANAGER_EMAILS.map(function (e) { return String(e).trim().toLowerCase(); });
+  try {
+    var raw = PropertiesService.getScriptProperties().getProperty('siteContent');
+    var acc = (raw ? JSON.parse(raw) : {}).access || {};
+    if (acc.officer) out.push(String(acc.officer).trim().toLowerCase());
+    (acc.people || []).forEach(function (x) {
+      if (x && x.email) out.push(String(x.email).trim().toLowerCase());
+    });
+  } catch (err) {
+    // Unreadable stored content must not lock out the bootstrap list.
+    console.warn('Could not read the manager list from stored content: ' + err);
+  }
+  return out;
+}
+
 function publisher(p) {
   var email = verifiedEmail(p.idToken);
   if (email) {
-    if (MANAGER_EMAILS.indexOf(email) >= 0) return email;
+    if (allowedPublishers().indexOf(email) >= 0) return email;
     console.warn('Content save refused for ' + email);
     return '';
   }
