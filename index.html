@@ -2137,6 +2137,9 @@ function googleUnlock(){
    Reads are public and unauthenticated. That is correct: this is the content of
    a public site — the same words a visitor can already read on the page. */
 var CONTENT_ENDPOINT=function(){ return (DB.api||{}).jumpkit||''; };
+// Lives under `api`, which never syncs — it is this device's credential, not
+// content, and publishing it to everyone would defeat the point of having it.
+var publishKey=function(){ return ((DB.api||{}).key||'').trim(); };
 // Device-local or code-owned keys never sync. `api` lives in the page, and drafts
 // are one person's half-filled form.
 var NO_SYNC={api:1,apiUrl:1,version:1};
@@ -2243,12 +2246,18 @@ function pullContent(){
 function publishContent(){
   var url=CONTENT_ENDPOINT();
   if(!url) return uiAlert('No endpoint is configured, so there is nowhere to publish to.','Cannot publish');
-  if(!googleIdToken) return uiAlert('Publishing needs a current Google sign-in. Exit manager mode and sign in again.','Sign in again');
+  // Either proof will do and the script checks whichever arrives. Manager mode can
+  // be opened without signing in while the OAuth client is broken, and that route
+  // carries no token — so without a key there would be no way to publish at all.
+  if(!googleIdToken&&!publishKey())
+    return uiAlert('Publishing needs either a Google sign-in or a publish key. '+
+                   'Add the key under Site Settings.','Cannot publish yet');
   var out=document.getElementById('publishMsg');
   if(out) out.textContent='Publishing…';
   fetch(url,{method:'POST',mode:'no-cors',
     headers:{'Content-Type':'text/plain;charset=utf-8'},
-    body:JSON.stringify({type:'content',idToken:googleIdToken,content:contentPayload()})})
+    body:JSON.stringify({type:'content',idToken:googleIdToken,key:publishKey(),
+                         content:contentPayload()})})
   .then(function(){
     // no-cors again, so this cannot confirm the write. Re-reading it can.
     setTimeout(function(){
@@ -4438,6 +4447,18 @@ function renderSettings(){
             : (contentState.everPublished
                 ? 'Connected. This device matches what everyone else sees.'
                 : 'Connected. Nothing has been published yet, so everyone else still sees the built-in defaults.')))+'</p>'+
+   // Shown whenever there is no signed-in token to publish with, which is the only
+   // time it is needed — and the only time its absence is the reason nothing reaches
+   // anyone else.
+   (googleIdToken ? '' :
+     '<div class="field"><label for="pubkey">Publish key</label>'+
+     '<input type="text" id="pubkey" value="'+esc((DB.api||{}).key||'')+'" '+
+       'placeholder="Set PUBLISH_KEY in the Apps Script, then type it here" '+
+       'oninput="DB.api.key=this.value;saveDB()">'+
+     '<p class="hint" style="margin:4px 0 0">Manager mode is open without a Google sign-in, '+
+     'so publishing needs this instead. In the Apps Script: <b>Project Settings \u2192 '+
+     'Script Properties \u2192 Add</b>, name <code>PUBLISH_KEY</code>, any value you like, '+
+     'then type the same value here. It is kept on this device and never published.</p></div>')+
    '<button class="btn sm solid" onclick="publishContent()">Publish to everyone</button> '+
    '<button class="btn sm" onclick="pullContent();uiAlert(\'Re-reading the shared copy.\',\'Refreshing\')">Get latest</button>'+
    '<p class="hint" id="publishMsg"></p>'+

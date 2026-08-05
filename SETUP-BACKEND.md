@@ -263,6 +263,22 @@ useless without an origin from the list above.
 Then check the manager list in Site Settings holds the exact address you sign in with.
 **A wrong address silently refuses the right account.**
 
+### The publish key
+
+Publishing content requires proof on the server. A Google ID token is the good
+proof — it records *who* published. But manager mode can be opened without signing
+in while the OAuth client is broken, and that route carries no token, so without a
+second route the site could not be updated for anyone at all.
+
+Set one: Apps Script → **Project Settings → Script Properties → Add property**,
+name `PUBLISH_KEY`, any value. Type the same value into Site Settings ▸ Publish
+content. It is kept on that device and is never included in published content.
+
+It proves only "someone who knows the key", where a token proves who you are — so
+prefer sign-in and treat the key as the way back in when sign-in fails. A signed-in
+address that is *not* a manager is refused even with a correct key: an explicit
+identity that is not authorized should not be overridable by a shared secret.
+
 ### If sign-in breaks
 
 `disabled_client` means the Google account owning the OAuth client was disabled or the
@@ -453,12 +469,8 @@ function doPost(e) {
     // about it, and the address on it has to be a manager's.
     if (p.type === 'content') {
       if (!CONTENT_STORE) return json({ result: 'content is stored by the jumpkit copy' });
-      var who = verifiedEmail(p.idToken);
-      if (!who) return json({ result: 'rejected: sign-in could not be verified' });
-      if (MANAGER_EMAILS.indexOf(who) < 0) {
-        console.warn('Content save refused for ' + who);
-        return json({ result: 'rejected: ' + who + ' is not a manager' });
-      }
+      var who = publisher(p);
+      if (!who) return json({ result: 'rejected: not signed in as a manager, and no valid publish key' });
       PropertiesService.getScriptProperties()
         .setProperty('siteContent', JSON.stringify(p.content || {}));
       PropertiesService.getScriptProperties()
@@ -702,6 +714,30 @@ function tidyUp() {
   });
   var rs = book().getSheetByName(RESTOCK.name);
   if (rs) paintRestock(rs);
+}
+
+// Two ways to prove you may publish, and BOTH are checked here on the server,
+// where the browser cannot lie about either.
+//
+//   1. A Google ID token, verified with Google and matched against MANAGER_EMAILS.
+//      This is the good one: it says who published.
+//   2. A PUBLISH_KEY script property, matched against a key typed into Site
+//      Settings. It says only "someone who knows the key".
+//
+// The key exists because sign-in can break in ways nobody here controls — the
+// account owning the OAuth client was disabled once, and with no fallback the
+// site could not be updated at all. Set one: Project Settings > Script
+// Properties > add PUBLISH_KEY. Leave it unset and only sign-in works.
+function publisher(p) {
+  var email = verifiedEmail(p.idToken);
+  if (email) {
+    if (MANAGER_EMAILS.indexOf(email) >= 0) return email;
+    console.warn('Content save refused for ' + email);
+    return '';
+  }
+  var key = PropertiesService.getScriptProperties().getProperty('PUBLISH_KEY');
+  if (key && p.key && String(p.key) === String(key)) return 'publish key';
+  return '';
 }
 
 // Asks Google whether this token is real, who it belongs to, and whether it was
