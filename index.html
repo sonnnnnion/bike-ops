@@ -1881,6 +1881,7 @@ function saveDB(){
   try{localStorage.setItem(DB_KEY,JSON.stringify(DB));}
   catch(e){console.warn('Could not save locally:',e);}
   markContentDirty();
+  scheduleAutoPublish();
 }
 function resetDB(){
   uiConfirm('This puts every form, criterion, video, lecture and bylaw back to the built-in defaults. '+
@@ -2243,14 +2244,40 @@ function pullContent(){
     })
     .catch(function(){ /* offline, or the script has no doGet yet — keep local */ });
 }
-function publishContent(){
+/* Publishing used to be a button someone had to remember to press. It got
+   forgotten, and a manager's edits sat on one device looking perfectly correct
+   while nobody else saw them — which is indistinguishable from the edit having
+   failed. An edit now publishes itself once it settles.
+
+   Debounced, so typing a bylaw sends one request when you stop rather than one
+   per keystroke. Silent: it reports into the Site Settings line, never a dialog,
+   because this fires while you are working. */
+var autoPubTimer=null;
+function canPublish(){ return !!CONTENT_ENDPOINT() && (!!googleIdToken || !!publishKey()); }
+function scheduleAutoPublish(){
+  if(!isManager()||!canPublish()) return;
+  clearTimeout(autoPubTimer);
+  autoPubTimer=setTimeout(function(){
+    // Gate on real divergence, not on having been called. A pull also saves, and
+    // without this that would publish straight back and loop.
+    //
+    // No baseline means this device has never synced, so nothing can be *compared*
+    // and unpublishedKeys() is empty — which is the state a first-time manager is
+    // in, and it silently skipped the one publish that mattered most. Treat it as
+    // everything-to-send. The publish sets a baseline, so this runs once.
+    if(!contentBase||unpublishedKeys().length) publishContent({auto:true});
+  },1500);
+}
+
+function publishContent(opts){
+  opts=opts||{};
   var url=CONTENT_ENDPOINT();
-  if(!url) return uiAlert('No endpoint is configured, so there is nowhere to publish to.','Cannot publish');
+  if(!url) return opts.auto?null:uiAlert('No endpoint is configured, so there is nowhere to publish to.','Cannot publish');
   // Either proof will do and the script checks whichever arrives. Manager mode can
   // be opened without signing in while the OAuth client is broken, and that route
   // carries no token — so without a key there would be no way to publish at all.
   if(!googleIdToken&&!publishKey())
-    return uiAlert('Publishing needs either a Google sign-in or a publish key. '+
+    return opts.auto?null:uiAlert('Publishing needs either a Google sign-in or a publish key. '+
                    'Add the key under Site Settings.','Cannot publish yet');
   var out=document.getElementById('publishMsg');
   if(out) out.textContent='Publishing…';
@@ -2266,8 +2293,9 @@ function publishContent(){
         // Only on a confirmed match: the baseline must never claim the server holds
         // something it does not, or the next pull silently discards the difference.
         if(same){ contentState.dirty=false; contentState.everPublished=true; setContentBase(j.content); }
-        if(out) out.textContent=same?'Published — everyone sees this now.'
-                                    :'Sent, but the server copy does not match yet. Try again in a moment.';
+        if(out) out.textContent=same?'Saved for everyone.'
+                                    :'Sent, but the server copy does not match yet. Retrying on the next edit.';
+        if(same) renderSettings();
       }).catch(function(){ if(out) out.textContent='Sent, but could not read it back to confirm.'; });
     },1200);
   })
@@ -4428,7 +4456,9 @@ function renderSettings(){
 
    '<div class="card mt"><h3>Publish content</h3>'+
    '<p style="font-size:13px;color:var(--ink-faint);margin:0 0 4px">Edits you make — bikes, forms, criteria, inventory, videos, bylaws, boundaries — '+
-   'are saved on this device as you go. <b>Publish</b> sends them to the script so every other person sees them too.</p>'+
+   (canPublish()
+     ? 'go out to everyone automatically, a moment after you stop typing. Nothing to press.'
+     : '<b>are only on this device.</b> Sign in with Google, or set a publish key below, and they will go out to everyone automatically.')+'</p>'+
    '<p style="font-size:13px;color:var(--ink-faint);margin:0 0 12px">'+
      // Unpublished work is the actionable state, so it is checked first — it was
      // being hidden behind "nothing published yet", which is exactly the case
@@ -4436,7 +4466,7 @@ function renderSettings(){
      (!contentState.loaded
         ? 'The shared copy could not be read, so what you see here is this device only.'
         : (contentState.dirty
-            ? '<b>You have changes on this device that nobody else can see yet.</b>'+
+            ? (canPublish()?'Sending…':'<b>You have changes on this device that nobody else can see yet.</b>')+
               (function(){
                  var k=unpublishedKeys();
                  return k.length? ' Edited here: '+esc(k.map(function(x){return SYNC_LABEL[x]||x;}).join(', '))+
@@ -4459,7 +4489,7 @@ function renderSettings(){
      'so publishing needs this instead. In the Apps Script: <b>Project Settings \u2192 '+
      'Script Properties \u2192 Add</b>, name <code>PUBLISH_KEY</code>, any value you like, '+
      'then type the same value here. It is kept on this device and never published.</p></div>')+
-   '<button class="btn sm solid" onclick="publishContent()">Publish to everyone</button> '+
+   '<button class="btn sm solid" onclick="publishContent()">Send now</button> '+
    '<button class="btn sm" onclick="pullContent();uiAlert(\'Re-reading the shared copy.\',\'Refreshing\')">Get latest</button>'+
    '<p class="hint" id="publishMsg"></p>'+
    '<div class="mt-sm"><button class="btn sm" onclick="exportDB()">Export content (JSON)</button> '+
