@@ -2548,8 +2548,14 @@ function publishContent(opts){
         // Only on a confirmed match: the baseline must never claim the server holds
         // something it does not, or the next pull silently discards the difference.
         if(same){ contentState.dirty=false; contentState.everPublished=true; setContentBase(j.content); }
+        // The POST reply is unreadable (no-cors), so a refusal and a slow write
+        // look identical from here. Naming the overwhelmingly likelier cause
+        // beats "retrying on the next edit", which is what somebody reads twenty
+        // times while nothing at all is being saved.
         if(out) out.textContent=same?'Saved for everyone.'
-                                    :'Sent, but the server copy does not match yet. Retrying on the next edit.';
+          :'The server did not accept this. The address you are signed in with is '+
+           'probably not allowed to publish — set ROOT_MANAGERS in the script '+
+           '(the ems-ops SETUP-BACKEND.md, step 5).';
         if(same) renderSettings();
       }).catch(function(){ if(out) out.textContent='Sent, but could not read it back to confirm.'; });
     },1200);
@@ -4666,28 +4672,35 @@ function renderChecks(){
 function renderSettings(){
   var el=document.getElementById('settingsBody'); if(!el) return;
   el.innerHTML=
-   '<div class="card brandtop"><h3>Google Sheet backends</h3>'+
-   // Which arrangement is in use is answerable from the URLs themselves, so it is
-   // read off them rather than asserted. The old copy insisted there were always
-   // two spreadsheets, which stopped being true the moment one script served both.
+   '<div class="card brandtop"><h3>Where the checks are filed</h3>'+
+   // One box, not two. Both checks and the operations site's five forms go
+   // through one Apps Script into one spreadsheet, so two fields that must always
+   // hold the identical URL is a question with only one right answer — and an
+   // invitation to get it wrong by answering it twice.
    '<p style="font-size:13px;color:var(--ink-faint);margin:0 0 4px">'+
-   ((DB.api&&DB.api.jumpkit&&DB.api.jumpkit===DB.api.safety)
-     ? 'Both checks go through <b>one Apps Script</b>, into one spreadsheet. The same '+
-       '<b>Web App URL</b> belongs in both fields — that is expected, not a mistake.'
-     : 'Each check needs the <b>Web App URL</b> of the Apps Script that files it. '+
-       'Two different URLs means two spreadsheets; the same URL in both means one '+
-       'script is handling both.')+'</p>'+
-   '<p style="font-size:13px;color:var(--ink-faint);margin:0 0 14px">The scripts run inside the CMU EMS bike Google account — no password is ever stored in this site.</p>'+
-   ['jumpkit','safety'].map(function(k){
-     var u=(DB.api||{})[k]||'';
-     return '<div class="field"><label for="api-'+k+'">'+esc(SHEET_LABEL[k])+' — Web App URL</label>'+
-       '<input type="url" id="api-'+k+'" placeholder="https://script.google.com/macros/s/…/exec" value="'+esc(u)+'">'+
-       '<p class="hint">'+(u?'<span class="tag ok">Connected</span> '+esc(SHEET_LABEL[k])+' submissions POST here.'
-                           :'Not connected — these submissions are logged to the browser console only.')+'</p></div>';
-   }).join('')+
-   '<button class="btn sm solid" onclick="saveApi()">Save URLs</button> '+
+   'Both bike checks are filed into <b>CMU EMS Operations</b>, in tabs called '+
+   '<b>Bike Jumpkit Checks</b> and <b>Bike Safety Checks</b>, alongside the '+
+   'operations site’s forms. One Apps Script handles all of them.</p>'+
+   '<p style="font-size:13px;color:var(--ink-faint);margin:0 0 14px">This is already '+
+   'set up and there is normally nothing to change here. The script runs inside the '+
+   'CMU EMS Google account — no password is ever stored in this site.</p>'+
+   (function(){
+     var u=(DB.api||{}).jumpkit||'';
+     var matched=u&&u===((DB.api||{}).safety||'');
+     return '<div class="field"><label for="api-jumpkit">Web App URL</label>'+
+       '<input type="url" id="api-jumpkit" placeholder="https://script.google.com/macros/s/…/exec" value="'+esc(u)+'">'+
+       // Kept in the DOM so saveApi() still has both fields to read, and so a
+       // mismatched pair inherited from the two-spreadsheet era is visible rather
+       // than silently half-changed.
+       '<input type="hidden" id="api-safety" value="'+esc((DB.api||{}).safety||'')+'">'+
+       '<p class="hint">'+(u
+         ? '<span class="tag ok">Connected</span> Both checks POST here.'+
+           (matched?'':' <b>The safety check is pointed somewhere else</b> — press Save to bring it onto this one.')
+         : 'Not connected — submissions are logged to the browser console only.')+'</p></div>';
+   })()+
+   '<button class="btn sm solid" onclick="saveApi()">Save</button> '+
    '<button class="btn sm" onclick="testApi()">Test connection</button> '+
-   '<button class="btn sm ghost" onclick="clearApi()">Disconnect both</button>'+
+   '<button class="btn sm ghost" onclick="clearApi()">Disconnect</button>'+
    '<div id="apiTestOut"></div>'+
    '<p style="font-size:12.5px;color:var(--ink-faint);margin-top:12px">Setup steps are in <b>SETUP-BACKEND.md</b> in the project folder.</p>'+
    '</div>'+
@@ -4858,21 +4871,22 @@ function delRadio(i){
   });
 }
 function saveApi(){
-  var vals={},odd=[];
-  ['jumpkit','safety'].forEach(function(k){
-    var u=(document.getElementById('api-'+k).value||'').trim();
-    vals[k]=u;
-    if(u&&!/^https:\/\/script\.google\.com\//.test(u)) odd.push(SHEET_LABEL[k]);
-  });
+  // One URL, written to both slots. Both checks go through one deployment, so
+  // storing two values that must always be identical only creates a way for them
+  // to differ — and a mismatch here files one check into a spreadsheet nobody
+  // reads, which looks exactly like a check that was filed.
+  var u=(document.getElementById('api-jumpkit').value||'').trim();
+  var vals={jumpkit:u, safety:u};
   // Pasting the SHEET url instead of the Apps Script url is the easy mistake
   // here, and it fails silently at submit time, so it is worth one question.
   var go=function(){
     DB.api=vals; DB.apiUrl='';
     saveDB();renderSettings();
   };
-  if(!odd.length) return go();
-  uiConfirm('The URL for '+odd.join(' and ')+' does not look like an Apps Script Web App URL '+
-            '(those start with https://script.google.com/). Pasting the spreadsheet’s own link here will not work.',
+  if(!u||/^https:\/\/script\.google\.com\//.test(u)) return go();
+  uiConfirm('That does not look like an Apps Script Web App URL (those start with '+
+            'https://script.google.com/ and end in /exec). Pasting the spreadsheet’s '+
+            'own link here will not work.',
             'Save anyway?',{okText:'Save anyway'}).then(function(yes){ if(yes) go(); });
 }
 /* ---------- proving the connection actually works ----------
