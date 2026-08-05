@@ -2144,19 +2144,65 @@ function contentPayload(){
   Object.keys(DEFAULTS).forEach(function(k){ if(!NO_SYNC[k]) out[k]=DB[k]; });
   return out;
 }
+/* The last content this device knows the server had — either because it pulled it
+   or because it published it. Persisted, because the question it answers outlives
+   a reload: for each section, is this device's copy the server's copy, or has it
+   been edited here since?
+
+   Without it a pull cannot tell "the server is newer" from "I changed this and
+   have not published yet", so it treats both as stale and overwrites. That made
+   an edit look like it silently refused to save — add yourself to the manager
+   list, reload, and you are gone, with nothing said. */
+// Plain names for the sections, so "edited here" reads as somewhere you can go and
+// look rather than as a variable name.
+var SYNC_LABEL={bikes:'Bikes',issues:'Issues',bags:'Jumpkit bags',items:'Jumpkit contents',
+  safetyItems:'Safety check items',bylaws:'Bike Manager bylaws',bylawsResponse:'Bike Response bylaws',
+  boundaries:'Operating boundaries',contacts:'Contacts',repairs:'How to fix',inventory:'Inventory',
+  checkLog:'Check log',exam:'Practical exam',deck:'Lecture',videos:'Videos',access:'Manager access',
+  radioIds:'Radios',weather:'Weather thresholds',docs:'Documents'};
+var BASE_KEY='bikeops_base_v1';
+var contentBase=(function(){
+  try{ var r=localStorage.getItem(BASE_KEY); return r?JSON.parse(r):null; }catch(e){ return null; }
+})();
+function setContentBase(p){
+  contentBase=JSON.parse(JSON.stringify(p||{}));
+  try{ localStorage.setItem(BASE_KEY,JSON.stringify(contentBase)); }catch(e){}
+}
+// Sections edited here and not yet published. Derived, never stored — a stored
+// flag and the actual data drift apart, and then it lies in whichever direction
+// is least helpful.
+function unpublishedKeys(){
+  if(!contentBase) return [];
+  return Object.keys(DEFAULTS).filter(function(k){
+    return !NO_SYNC[k] && (k in contentBase) &&
+           JSON.stringify(DB[k])!==JSON.stringify(contentBase[k]);
+  });
+}
+
 // Applied over DEFAULTS the same way loadDB does, so a stored blob that is missing
 // a key added since it was written still gets that key's default.
 function applyContent(obj){
   if(!obj||typeof obj!=='object') return false;
-  var changed=false;
+  var changed=false, mine=unpublishedKeys();
   Object.keys(DEFAULTS).forEach(function(k){
     if(NO_SYNC[k]||!(k in obj)) return;
+    // Edited here since the last sync: keep it. Overwriting would discard work
+    // with no way to get it back, where keeping it costs only that this device
+    // shows something the server does not yet — which Site Settings now says.
+    if(mine.indexOf(k)>=0) return;
     var want=DEFAULTS[k],got=obj[k];
     var ok=Array.isArray(want)?Array.isArray(got)
           :(want&&typeof want==='object')?(got&&typeof got==='object'&&!Array.isArray(got))
           :(typeof got===typeof want);
     if(ok&&JSON.stringify(DB[k])!==JSON.stringify(got)){ DB[k]=got; changed=true; }
   });
+  // Everything not held back is now the server's copy, so that becomes the baseline.
+  var base=JSON.parse(JSON.stringify(contentBase||{}));
+  Object.keys(DEFAULTS).forEach(function(k){
+    if(NO_SYNC[k]||!(k in obj)) return;
+    if(mine.indexOf(k)<0) base[k]=obj[k];
+  });
+  setContentBase(base);
   return changed;
 }
 // Fired on load. The page has already rendered from local state by this point, so
@@ -2170,8 +2216,13 @@ function pullContent(){
       contentState.loaded=true;                  // read fine — even if empty
       contentState.at=j.updatedAt||0;
       contentState.everPublished=!!j.content;
+      // With no baseline yet this adopts the server copy wholesale — unpublishedKeys()
+      // returns nothing without one, since there is no basis to call anything a local
+      // edit. applyContent then writes the baseline. Setting it first would make every
+      // local value look edited and the server copy would never be adopted at all.
       if(j.content&&applyContent(j.content)){ saveDB(); renderAll(); }
       else renderSettings();
+      contentState.dirty=unpublishedKeys().length>0;
     })
     .catch(function(){ /* offline, or the script has no doGet yet — keep local */ });
 }
@@ -2189,7 +2240,9 @@ function publishContent(){
     setTimeout(function(){
       fetch(url+'?content=1&t='+Date.now()).then(function(r){return r.json();}).then(function(j){
         var same=j&&j.content&&JSON.stringify(j.content)===JSON.stringify(contentPayload());
-        if(same){ contentState.dirty=false; contentState.everPublished=true; }
+        // Only on a confirmed match: the baseline must never claim the server holds
+        // something it does not, or the next pull silently discards the difference.
+        if(same){ contentState.dirty=false; contentState.everPublished=true; setContentBase(j.content); }
         if(out) out.textContent=same?'Published — everyone sees this now.'
                                     :'Sent, but the server copy does not match yet. Try again in a moment.';
       }).catch(function(){ if(out) out.textContent='Sent, but could not read it back to confirm.'; });
@@ -4353,6 +4406,12 @@ function renderSettings(){
         ? 'The shared copy could not be read, so what you see here is this device only.'
         : (contentState.dirty
             ? '<b>You have changes on this device that nobody else can see yet.</b>'+
+              (function(){
+                 var k=unpublishedKeys();
+                 return k.length? ' Edited here: '+esc(k.map(function(x){return SYNC_LABEL[x]||x;}).join(', '))+
+                                  '. These are kept when the shared copy is re-read, so they cannot be lost by reloading.'
+                                : '';
+               })()+
               (contentState.everPublished?'' : ' Nothing has ever been published, so everyone else is still on the built-in defaults.')
             : (contentState.everPublished
                 ? 'Connected. This device matches what everyone else sees.'

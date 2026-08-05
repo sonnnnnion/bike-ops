@@ -21,6 +21,30 @@ to submit without a first and last name.
 A third tab, **Restock**, is written automatically: one row per missing item, so the
 equipment manager reads a worklist instead of a log.
 
+### Sharing the operations spreadsheet
+
+The bike checks can live in the **CMU EMS Operations** spreadsheet alongside the room
+checks and checkouts, instead of in a file of their own. Set `SPREADSHEET_ID` to that
+file's ID — the long string in its URL between `/d/` and `/edit`.
+
+The bike script stays its own Apps Script project with its own Web App URL and its own
+deployment. It only reaches across to write its tabs. **The operations script is never
+touched**, which is what keeps a mistake here from reaching the live operations data.
+
+Tab names are chosen so nothing collides: `Jumpkit Checks`, `Bicycle Checks`,
+`Bike Restock`. Only the restock list ever clashed — the operations site has its own
+`Restock` — so that is the only one carrying a prefix.
+
+**The account the deployment runs as needs edit access to that file.** "Execute as: Me"
+means the account you deployed from, not whoever submits the form. If that account
+cannot edit the operations spreadsheet, every submission fails silently, because a POST
+reply cannot be read.
+
+One consequence to know about: Google Sheets shares per *file*. Anyone you give the
+operations spreadsheet to also gets the bike tabs, and the reverse. If you would ever
+hand the bike restock list to someone who should not see post-call records, keep the
+files separate.
+
 ### One spreadsheet or two?
 
 Both work. The script's `SERVES` line decides, and it is the only line you set.
@@ -316,22 +340,12 @@ var SERVES = ['jumpkit', 'safety'];
 // file's URL between /d/ and /edit. This script still gets deployed from its own
 // Apps Script project and keeps its own Web App URL; it just reaches across.
 // Whoever the deployment runs as needs edit access to that file.
-var SPREADSHEET_ID = '';
-
-// Prefixed onto every tab this script creates. Blank in a spreadsheet of its own.
-// Set it to 'Bike ' when sharing a file with the operations site, so the tabs read
-// 'Bike Jumpkit Checks', 'Bike Safety Checks' and 'Bike Restock' and cannot collide
-// the operations site's own Restock tab.
-//
-// Set it HERE, not by renaming tabs in Sheets — the script finds tabs by name, so a
-// hand-renamed tab is simply recreated empty on the next submission.
-var TAB_PREFIX = '';
+var SPREADSHEET_ID = '10tSeuadmMoUvt-JdCYXktzFY88n9b64DzK1UkNtwV3U';
 
 function book() {
   return SPREADSHEET_ID ? SpreadsheetApp.openById(SPREADSHEET_ID)
                         : SpreadsheetApp.getActiveSpreadsheet();
 }
-function tabName(n) { return TAB_PREFIX + n; }
 
 // Shared site content lives wherever the jumpkit checks live, so there is one
 // source of truth. Derived, not set: a safety-only copy never gets a content
@@ -341,7 +355,7 @@ var CONTENT_STORE = SERVES.indexOf('jumpkit') >= 0;
 // Who may publish site content. This list is what actually decides — the site's
 // own list runs in a browser the visitor controls, so it only chooses which
 // buttons appear.
-var MANAGER_EMAILS = ['bikecmuems@gmail.com'];
+var MANAGER_EMAILS = ['bikecmuems@gmail.com', 'mbocksta@andrew.cmu.edu'];
 var OAUTH_CLIENT_ID = '56106295898-0if2a9uvtsl0815n3hgtdpph93goq0ck.apps.googleusercontent.com';
 
 // Column layouts. Order is "who and what happened" first, detail after, so the
@@ -357,7 +371,7 @@ var SHEETS = {
     widths:  [92, 62, 150, 92, 96, 90, 210, 74, 320, 190, 220, 260, 90]
   },
   safety: {
-    name: 'Safety Checks',
+    name: 'Bicycle Checks',
     headers: ['Date', 'Time', 'Name', 'Andrew ID', 'Bike', 'Radio', 'Result',
               'Missing', 'What Was Missing', 'Weather Grounded',
               'Conditions Flagged', 'Notes', 'Submission ID'],
@@ -366,7 +380,7 @@ var SHEETS = {
 };
 
 var RESTOCK = {
-  name: 'Restock',
+  name: 'Bike Restock',
   // One row PER ITEM, not per submission. The equipment manager's question is
   // "what do I need to put back", not "what happened on Tuesday" — that is what
   // the checks tab is for. Repeat reports bump a counter instead of adding rows.
@@ -400,13 +414,13 @@ function doGet(e) {
   var conf = SHEETS[which] || {};
   var rows = 0;
   try {
-    var sh = book().getSheetByName(tabName(conf.name));
+    var sh = book().getSheetByName(conf.name);
     if (sh) rows = Math.max(0, sh.getLastRow() - 1);   // minus the header row
   } catch (err) {
     rows = -1;
   }
   return json({ ok: true, serves: SERVES, expects: which,
-                sheet: conf.name ? tabName(conf.name) : '', rows: rows });
+                sheet: conf.name ? conf.name : '', rows: rows });
 }
 
 function json(obj) {
@@ -494,9 +508,9 @@ function doPost(e) {
 // adding a column silently shifts every later value one place left.
 function ensureSheet(conf) {
   var ss = book();
-  var sh = ss.getSheetByName(tabName(conf.name));
+  var sh = ss.getSheetByName(conf.name);
   if (!sh) {
-    sh = ss.insertSheet(tabName(conf.name));
+    sh = ss.insertSheet(conf.name);
     sh.appendRow(conf.headers);
     formatSheet(sh, conf);
     return sh;
@@ -573,9 +587,9 @@ function alreadyWritten(sheet, submissionId, colCount) {
 function addToRestock(p, missing) {
   if (!missing || !missing.length) return;
   var ss = book();
-  var sh = ss.getSheetByName(tabName(RESTOCK.name));
+  var sh = ss.getSheetByName(RESTOCK.name);
   if (!sh) {
-    sh = ss.insertSheet(tabName(RESTOCK.name));
+    sh = ss.insertSheet(RESTOCK.name);
     sh.appendRow(RESTOCK.headers);
     sh.getRange(1, 1, 1, RESTOCK.headers.length)
       .setFontWeight('bold').setBackground('#8c1c2b').setFontColor('#ffffff');
@@ -648,7 +662,7 @@ function tidyUp() {
     var conf = SHEETS[f];
     formatSheet(ensureSheet(conf), conf);
   });
-  var rs = book().getSheetByName(tabName(RESTOCK.name));
+  var rs = book().getSheetByName(RESTOCK.name);
   if (rs) paintRestock(rs);
 }
 
