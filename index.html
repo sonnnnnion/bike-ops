@@ -4472,13 +4472,18 @@ function testApi(){
     var url=(DB.api||{})[k]||'';
     if(!url) return Promise.resolve({k:k,state:'blank'});
     // cache-bust so a previous result cannot be served from cache
-    var probe=url+(url.indexOf('?')>=0?'&':'?')+'ping=1&t='+Date.now();
+    // form= lets one deployment answer for both checks when the two live in a
+    // single spreadsheet. An older single-purpose script ignores it and reports
+    // its own form, so a genuinely swapped pair is still caught.
+    var probe=url+(url.indexOf('?')>=0?'&':'?')+'ping=1&form='+k+'&t='+Date.now();
     return fetch(probe,{method:'GET'})
       .then(function(r){ return r.text(); })
       .then(function(t){
         var j=null; try{ j=JSON.parse(t); }catch(e){}
         if(!j||!j.ok) return {k:k,state:'notscript',raw:t.slice(0,120)};
-        return {k:k,state:j.expects===k?'good':'swapped',expects:j.expects,rows:j.rows,sheet:j.sheet};
+        var serves=j.serves||[j.expects];
+        return {k:k,state:serves.indexOf(k)>=0?'good':'swapped',expects:j.expects,
+                both:serves.length>1,rows:j.rows,sheet:j.sheet};
       })
       .catch(function(e){ return {k:k,state:'unreachable',msg:String(e.message||e)}; });
   })).then(function(res){
@@ -4487,8 +4492,9 @@ function testApi(){
       if(r.state==='blank')
         return '<p class="hint"><b>'+name+'</b> — no URL saved.</p>';
       if(r.state==='good')
-        return '<p class="hint"><span class="tag ok">Live</span> <b>'+name+'</b> — reachable, expecting '+
-               esc(r.expects)+' checks, '+esc(String(r.rows))+' row'+(r.rows===1?'':'s')+' in “'+esc(r.sheet)+'”.</p>';
+        return '<p class="hint"><span class="tag ok">Live</span> <b>'+name+'</b> — reachable, '+
+               esc(String(r.rows))+' row'+(r.rows===1?'':'s')+' in “'+esc(r.sheet)+'”'+
+               (r.both?', in a spreadsheet holding both checks':'')+'.</p>';
       if(r.state==='swapped')
         return '<p class="hint"><span class="tag crit">Swapped</span> <b>'+name+'</b> — this deployment expects <b>'+
                esc(r.expects)+'</b> checks. The two URLs are in the wrong fields.</p>';

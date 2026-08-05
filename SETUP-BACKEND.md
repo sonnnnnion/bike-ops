@@ -13,47 +13,52 @@ before deciding to do it another way.
 
 ## What you get
 
-**Two separate spreadsheets**, matching the two that already exist in the Bike Ops
-Drive folder:
+Two forms feed this: the **Jumpkit Check** (any member, before a ride) and the
+**Bike Safety Check** (riders before a ride, and the Bike Manager weekly for every
+bike). Each becomes a tab. Both record the date and who submitted — the form refuses
+to submit without a first and last name.
 
-| Spreadsheet | Filled in by | Who fills it |
+A third tab, **Restock**, is written automatically: one row per missing item, so the
+equipment manager reads a worklist instead of a log.
+
+### One spreadsheet or two?
+
+Both work. The script's `SERVES` line decides, and it is the only line you set.
+
+| | Setup | When to pick it |
 |---|---|---|
-| **Bike Jumpkit Check** | Jumpkit Check form | any member, before a ride |
-| **Bike Safety Check** | Bike Safety Check form | riders before a ride; the Bike Manager weekly, for every bike |
+| **One spreadsheet** *(recommended)* | `SERVES = ['jumpkit','safety']`. One script, one deployment, one URL — pasted into **both** fields in Site Settings. | Almost always. Half the setup, half the things to get wrong, and both checks sit side by side. |
+| **Two spreadsheets** | `SERVES = ['jumpkit']` in one, `SERVES = ['safety']` in the other. Two deployments, two URLs. | Only if one check must be shared or exported without the other. |
 
-Both record the date submitted and who submitted it (first and last name — the form
-refuses to submit without them).
-
-> **Two files, not two tabs.** An earlier version of this doc described one
-> spreadsheet with an `Equipment Checks` tab and a `Bike Checks` tab. That is not what
-> exists — the two checks are read by different people on different schedules, and
-> keeping them separate means either one can be shared or exported on its own. You do
-> the setup below **twice**, once per spreadsheet, and end up with **two Web App
-> URLs**.
+Nothing else changes between them — same script, same columns, same site.
+Switching later means re-pasting the script and re-pointing Site Settings; the rows
+already written stay where they are.
 
 ---
 
-## Do this twice — once per spreadsheet
+## Steps 1–3
 
-Work through Steps 1–3 completely for **Bike Jumpkit Check**, then repeat them for
-**Bike Safety Check**. Keep both URLs; you need them together in Step 4.
+If you are using **two** spreadsheets, work through Steps 1–3 completely for the
+first, then repeat for the second, and keep both URLs.
 
 ## Step 1 — Open the spreadsheet
 
-1. Sign in as the bike program's Google account (the shared bike ops Gmail).
-2. Open **Bike Jumpkit Check** (or **Bike Safety Check**) from the Bike Ops folder.
-   If it does not exist yet, create it at <https://sheets.new> and name it exactly that.
-3. Leave it otherwise empty. The script creates and titles its tab on first use.
+1. Sign in as the Google account that will own this. See §7 on which account —
+   it should be one that will still exist next year.
+2. Open the spreadsheet from the Bike Ops folder, or create one at
+   <https://sheets.new>. Name it **Bike Ops Checks** for a combined setup, or
+   **Bike Jumpkit Check** / **Bike Safety Check** if you are keeping them apart.
+3. Leave it otherwise empty. The script creates and titles its tabs on first use.
 
 ## Step 2 — Add the script
 
 1. In that spreadsheet: **Extensions → Apps Script**.
 2. Delete the sample `myFunction` stub.
 3. Paste in everything from [the script below](#the-script).
-4. **Set `EXPECTED_FORM` at the top of the script** — `'jumpkit'` in the Bike Jumpkit
-   Check copy, `'safety'` in the Bike Safety Check copy. This is the one line that
-   differs between the two, and it is what makes a swapped URL fail loudly instead of
-   quietly filing safety checks into the jumpkit sheet.
+4. **Set `SERVES` at the top of the script.** For one combined spreadsheet leave it
+   as `['jumpkit', 'safety']`. For two, set `['jumpkit']` in one and `['safety']` in
+   the other. This is the only line you change, and it is what makes a swapped URL
+   fail loudly instead of quietly filing safety checks into the jumpkit tab.
 5. Click the 💾 save icon.
 
 ## Step 3 — Deploy it as a Web App
@@ -61,14 +66,15 @@ Work through Steps 1–3 completely for **Bike Jumpkit Check**, then repeat them
 1. **Deploy → New deployment**.
 2. Click the gear next to "Select type" and choose **Web app**.
 3. Set:
-   - **Description:** `Bike Ops form intake — jumpkit` (or `— safety`)
+   - **Description:** `Bike Ops form intake`
    - **Execute as:** **Me** (the bike ops account you are signed in as) ← must be this
    - **Who has access:** **Anyone** ← must be this
 4. **Deploy**. Google asks you to authorize — approve it. You will hit a
    "Google hasn't verified this app" screen: **Advanced → Go to (project name)**.
    That warning is expected for your own script.
-5. Copy the **Web app URL**. It ends in `/exec`. Label which spreadsheet it came from —
-   the two URLs look nearly identical and are easy to mix up.
+5. Copy the **Web app URL**. It ends in `/exec`. With a combined spreadsheet this one
+   URL goes into **both** fields in Site Settings. With two, label which spreadsheet
+   each came from — the URLs look nearly identical and are easy to mix up.
 
 > "Who has access: Anyone" means anyone who *has the URL* can post a row. It does not
 > make the spreadsheet public, and it does not expose the Google account. See
@@ -246,26 +252,34 @@ press **Get latest** before a big editing session if it ever becomes one.
 // Bike Ops — form intake for the CMU EMS bike program.
 // Receives submissions from the Bike Ops site and appends them to THIS spreadsheet.
 //
-// The same script goes into both spreadsheets. The ONLY line you change between the
-// two copies is EXPECTED_FORM directly below.
-//
 // Every comment here is a // line comment on purpose. A /* */ block whose opening
 // line gets dropped during a copy-paste turns its first line into code and throws
 // a syntax error that points at prose — which is exactly what happened once.
 
-// 'jumpkit' in the Bike Jumpkit Check spreadsheet.
-// 'safety'  in the Bike Safety Check spreadsheet.
+// ---------------------------------------------------------------- the one setting
+
+// Which checks THIS spreadsheet accepts:
+//
+//   ['jumpkit','safety']   one spreadsheet holding both. Two tabs, one script,
+//                          one Web App URL pasted into both fields in Site
+//                          Settings. Fewest moving parts.
+//   ['jumpkit']            jumpkit checks only.
+//   ['safety']             bike safety checks only.
 //
 // This is a guard, not a preference. Without it, pasting the wrong URL into Site
-// Settings would file safety checks into the jumpkit spreadsheet and create a
+// Settings would file safety checks into a jumpkit-only spreadsheet and create a
 // stray tab to hold them — wrong, and silent, because the site cannot read the
 // reply. With it, the mismatch is refused and logged where you can find it.
-var EXPECTED_FORM = 'jumpkit';
+var SERVES = ['jumpkit', 'safety'];
 
-// Shared site content is stored by the JUMPKIT copy only, so there is one
-// source of truth. Leave these two lines identical in both copies; the safety
-// copy simply never gets a content request.
-var CONTENT_STORE = (EXPECTED_FORM === 'jumpkit');
+// Shared site content lives wherever the jumpkit checks live, so there is one
+// source of truth. Derived, not set: a safety-only copy never gets a content
+// request, and a combined copy is the only copy.
+var CONTENT_STORE = SERVES.indexOf('jumpkit') >= 0;
+
+// Who may publish site content. This list is what actually decides — the site's
+// own list runs in a browser the visitor controls, so it only chooses which
+// buttons appear.
 var MANAGER_EMAILS = ['bikecmuems@gmail.com'];
 var OAUTH_CLIENT_ID = '649290078556-l1p8l9qr5stjldgrs08c8eo0od6c727e.apps.googleusercontent.com';
 
@@ -318,7 +332,11 @@ function doGet(e) {
       updatedAt: Number(PropertiesService.getScriptProperties().getProperty('siteContentAt') || 0)
     });
   }
-  var conf = SHEETS[EXPECTED_FORM] || {};
+  // The site asks about one form at a time. Answer about that one when this
+  // spreadsheet serves it, so a combined copy satisfies both fields.
+  var asked = (e && e.parameter && e.parameter.form) || '';
+  var which = SERVES.indexOf(asked) >= 0 ? asked : SERVES[0];
+  var conf = SHEETS[which] || {};
   var rows = 0;
   try {
     var sh = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(conf.name);
@@ -326,7 +344,8 @@ function doGet(e) {
   } catch (err) {
     rows = -1;
   }
-  return json({ ok: true, expects: EXPECTED_FORM, sheet: conf.name || '', rows: rows });
+  return json({ ok: true, serves: SERVES, expects: which,
+                sheet: conf.name || '', rows: rows });
 }
 
 function json(obj) {
@@ -363,8 +382,8 @@ function doPost(e) {
     var conf = SHEETS[p.form];
     if (!conf) return json({ result: 'unknown form: ' + p.form });
 
-    if (p.form !== EXPECTED_FORM) {
-      console.error('Bike Ops: this deployment expects "' + EXPECTED_FORM +
+    if (SERVES.indexOf(p.form) < 0) {
+      console.error('Bike Ops: this spreadsheet takes "' + SERVES.join('" and "') +
         '" but received "' + p.form + '". The wrong Web App URL is almost ' +
         'certainly pasted into Site Settings. Nothing was written.');
       return json({ result: 'wrong spreadsheet for form: ' + p.form });
@@ -564,9 +583,10 @@ function paintRestock(sh) {
 // Run this by hand (Run ▸ tidyUp) after pasting an updated script, to reformat
 // tabs that already exist and repaint the restock list.
 function tidyUp() {
-  var conf = SHEETS[EXPECTED_FORM];
-  var sh = ensureSheet(conf);
-  formatSheet(sh, conf);
+  SERVES.forEach(function (f) {
+    var conf = SHEETS[f];
+    formatSheet(ensureSheet(conf), conf);
+  });
   var rs = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(RESTOCK.name);
   if (rs) paintRestock(rs);
 }
@@ -722,9 +742,14 @@ received, and put that URL in the other field.
 `payload.form`. Don't rename tabs by hand — change `SHEETS[...].name` and re-deploy,
 or the script just recreates the originals.
 
-**I edited the script and only one spreadsheet changed.** There are two independent
-copies. Every script edit has to be pasted and re-deployed in *both*, unless it is the
-`EXPECTED_FORM` line, which is meant to differ.
+**I edited the script and only one spreadsheet changed.** Only applies to a two-
+spreadsheet setup: the copies are independent, so every edit has to be pasted and
+re-deployed in *both*, except the `SERVES` line, which is meant to differ. A combined
+setup has one copy and cannot drift.
+
+**Saving the script changed nothing.** Saving updates the editor, not what the URL
+serves. **Deploy → Manage deployments → ✏️ → Version: New version → Deploy.** Same
+URL, new code. This has been the cause every time so far.
 
 **"Missing Items" is empty but the verdict says incomplete.** The verdict text
 comes from the site; `missing` is computed from unchecked boxes. If they disagree,
