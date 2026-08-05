@@ -2298,7 +2298,29 @@ function markContentDirty(){
 function contentPayload(){
   var out={};
   Object.keys(DEFAULTS).forEach(function(k){ if(!NO_SYNC[k]) out[k]=DB[k]; });
+  // Stamped so the other site's copy can never be mistaken for this one. Not a
+  // key in DEFAULTS, so nothing reads it into DB.
+  out.__site='bike';
   return out;
+}
+
+/* Both sites publish through one Apps Script deployment now, and a copy of that
+   script which does not yet understand the `site` parameter answers EVERY content
+   request with the operations site's copy. Adopting that would be silent and
+   destructive rather than merely wrong: `access`, `bags`, `inventory`, `videos`,
+   `lectures` and `radioIds` all exist on both sites, with the same types and
+   entirely different meanings. The bag list would become the ambulance kit list,
+   and the manager access list would become a list of operations officers — so
+   the Bike Manager would be locked out of their own site by a successful sync.
+
+   Content therefore has to say who it belongs to before it is believed. Copies
+   published from here carry `__site`. Anything published before that marker
+   existed is identified by keys only the operations site has ever had. */
+function isOurContent(c){
+  if(!c||typeof c!=='object') return false;
+  if(c.__site) return c.__site==='bike';
+  if('rooms' in c || 'bagUnits' in c || 'otherSpaces' in c || 'postCall' in c) return false;
+  return true;
 }
 /* The last content this device knows the server had — either because it pulled it
    or because it published it. Persisted, because the question it answers outlives
@@ -2344,6 +2366,14 @@ var applyingContent=false;
 
 function applyContent(obj){
   if(!obj||typeof obj!=='object') return false;
+  // Somebody else's content. Keep what this device has rather than overwrite the
+  // site with the other one's.
+  if(!isOurContent(obj)){
+    console.warn('Ignored shared content that does not belong to Bike Ops. The '+
+                 'Apps Script deployment is older than the site and is answering '+
+                 'with the operations copy — paste the current Code.gs and redeploy.');
+    return false;
+  }
   applyingContent=true;
   try{ return applyContentInner(obj); } finally{ applyingContent=false; }
 }
@@ -2388,7 +2418,11 @@ function refreshAccess(){
   return fetch(url+(url.indexOf('?')>=0?'&':'?')+'content=1&site=bike&t='+Date.now())
     .then(function(r){ return r.json(); })
     .then(function(j){
-      var a=j&&j.content&&j.content.access;
+      // Same guard as applyContent: an older deployment answers with the
+      // operations copy, and taking its access list would lock the Bike Manager
+      // out of their own site while looking like a successful check.
+      if(!j||!isOurContent(j.content)) return false;
+      var a=j.content.access;
       if(!a||typeof a!=='object') return false;
       a=JSON.parse(JSON.stringify(a));
       if(!Array.isArray(a.people)) a.people=[];
