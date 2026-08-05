@@ -31,9 +31,15 @@ The bike script stays its own Apps Script project with its own Web App URL and i
 deployment. It only reaches across to write its tabs. **The operations script is never
 touched**, which is what keeps a mistake here from reaching the live operations data.
 
-Tab names are chosen so nothing collides: `Jumpkit Checks`, `Bicycle Checks`,
-`Bike Restock`. Only the restock list ever clashed — the operations site has its own
-`Restock` — so that is the only one carrying a prefix.
+Every tab this script writes starts with **Bike** — `Bike Jumpkit Checks`,
+`Bike Safety Checks`, `Bike Restock` — so in a shared file it is obvious at a glance
+which tabs belong to which site, and they sort together.
+
+Renaming a tab in `SHEETS` moves the existing one rather than starting an empty tab
+beside it: each entry carries a `was` list of names it has previously used, and
+`ensureSheet` renames on a match. `RESTOCK` deliberately has an empty `was` — the
+operations site owns a tab called `Restock`, and a rename rule there would retitle
+theirs.
 
 **The account the deployment runs as needs edit access to that file.** "Execute as: Me"
 means the account you deployed from, not whoever submits the form. If that account
@@ -364,14 +370,18 @@ var OAUTH_CLIENT_ID = '56106295898-0if2a9uvtsl0815n3hgtdpph93goq0ck.apps.googleu
 // every submission stays one scannable line.
 var SHEETS = {
   jumpkit: {
-    name: 'Jumpkit Checks',
+    name: 'Bike Jumpkit Checks',
+    // Tabs this one has been called before. ensureSheet renames rather than
+    // starting an empty tab beside the old one and stranding its rows.
+    was: ['Jumpkit Checks'],
     headers: ['Date', 'Time', 'Name', 'Andrew ID', 'Bag', 'Radio', 'Result',
               'Missing', 'What Was Missing', 'Expiry Flag',
               'Expiration Dates', 'Notes', 'Submission ID'],
     widths:  [92, 62, 150, 92, 96, 90, 210, 74, 320, 190, 220, 260, 90]
   },
   safety: {
-    name: 'Bicycle Checks',
+    name: 'Bike Safety Checks',
+    was: ['Bicycle Checks', 'Bike Checks', 'Safety Checks'],
     headers: ['Date', 'Time', 'Name', 'Andrew ID', 'Bike', 'Radio', 'Result',
               'Missing', 'What Was Missing', 'Weather Grounded',
               'Conditions Flagged', 'Notes', 'Submission ID'],
@@ -381,6 +391,9 @@ var SHEETS = {
 
 var RESTOCK = {
   name: 'Bike Restock',
+  // No `was` list on purpose. The operations site owns a tab called 'Restock',
+  // and a rename rule here would quietly retitle theirs.
+  was: [],
   // One row PER ITEM, not per submission. The equipment manager's question is
   // "what do I need to put back", not "what happened on Tuesday" — that is what
   // the checks tab is for. Repeat reports bump a counter instead of adding rows.
@@ -509,6 +522,15 @@ function doPost(e) {
 function ensureSheet(conf) {
   var ss = book();
   var sh = ss.getSheetByName(conf.name);
+  // Renamed since this tab was created: move the existing one across, keeping its
+  // rows, instead of leaving them in a tab nothing writes to any more.
+  if (!sh) {
+    (conf.was || []).forEach(function (old) {
+      if (sh) return;
+      var prev = ss.getSheetByName(old);
+      if (prev) { prev.setName(conf.name); sh = prev; }
+    });
+  }
   if (!sh) {
     sh = ss.insertSheet(conf.name);
     sh.appendRow(conf.headers);
