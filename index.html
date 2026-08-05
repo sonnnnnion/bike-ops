@@ -4341,8 +4341,16 @@ function renderSettings(){
   var el=document.getElementById('settingsBody'); if(!el) return;
   el.innerHTML=
    '<div class="card brandtop"><h3>Google Sheet backends</h3>'+
-   '<p style="font-size:13px;color:var(--ink-faint);margin:0 0 4px">The two checks write to <b>two separate spreadsheets</b> in the Bike Ops Drive folder. '+
-   'Each one has its own Apps Script, so each needs its own <b>Web App URL</b> pasted below.</p>'+
+   // Which arrangement is in use is answerable from the URLs themselves, so it is
+   // read off them rather than asserted. The old copy insisted there were always
+   // two spreadsheets, which stopped being true the moment one script served both.
+   '<p style="font-size:13px;color:var(--ink-faint);margin:0 0 4px">'+
+   ((DB.api&&DB.api.jumpkit&&DB.api.jumpkit===DB.api.safety)
+     ? 'Both checks go through <b>one Apps Script</b>, into one spreadsheet. The same '+
+       '<b>Web App URL</b> belongs in both fields — that is expected, not a mistake.'
+     : 'Each check needs the <b>Web App URL</b> of the Apps Script that files it. '+
+       'Two different URLs means two spreadsheets; the same URL in both means one '+
+       'script is handling both.')+'</p>'+
    '<p style="font-size:13px;color:var(--ink-faint);margin:0 0 14px">The scripts run inside the CMU EMS bike Google account — no password is ever stored in this site.</p>'+
    ['jumpkit','safety'].map(function(k){
      var u=(DB.api||{})[k]||'';
