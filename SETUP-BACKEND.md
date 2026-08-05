@@ -382,10 +382,10 @@ var SHEETS = {
   safety: {
     name: 'Bike Safety Checks',
     was: ['Bicycle Checks', 'Bike Checks', 'Safety Checks'],
-    headers: ['Date', 'Time', 'Name', 'Andrew ID', 'Bike', 'Radio', 'Result',
+    headers: ['Date', 'Time', 'Name', 'Andrew ID', 'Bike', 'Result',
               'Missing', 'What Was Missing', 'Weather Grounded',
               'Conditions Flagged', 'Notes', 'Submission ID'],
-    widths:  [92, 62, 150, 92, 96, 90, 210, 74, 320, 130, 240, 260, 90]
+    widths:  [92, 62, 150, 92, 96, 210, 74, 320, 130, 240, 260, 90]
   }
 };
 
@@ -487,21 +487,37 @@ function doPost(e) {
     var now = new Date();
     var tz = Session.getScriptTimeZone();
 
+    var isJk = p.form === 'jumpkit';
+
     var row = [
       Utilities.formatDate(now, tz, 'yyyy-MM-dd'),
       Utilities.formatDate(now, tz, 'HH:mm'),
       ((p.firstName || '') + ' ' + (p.lastName || '')).trim(),
       p.andrewId || '',
-      (p.form === 'jumpkit' ? (p.bag || '') : (p.bike || '')),
-      (p.form === 'jumpkit' ? (p.radio || '') : ''),   // which radio was carried
+      (isJk ? (p.bag || '') : (p.bike || ''))
+    ];
+    // Only the jumpkit check asks which radio you are carrying, so only that tab
+    // gets the column. A column that is always empty reads as a question someone
+    // forgot to answer.
+    if (isJk) row.push(p.radio || '');
+    row = row.concat([
       p.verdict || '',
       missing.length,                       // a NUMBER, so it sorts and filters
       missing.join('\n'),
-      (p.form === 'jumpkit' ? expiryFlag(p.expiries) : (conditions.length ? 'YES' : '')),
-      (p.form === 'jumpkit' ? formatExpiries(p.expiries) : conditions.join('\n')),
+      (isJk ? expiryFlag(p.expiries) : (conditions.length ? 'YES' : '')),
+      (isJk ? formatExpiries(p.expiries) : conditions.join('\n')),
       p.notes || '',
       p.submissionId || ''
-    ];
+    ]);
+
+    // The row and the header row are built in two different places, so they can
+    // drift. When they do every value lands one column off, which looks like a
+    // data-entry mistake rather than a code one. Refuse instead.
+    if (row.length !== conf.headers.length) {
+      console.error('Bike Ops: built ' + row.length + ' values for "' + conf.name +
+        '", which has ' + conf.headers.length + ' columns. Nothing was written.');
+      return json({ result: 'column count mismatch, nothing written' });
+    }
 
     sheet.appendRow(row);
     styleRow(sheet, sheet.getLastRow(), conf, missing.length, p.verdict || '');

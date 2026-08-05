@@ -1454,8 +1454,9 @@ var DEFAULTS={
   // the data is that the Apps Script runs server-side in the EMS Google account
   // and can only append a row. Site Settings still overrides these.
   api:{
-    jumpkit:'https://script.google.com/macros/s/AKfycbydJNw0_HbuCkHIL4p0YJJDL21DG4KjFkiqXdqMGcd5BlTPq8FXGZV9Dzij8I1Ym_4UFw/exec',
-    safety :'https://script.google.com/macros/s/AKfycbyJir08XlC9OAhT1gGUEmF3ep9h10ByGdgb5sFAWD7-ONzXrzIongk7Xt-NYp286t4KjA/exec'
+    // One deployment now serves both checks, so both slots hold the same URL.
+    jumpkit:'https://script.google.com/macros/s/AKfycbwXy8JEeLeI0Dnb2cnhPpY9tTXt1T79rpRQGwF3ev09jH8m7Nqoo9Ndt5uyr19VJ0VM8w/exec',
+    safety :'https://script.google.com/macros/s/AKfycbwXy8JEeLeI0Dnb2cnhPpY9tTXt1T79rpRQGwF3ev09jH8m7Nqoo9Ndt5uyr19VJ0VM8w/exec'
   },
   apiUrl:'',            // legacy single endpoint — migrated into `api` on load
   // Completed pre-ride checks, newest first. A bike's live status is derived
@@ -1833,6 +1834,9 @@ var DEFAULTS={
 };
 
 /* ---------- store (localStorage, guarded) ---------- */
+// Web App deployments that have been archived or replaced. Anything matching is
+// swapped for the current default on load — see the migration in loadDB.
+var DEAD_ENDPOINTS=['AKfycbydJNw0_','AKfycbyJir08'];
 var DB_KEY='bikeops_db_v3';
 var DB=loadDB();
 function loadDB(){
@@ -1861,6 +1865,16 @@ function loadDB(){
     base.api={jumpkit:base.apiUrl,safety:base.apiUrl};
     base.apiUrl='';
   }
+  // Retire deployments that no longer answer. Stored values beat defaults
+  // everywhere else, which is right for anything a manager typed — but a URL
+  // baked into an older build is not that, and a browser holding one goes on
+  // posting checks into nothing. Because the POST reply cannot be read, it says
+  // "Sent" every time. Named explicitly, since a dead URL is indistinguishable
+  // from a live one without asking it.
+  ['jumpkit','safety'].forEach(function(k){
+    var u=base.api[k]||'';
+    if(DEAD_ENDPOINTS.some(function(d){ return u.indexOf(d)>=0; })) base.api[k]=DEFAULTS.api[k];
+  });
   return base;
 }
 function saveDB(){
