@@ -2060,7 +2060,7 @@ function isAllowedEmail(e){ return managerEmails().indexOf(normEmail(e))>=0; }
 
    SET BACK TO false once a working OAuth client exists — leaving it on means any
    visitor can open the manager views. Site Settings shows a warning while it is on. */
-var LOCAL_MANAGER_UNLOCK=true;
+var LOCAL_MANAGER_UNLOCK=false;
 
 // Reads the email out of a Google ID token WITHOUT verifying its signature. That
 // is fine here and only here: the token is not being trusted as authorization,
@@ -2091,7 +2091,9 @@ function googleUnlock(){
     }
     return openModal({
       title:'Bike Manager',
-      message:'Sign in with the bike program’s Google account to show manager controls.',
+      // Not “the bike account” any more — several people can be listed, and naming
+      // one account tells the others they are in the wrong place.
+      message:'Sign in with a Google account listed under manager access to show manager controls.',
       body:'<div id="gsiBtn" style="display:flex;justify-content:center;padding:6px 0 2px"></div>'+
            '<p class="hint" style="text-align:center">Any other account stays in member view.</p>'+
            (LOCAL_MANAGER_UNLOCK?'<div class="sharenote mt-sm"><b>Sign-in is currently down.</b>'+
