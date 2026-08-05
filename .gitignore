@@ -6,6 +6,10 @@ node_modules/
 # Session handoff notes — contains the Bike Manager passphrase. Never commit.
 HANDOFF.md
 
+# Working notes for the editor. Internal, and the repo is public.
+CLAUDE.md
+.claude/
+
 # Raw source material dropped in for planning — contains PII (phone number) and
 # a physical lock code in the brainstorming thread. Repo is public; never commit
 # these directly. Pull out only sanitized/derived content into index.html.
