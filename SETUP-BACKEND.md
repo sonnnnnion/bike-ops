@@ -83,10 +83,11 @@ first, then repeat for the second, and keep both URLs.
 
 ## Step 4 — Paste both URLs into the site
 
-1. Open the site, click **🔒 Bike Manager**, enter the passphrase.
+1. Open the site, click **🔒 Bike Manager**, and sign in with Google.
 2. Go to **Site Settings** in the sidebar.
-3. There are **two** fields, labeled with the spreadsheet names. Paste each URL into
-   its matching field and save.
+3. There are **two** fields, labeled with the spreadsheet names. With one combined
+   spreadsheet, paste the **same** URL into both. With two, paste each into its
+   matching field. Save.
 4. The banner stops saying the sheets are unconnected. If you fill in only one, the
    banner says **"Partly connected"** and names which half is live — that is deliberate,
    so nobody assumes the other form is being recorded.
@@ -97,7 +98,7 @@ The button is right next to Save. It asks each URL what it is and reports back:
 
 | What it says | What it means |
 |---|---|
-| **Live** — expecting `jumpkit` checks, N rows | Working. |
+| **Live** — N rows in "…" | Working. Says *in a spreadsheet holding both checks* when one file serves both. |
 | **Swapped** | Both URLs are real, but they are in each other's fields. Swap them. |
 | **Wrong URL** | Something answered, but not this script. Usually the spreadsheet's own link was pasted instead of the Apps Script Web App URL, or the script was edited but not re-deployed as a **new version**. |
 | **Unreachable** | Nothing answered. Usually "Who has access" is not set to **Anyone**, or the URL is wrong. |
@@ -111,9 +112,11 @@ for why a submitted form can look successful when nothing was written.
 Submit one Jumpkit check with a deliberately unchecked item, and one Safety check.
 Confirm three things:
 
-- a row appears in **Bike Jumpkit Check**, and a row appears in **Bike Safety Check**,
-- neither row landed in the *other* spreadsheet, and
+- a row appears in the jumpkit tab, and a row appears in the safety tab,
+- neither landed in the other tab, and
 - the `What Was Missing` column actually lists the item you left unchecked.
+
+The unchecked item should also show up as a row on **Restock**.
 
 ---
 
@@ -164,54 +167,86 @@ script rebuilds them with the current columns and formatting.
 
 ---
 
-## Optional — Google sign-in instead of the shared passcode
+## Google sign-in
 
-The code is in place and **switched off**. With `GOOGLE_CLIENT_ID` blank, the manager
-unlock stays a passcode. Fill it in and the unlock becomes "Sign in with Google",
-accepting only the addresses in `MANAGER_EMAILS`.
+Manager mode is unlocked by signing in with Google. There is no passcode — a shared
+passcode gets handed around and never rotated, and it could not tell you *who* opened
+manager mode.
 
-**Read this before turning it on.** Signing in identifies *who* you are, which a shared
-passcode never could — a passcode gets handed around and never rotated, so this is a
-real improvement. But what it unlocks is still a CSS class on a static page, so anyone
-who opens devtools can still switch manager mode on. It is **better identity, not a
-security boundary**. Never put anything behind this gate that would genuinely hurt if a
-member saw it. What protects submitted data is the Apps Script running server-side.
+**What it is and is not.** Signing in identifies who you are. What it unlocks is still
+a CSS class on a static page, so anyone who opens devtools can switch manager mode on
+regardless. It is **better identity, not a security boundary.** Never put anything
+behind this gate that would genuinely hurt if a member saw it. What protects submitted
+data is the Apps Script, which verifies the token server-side where a browser cannot
+lie about it.
 
-To enable it, signed in as the bike account:
+**One client covers both sites.** `bike-ops` and `ems-ops` are both served from
+`https://sonnnnnion.github.io` — GitHub Pages puts the repo in the path, and origins
+ignore paths. So both sites share one OAuth client, and one broken client breaks both.
 
-1. Go to <https://console.cloud.google.com/>. **Create a project first** — click
-   **Select a project → New project**, name it anything ("Bike Ops"), Create, then make
-   sure it is the selected project in the top bar. Every screen below is blank until a
-   project is selected, which looks like a broken page but is not.
-2. Open **Google Auth Platform** (search "Google Auth Platform" in the top search bar).
-   If it offers **Get started**, take it — it walks the next two steps in one wizard.
-3. **App information:** app name (e.g. "CMU EMS Bike Ops") and your support email.
-4. **Audience: External.** This is where "External" lives now — Google replaced the old
-   "OAuth consent screen" page with this, so older instructions send you looking for a
-   screen that no longer exists. External simply means "not a Workspace-internal app";
-   you do **not** need to publish it or pass verification to sign in as the owner.
-5. **Contact information:** your email. Then agree and create.
-6. Go to **Clients → Create client → Application type: Web application**.
-7. Under **Authorized JavaScript origins** add both, exactly, with no trailing slash:
-   - `https://sonnnnnion.github.io`
-   - `http://localhost:8848`
+### Setting it up
 
-   Leave **Authorized redirect URIs** empty — Google Identity Services returns the token
-   to the page itself and never redirects.
-8. Create, then copy the **Client ID**. It ends in `.apps.googleusercontent.com`.
-9. In `index.html`, set `var GOOGLE_CLIENT_ID='…'` and check `MANAGER_EMAILS` holds the
-   exact bike-account address. **A wrong address silently refuses the right account.**
+Google renamed this console. The old **APIs & Services → Credentials** page is now
+**Google Auth Platform → Clients**, and the old **OAuth consent screen** is split into
+**Branding**, **Audience** and **Data Access**. Older instructions send you looking for
+pages that no longer exist.
 
-While the app is in **Testing**, only accounts listed as test users can sign in — add
-the bike account under **Audience → Test users**, or press **Publish app** on that same
-page. If sign-in fails with "access_denied", that is almost always which one of those
-two you have not done.
+1. <https://console.cloud.google.com/> → **Select a project → New project**. Name it
+   `CMU EMS`. Make sure it is selected in the top bar — every screen below is blank
+   until it is, which looks like a broken page but is not.
+2. Open **Google Auth Platform**. If it offers **Get started**, take it.
+3. **Branding:** app name `CMU EMS`, your support email.
+4. **Audience: External**, then **Publish app**.
 
-The Client ID is not a secret: it is designed to sit in a public page, and it is useless
-without an origin on the list above.
+   Publish rather than staying in Testing. In Testing only listed test users can sign
+   in at all, so you would maintain two lists forever and every new manager would need
+   adding twice. Publishing asks for Google verification only when an app requests
+   *sensitive* scopes; this one requests `email`, `profile` and `openid`, which are not.
+   No review, no wait. After publishing, the manager list in Site Settings is the only
+   thing deciding who gets manager mode.
+5. **Clients → Create client → Application type: Web application.**
+6. **Authorized JavaScript origins** — exactly these, no trailing slash:
+   - `https://sonnnnnion.github.io`  (covers both live sites)
+   - `http://localhost:8848`  (bike-ops, local)
+   - `http://localhost:8850`  (ems-ops, local)
 
-If Google cannot be reached, the dialog offers "Use passcode instead", so a network
-problem in a bike room never locks the manager out.
+   Leave **Authorized redirect URIs** empty. Google Identity Services hands the token
+   to the page and never redirects; a stray entry here causes confusing errors.
+7. Create, then copy the **Client ID**.
+
+**Ignore the client secret.** This flow never uses one. It is offered because the
+console offers it for every web client. If you have copied it anywhere, delete or reset
+it — an unused secret is only a liability.
+
+The **Client ID** is the opposite: not a secret, designed to sit in a public page, and
+useless without an origin from the list above.
+
+### Where the Client ID goes — four places
+
+| Where | Set |
+|---|---|
+| bike-ops `index.html` | `GOOGLE_CLIENT_ID` |
+| ops `index.html` | `GOOGLE_CLIENT_ID` |
+| bike Apps Script | `OAUTH_CLIENT_ID`, then **deploy a new version** |
+| ops Apps Script | script property `CLIENT_ID` |
+
+Then check the manager list in Site Settings holds the exact address you sign in with.
+**A wrong address silently refuses the right account.**
+
+### If sign-in breaks
+
+`disabled_client` means the Google account owning the OAuth client was disabled or the
+client deleted. This happened once, in July 2026, and because there is no passcode it
+locked manager mode entirely — on both sites at once, since they share a client.
+
+For that case `LOCAL_MANAGER_UNLOCK` in `index.html` lets manager mode be opened
+without signing in. It unlocks buttons, not data: publishing still needs a verified
+token, so a locally unlocked device edits only its own copy. **While it is on, any
+visitor can open the manager views**, and Site Settings says so. Turn it off the moment
+a working client exists.
+
+The lesson worth keeping: whichever account owns the client should be one that will
+still exist next year, and it should not be the only way in.
 
 ## Shared content — so edits reach everyone
 
@@ -272,6 +307,32 @@ press **Get latest** before a big editing session if it ever becomes one.
 // reply. With it, the mismatch is refused and logged where you can find it.
 var SERVES = ['jumpkit', 'safety'];
 
+// ------------------------------------------------- sharing a file with another site
+
+// Blank means "the spreadsheet this script is attached to" — the normal case.
+//
+// Set it to a spreadsheet ID to write into a DIFFERENT file, e.g. to put the bike
+// checks into the CMU EMS Operations spreadsheet. The ID is the long string in that
+// file's URL between /d/ and /edit. This script still gets deployed from its own
+// Apps Script project and keeps its own Web App URL; it just reaches across.
+// Whoever the deployment runs as needs edit access to that file.
+var SPREADSHEET_ID = '';
+
+// Prefixed onto every tab this script creates. Blank in a spreadsheet of its own.
+// Set it to 'Bike ' when sharing a file with the operations site, so the tabs read
+// 'Bike Jumpkit Checks', 'Bike Safety Checks' and 'Bike Restock' and cannot collide
+// the operations site's own Restock tab.
+//
+// Set it HERE, not by renaming tabs in Sheets — the script finds tabs by name, so a
+// hand-renamed tab is simply recreated empty on the next submission.
+var TAB_PREFIX = '';
+
+function book() {
+  return SPREADSHEET_ID ? SpreadsheetApp.openById(SPREADSHEET_ID)
+                        : SpreadsheetApp.getActiveSpreadsheet();
+}
+function tabName(n) { return TAB_PREFIX + n; }
+
 // Shared site content lives wherever the jumpkit checks live, so there is one
 // source of truth. Derived, not set: a safety-only copy never gets a content
 // request, and a combined copy is the only copy.
@@ -281,7 +342,7 @@ var CONTENT_STORE = SERVES.indexOf('jumpkit') >= 0;
 // own list runs in a browser the visitor controls, so it only chooses which
 // buttons appear.
 var MANAGER_EMAILS = ['bikecmuems@gmail.com'];
-var OAUTH_CLIENT_ID = '649290078556-l1p8l9qr5stjldgrs08c8eo0od6c727e.apps.googleusercontent.com';
+var OAUTH_CLIENT_ID = '56106295898-0if2a9uvtsl0815n3hgtdpph93goq0ck.apps.googleusercontent.com';
 
 // Column layouts. Order is "who and what happened" first, detail after, so the
 // leftmost screenful answers the question an operations exec actually opens this
@@ -296,7 +357,7 @@ var SHEETS = {
     widths:  [92, 62, 150, 92, 96, 90, 210, 74, 320, 190, 220, 260, 90]
   },
   safety: {
-    name: 'Bike Checks',
+    name: 'Safety Checks',
     headers: ['Date', 'Time', 'Name', 'Andrew ID', 'Bike', 'Radio', 'Result',
               'Missing', 'What Was Missing', 'Weather Grounded',
               'Conditions Flagged', 'Notes', 'Submission ID'],
@@ -339,13 +400,13 @@ function doGet(e) {
   var conf = SHEETS[which] || {};
   var rows = 0;
   try {
-    var sh = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(conf.name);
+    var sh = book().getSheetByName(tabName(conf.name));
     if (sh) rows = Math.max(0, sh.getLastRow() - 1);   // minus the header row
   } catch (err) {
     rows = -1;
   }
   return json({ ok: true, serves: SERVES, expects: which,
-                sheet: conf.name || '', rows: rows });
+                sheet: conf.name ? tabName(conf.name) : '', rows: rows });
 }
 
 function json(obj) {
@@ -432,10 +493,10 @@ function doPost(e) {
 // of the script writes, it is rewritten and the formatting reapplied — otherwise
 // adding a column silently shifts every later value one place left.
 function ensureSheet(conf) {
-  var ss = SpreadsheetApp.getActiveSpreadsheet();
-  var sh = ss.getSheetByName(conf.name);
+  var ss = book();
+  var sh = ss.getSheetByName(tabName(conf.name));
   if (!sh) {
-    sh = ss.insertSheet(conf.name);
+    sh = ss.insertSheet(tabName(conf.name));
     sh.appendRow(conf.headers);
     formatSheet(sh, conf);
     return sh;
@@ -511,10 +572,10 @@ function alreadyWritten(sheet, submissionId, colCount) {
 // the item is reported missing again afterwards the row reopens.
 function addToRestock(p, missing) {
   if (!missing || !missing.length) return;
-  var ss = SpreadsheetApp.getActiveSpreadsheet();
-  var sh = ss.getSheetByName(RESTOCK.name);
+  var ss = book();
+  var sh = ss.getSheetByName(tabName(RESTOCK.name));
   if (!sh) {
-    sh = ss.insertSheet(RESTOCK.name);
+    sh = ss.insertSheet(tabName(RESTOCK.name));
     sh.appendRow(RESTOCK.headers);
     sh.getRange(1, 1, 1, RESTOCK.headers.length)
       .setFontWeight('bold').setBackground('#8c1c2b').setFontColor('#ffffff');
@@ -587,7 +648,7 @@ function tidyUp() {
     var conf = SHEETS[f];
     formatSheet(ensureSheet(conf), conf);
   });
-  var rs = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(RESTOCK.name);
+  var rs = book().getSheetByName(tabName(RESTOCK.name));
   if (rs) paintRestock(rs);
 }
 
@@ -680,9 +741,10 @@ in as the account, and cannot touch anything else in the Drive.
   dodges a CORS problem but also means the browser cannot read the reply. The site
   shows "Sent ✓" as soon as the request leaves — *even if the script errored
   or rejected it*. That is why Step 5 says to verify a real row appears.
-- **The Bike Manager passphrase is not a security boundary.** It hides manager
-  controls from casual visitors. Anyone who opens devtools can flip it on. Do not
-  put anything genuinely sensitive behind it.
+- **Manager sign-in is not a security boundary.** It hides manager controls from
+  casual visitors and tells you who unlocked them. Anyone who opens devtools can flip
+  it on. Do not put anything genuinely sensitive behind it. The Apps Script's
+  server-side token check is the one real boundary here.
 
 **If junk rows ever become a problem,** the fix is to stop treating the URL as
 private: switch the deployment to "Anyone with a Google account", which makes each
