@@ -2007,7 +2007,11 @@ function setWeb(on){
       uiAlert('You made changes that were never published, so nobody else can see them. '+
               'Sign in again and press Publish to everyone when you are ready.','Unpublished changes');
     }
-    googleIdToken='';
+    // Drop the address as well as the token, or the next load reads the saved
+    // address, finds it on the list, and puts manager mode straight back on for
+    // whoever is now holding the phone.
+    setIdToken('');
+    setSavedEmail('');
   }
   // The Site Settings nav item is gated purely by `.is-web` in CSS — see the
   // rule next to .webonly. Nothing to set here.
@@ -2109,8 +2113,14 @@ function googleUnlock(){
             client_id:GOOGLE_CLIENT_ID,
             callback:function(resp){
               var email=emailFromIdToken(resp&&resp.credential);
-              googleIdToken=(resp&&resp.credential)||'';
-              close(isAllowedEmail(email)?'ok':('deny:'+email));
+              setIdToken((resp&&resp.credential)||'');
+              // Re-read the list from the server before judging this address.
+              // Deciding from the local copy is what told somebody the Bike
+              // Manager had just added that they were not on it.
+              refreshAccess().then(function(fresh){
+                if(isAllowedEmail(email)){ setSavedEmail(email); close('ok'); }
+                else close((fresh?'deny:':'unsure:')+email);
+              });
             }
           });
           google.accounts.id.renderButton(w.querySelector('#gsiBtn'),
@@ -2125,11 +2135,23 @@ function googleUnlock(){
           'to everyone still needs a working sign-in, and the script will refuse it.',
           'Open manager mode locally?',{okText:'Open it'}).then(function(y){ if(y) setWeb(true); });
       }
+      // "You are not on the list" and "I could not read the list" look identical
+      // from here and call for opposite reactions — one is a job for the Bike
+      // Manager, the other is a job for the network. Saying the first when the
+      // second is true sends somebody off to ask for access they already have.
+      if(r&&r.indexOf('unsure:')===0){
+        var un=r.slice(7);
+        return uiAlert((un?'Signed in as '+un+', but the':'The')+
+          ' list of who can open manager mode could not be read just now, so this '+
+          'device cannot tell whether you are on it. Check the connection and try again.',
+          'Could not check access');
+      }
       if(r&&r.indexOf('deny:')===0){
         var who=r.slice(5);
         return uiAlert((who?'Signed in as '+who+'. That':'That')+
-          ' account is not the bike program account, so manager controls stay hidden.',
-          'Not the bike account');
+          ' account is not on the manager access list, so manager controls stay '+
+          'hidden. The Bike Manager adds people under Site Settings.',
+          'No manager access');
       }
     });
   });
@@ -2154,7 +2176,59 @@ var publishKey=function(){ return ((DB.api||{}).key||'').trim(); };
 // Device-local or code-owned keys never sync. `api` lives in the page, and drafts
 // are one person's half-filled form.
 var NO_SYNC={api:1,apiUrl:1,version:1};
+
+/* The proof of who you are that every write carries, and the address it belongs
+   to. Both used to live only in memory, which had two consequences that between
+   them account for "I added her and she still cannot get in":
+
+   1. Manager mode did not survive a reload at all — the Bike Manager had to sign
+      in again every single time.
+   2. Worse, and silent: an edit made after a reload could not be published,
+      because canPublish() was false, so scheduleAutoPublish() returned without a
+      word. The edit sat in one browser looking perfectly saved.
+
+   Both are persisted now. Google issues these for about an hour; past that the
+   manager signs in again, which is a prompt rather than silence. */
+var LS_TOKEN='bikeops_token_v1', LS_EMAIL='bikeops_email_v1';
 var googleIdToken='';
+
+function tokenExpiry(jwt){
+  try{
+    var part=String(jwt).split('.')[1];
+    var b64=part.replace(/-/g,'+').replace(/_/g,'/');
+    while(b64.length%4) b64+='=';
+    return Number(JSON.parse(decodeURIComponent(escape(atob(b64)))).exp)||0;
+  }catch(e){ return 0; }
+}
+function setIdToken(t){
+  googleIdToken=t||'';
+  try{
+    if(googleIdToken) localStorage.setItem(LS_TOKEN,googleIdToken);
+    else localStorage.removeItem(LS_TOKEN);
+  }catch(e){}
+}
+function savedEmail(){
+  try{ return localStorage.getItem(LS_EMAIL)||''; }catch(e){ return ''; }
+}
+function setSavedEmail(e){
+  try{
+    if(e) localStorage.setItem(LS_EMAIL,e); else localStorage.removeItem(LS_EMAIL);
+  }catch(err){}
+}
+/* Put manager mode back on load if the address that opened it is still on the
+   list. Keyed off the address rather than a stored "was a manager" flag, so
+   removing somebody under People takes their buttons away on the next load
+   instead of leaving them stuck with a role they no longer hold. */
+function restoreManager(){
+  var t='';
+  try{ t=localStorage.getItem(LS_TOKEN)||''; }catch(e){}
+  // A minute of slack, so a token with seconds left is not used for a write that
+  // would land after it died and be refused for no visible reason.
+  if(t && tokenExpiry(t)*1000 > Date.now()+60000) googleIdToken=t;
+  else { setIdToken(''); }
+  var e=savedEmail();
+  if(e && isAllowedEmail(e)) setWeb(true);
+}
 var contentState={loaded:false,dirty:false,at:0,everPublished:false};
 // Tracks whether this device holds edits that have not been published. The real
 // risk here is not a slow publish, it is a silent one: editing, forgetting, and
@@ -2233,6 +2307,39 @@ function applyContent(obj){
   setContentBase(base);
   return changed;
 }
+/* Who may open manager mode, straight from the server, immediately before the
+   answer is used. Sign-in used to be judged against whatever `DB.access` happened
+   to hold — a copy of the server written at some earlier moment — so the Bike
+   Manager could add somebody, see them in the list, and that person would still
+   be told they were not the bike account.
+
+   The server is authoritative here rather than merged with the local copy: a
+   merge would let a browser holding a stale list restore access to somebody who
+   had just been removed. Resolves true if the list is genuinely fresh, false if
+   the network could not answer, because "not on the list" and "could not read the
+   list" need opposite messages. */
+function refreshAccess(){
+  var url=CONTENT_ENDPOINT();
+  if(!url) return Promise.resolve(false);
+  return fetch(url+(url.indexOf('?')>=0?'&':'?')+'content=1&t='+Date.now())
+    .then(function(r){ return r.json(); })
+    .then(function(j){
+      var a=j&&j.content&&j.content.access;
+      if(!a||typeof a!=='object') return false;
+      a=JSON.parse(JSON.stringify(a));
+      if(!Array.isArray(a.people)) a.people=[];
+      DB.access=a;
+      // The baseline moves with it, or the very next unpublishedKeys() call reads
+      // this adopted copy as a local edit and publishes it straight back.
+      var base=JSON.parse(JSON.stringify(contentBase||{}));
+      base.access=JSON.parse(JSON.stringify(a));
+      setContentBase(base);
+      try{ localStorage.setItem(DB_KEY,JSON.stringify(DB)); }catch(e){}
+      return true;
+    })
+    .catch(function(){ return false; });
+}
+
 // Fired on load. The page has already rendered from local state by this point, so
 // a slow or failed fetch costs nothing — the site simply keeps what it had.
 function pullContent(){
@@ -2251,6 +2358,16 @@ function pullContent(){
       if(j.content&&applyContent(j.content)){ saveDB(); renderAll(); }
       else renderSettings();
       contentState.dirty=unpublishedKeys().length>0;
+      // The list this device had at load was whatever it cached. Now the real one
+      // is here, check the saved address against it: somebody added since their
+      // last visit gets manager mode without signing in again, and somebody
+      // removed loses it on arrival rather than keeping the buttons.
+      var e=savedEmail();
+      if(e){
+        var isOn=document.body.classList.contains('is-web');
+        if(isAllowedEmail(e)&&!isOn) setWeb(true);
+        else if(!isAllowedEmail(e)&&isOn) setWeb(false);
+      }
     })
     .catch(function(){ /* offline, or the script has no doGet yet — keep local */ });
 }
@@ -2264,8 +2381,26 @@ function pullContent(){
    because this fires while you are working. */
 var autoPubTimer=null;
 function canPublish(){ return !!CONTENT_ENDPOINT() && (!!googleIdToken || !!publishKey()); }
+/* Raised the first time an edit cannot be sent, and only for somebody who could
+   actually act on it. Once per page: a manager who keeps typing must not be
+   interrupted on every keystroke. */
+var toldCannotPublish=false;
+function warnCannotPublish(){
+  if(toldCannotPublish||!isManager()) return;
+  toldCannotPublish=true;
+  var out=document.getElementById('publishMsg');
+  if(out) out.textContent='Not saved for everyone — sign in again.';
+  uiAlert('This change is saved on this device but has not gone out to everyone, '+
+          'because the sign-in that proves who you are has expired. Sign in again '+
+          'and it will send by itself.','Not saved for everyone yet');
+}
+
 function scheduleAutoPublish(){
-  if(!isManager()||!canPublish()) return;
+  if(!isManager()) return;
+  // A manager whose token has expired keeps every manager button, so an edit that
+  // goes nowhere looks exactly like an edit that worked. Returning quietly here is
+  // what let a whole afternoon of edits live in one browser.
+  if(!canPublish()){ warnCannotPublish(); return; }
   clearTimeout(autoPubTimer);
   autoPubTimer=setTimeout(function(){
     // Gate on real divergence, not on having been called. A pull also saves, and
@@ -4695,6 +4830,10 @@ function renderAll(){
 }
 renderAll();
 
+// Put manager mode back before routing, so the "managers get their last view"
+// branch below can tell whether it is dealing with one.
+restoreManager();
+
 // Open to everyone. Hash wins so QR deep-links land exactly where the sticker
 // promised. Otherwise home is the pre-ride check — someone opening this URL is
 // about to take a bike out. Managers get their last view back instead, since
@@ -4708,6 +4847,17 @@ renderAll();
   }
   go(HOME);
 })();
+
+/* Read the shared copy on load. This was missing entirely, and its absence is
+   why publishing looked like it did nothing: edits went UP from the manager's
+   browser and never came back DOWN to anyone else's, so every other device sat
+   on the built-in defaults for ever. Only Site Settings ▸ Get latest and a full
+   content reset ever fetched it, and neither is something a member would touch.
+
+   Last, and deliberately not awaited: the page is already usable from local
+   state, so a slow or failed fetch costs nothing and simply leaves what was
+   there. */
+pullContent();
 </script>
 </body>
 </html>
