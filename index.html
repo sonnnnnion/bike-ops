@@ -2110,9 +2110,16 @@ function managerEmails(){
    here and get it started from their own account. The Apps Script applies the
    same rule server-side, so this is a matching UI gate rather than a claim. */
 var opsOfficers=[];
+/* Bike Managers appointed on the operations site's People screen, so the whole
+   roster can be kept in one place. Read ALONGSIDE this site's own list, never
+   instead of it: somebody already added here keeps working, so there is nothing
+   to migrate and no moment where anybody loses access. */
+var opsBikeManagers=[];
 function isAllowedEmail(e){
   e=normEmail(e);
-  return managerEmails().indexOf(e)>=0 || opsOfficers.indexOf(e)>=0;
+  return managerEmails().indexOf(e)>=0 ||
+         opsOfficers.indexOf(e)>=0 ||
+         opsBikeManagers.indexOf(e)>=0;
 }
 
 /* ---- Google sign-in is currently BROKEN, and this is the way in --------------
@@ -2469,6 +2476,13 @@ function refreshOpsOfficers(){
       (a.officers||[]).forEach(function(e){ e=normEmail(e); if(e&&out.indexOf(e)<0) out.push(e); });
       if(a.officer){ var o=normEmail(a.officer); if(o&&out.indexOf(o)<0) out.push(o); }
       opsOfficers=out;
+      // Bike Managers appointed on the operations People screen. Kept in their
+      // own list so Site Settings can show where each person was added — being
+      // told you cannot remove somebody is useless without being told where they
+      // came from.
+      var bm=[];
+      (a.bikeManagers||[]).forEach(function(e){ e=normEmail(e); if(e&&bm.indexOf(e)<0) bm.push(e); });
+      opsBikeManagers=bm;
       return true;
     })
     .catch(function(){ return false; });
@@ -4848,6 +4862,14 @@ function renderSettings(){
    (opsOfficers.length
      ? '<p style="font-size:13px;color:var(--ink-faint);margin:0 0 12px">Operations Officers right now: '+
        esc(opsOfficers.join(', '))+'.</p>'
+     : '')+
+   // People appointed on the operations site. Shown, and shown as not removable
+   // FROM HERE, because "I removed them and they can still get in" is the
+   // confusing outcome — and the fix is one sentence if you know where to look.
+   (opsBikeManagers.length
+     ? '<p style="font-size:13px;color:var(--ink-faint);margin:0 0 12px">'+
+       'Added as Bike Managers on the operations site: <b>'+esc(opsBikeManagers.join(', '))+'</b>. '+
+       'Remove them there — Site Settings ▸ People — not here.</p>'
      : '')+
    '<div class="field"><label for="accOfficer">Bike account (always allowed)</label>'+
    '<input type="email" id="accOfficer" value="'+esc((DB.access||{}).officer||'')+'" '+
