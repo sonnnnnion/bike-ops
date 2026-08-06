@@ -493,7 +493,7 @@
     text-align:center;box-shadow:none;display:flex;flex-direction:column;align-items:center}
   .qrcard .qrkicker{font-size:10px;text-transform:uppercase;letter-spacing:.16em;
     color:var(--brand);font-weight:700}
-  .qrcard h4{margin:6px 0 3px;font-family:var(--font-display);font-size:19px;line-height:1.2;color:#111}
+  .qrcard h3{margin:6px 0 3px;font-family:var(--font-display);font-size:19px;line-height:1.2;color:#111}
   .qrcard .qrwho{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:#666;margin-bottom:14px}
   .qrcard .qrframe{padding:10px;background:#fff;border:1px solid var(--rule);border-radius:10px}
   .qrcard .qrhow{font-size:12px;color:#444;margin-top:12px}
@@ -523,7 +523,7 @@
       height:9.4in;justify-content:center}
     .qrcard:last-child{break-after:auto;page-break-after:auto}
     .qrcard .qrkicker{font-size:12.5px;letter-spacing:.24em}
-    .qrcard h4{font-size:42px;margin:12px 0 8px}
+    .qrcard h3{font-size:42px;margin:12px 0 8px}
     .qrcard .qrwho{font-size:15px;letter-spacing:.1em;margin-bottom:32px;color:#333}
     .qrcard .qrframe{border:0;padding:0}
     .qrcard .qrsvg{width:4.5in;height:4.5in}
@@ -604,6 +604,9 @@
      not. Padding grows rather than font size, so nothing reflows. */
   @media (pointer:coarse){
     .btn.xs{min-height:38px;padding-left:12px;padding-right:12px}
+    /* Height alone was not enough for the ↑ ↓ ✕ row controls: they came out
+       38px tall and 25px wide, which is still a sliver to hit, and ✕ deletes. */
+    .btn.xs{min-width:38px;justify-content:center}
     .issx{min-width:38px;min-height:38px;padding:0;justify-content:center}
     .kvacts .btn{min-height:38px}
     .isslist li{align-items:center}
@@ -3082,7 +3085,11 @@ function renderForm(fid){
         // Pre-filled from DB.expiry so the date is entered once, not every check.
         var known=DB.expiry[it.id]||'';
         h+='<div class="expblock"><div class="exphead">Expiration date — '+esc(it.label)+'</div>'+
+           // Named for a screen reader. The heading above says which item this
+           // belongs to, but a date field read on its own announces only "date",
+           // and there are several on the form.
            '<div class="exprow"><input type="date" data-exp="'+esc(it.id)+'" value="'+esc(known)+'"'+
+           ' aria-label="Expiration date for '+esc(it.label)+'"'+
            ' onchange="setExpiry(\''+esc(it.id)+'\',this.value);onFormInput(\''+fid+'\')">'+
            '<span class="expbadge none" data-expbadge="'+esc(it.id)+'">No date entered</span></div>'+
            '<p style="font-size:12px;color:var(--ink-faint);margin:7px 0 0">Recorded for next time. If expired, notify the Equipment Manager.</p></div>';
@@ -3814,13 +3821,13 @@ function examGate(){
     '<h3>What is the primary survey for Bike EMS?</h3>'+
     '<p class="examsub">Three words, from the lecture. Fill each blank.</p>'+
     '<div class="gaterow"><span class="gateletter">A</span>'+
-      '<input type="text" id="gA" autocomplete="off" autocapitalize="none" spellcheck="false" placeholder="">'+
+      '<input type="text" id="gA" autocomplete="off" autocapitalize="none" spellcheck="false" placeholder="" aria-label="Blank A: the word before &quot;in the tires&quot;">'+
       '<span class="gatetail">in the tires</span></div>'+
     '<div class="gaterow"><span class="gateletter">B</span>'+
-      '<input type="text" id="gB" autocomplete="off" autocapitalize="none" spellcheck="false" placeholder="">'+
+      '<input type="text" id="gB" autocomplete="off" autocapitalize="none" spellcheck="false" placeholder="" aria-label="Blank B: the word before &quot;working&quot;">'+
       '<span class="gatetail">working</span></div>'+
     '<div class="gaterow"><span class="gateletter">C</span>'+
-      '<input type="text" id="gC" autocomplete="off" autocapitalize="none" spellcheck="false" placeholder="">'+
+      '<input type="text" id="gC" autocomplete="off" autocapitalize="none" spellcheck="false" placeholder="" aria-label="Blank C: the word before &quot;intact&quot;">'+
       '<span class="gatetail">intact</span></div>'+
     '<p class="hint" id="gateErr" style="color:var(--oos);display:none">That is not it. Check the lecture and try again.</p>'+
     '<button class="btn solid mt" onclick="checkExamGate()">Unlock the exam</button></div>';
@@ -4791,7 +4798,7 @@ function renderChecks(){
       var url=base+'#'+c.v;
       return '<div class="qrcard">'+
         '<div class="qrkicker">CMU EMS · Bike Ops</div>'+
-        '<h4>'+esc(c.t)+'</h4>'+
+        '<h3>'+esc(c.t)+'</h3>'+
         '<div class="qrwho">'+esc(c.who)+'</div>'+
         '<div class="qrframe">'+qrSVG(url,230)+'</div>'+
         '<div class="qrhow">Point your phone camera at this code.</div>'+
