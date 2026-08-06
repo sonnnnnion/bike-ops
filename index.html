@@ -107,7 +107,17 @@
   .sb-item.active .ic{color:#fff;opacity:1}
   .sb-label{font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.12em;color:var(--ink-faint);padding:14px 13px 5px}
 
-  main{padding:32px clamp(18px,4vw,44px);max-width:var(--maxw)}
+  /* `min-width:0` because a grid item defaults to min-width:auto, which is its
+     min-CONTENT width — so one wide child (the deck iframe, a button row, the
+     inventory table) stretched `main` past the viewport and took the whole page
+     sideways with it. The ops site carries the same declaration; this is that
+     fix brought back across. */
+  main{padding:32px clamp(18px,4vw,44px);max-width:var(--maxw);min-width:0}
+  /* A table has a min-content width it will not go below, so on a phone it took
+     the page sideways rather than shrinking. It scrolls inside its own box now;
+     the page itself never does. */
+  .tablewrap{overflow-x:auto;-webkit-overflow-scrolling:touch}
+  .tablewrap table{margin-top:0}
   .view{display:none}
   .view.active{display:block;animation:viewIn .42s var(--ease-out)}
   @keyframes viewIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
@@ -870,10 +880,12 @@
             <button class="btn sm solid" onclick="go('safety-check')">Report a problem</button>
           </span>
         </div>
-        <table class="mt">
-          <thead><tr><th>Bike</th><th>Problem</th><th>Severity</th><th>Reported by</th><th>Date</th><th></th></tr></thead>
-          <tbody id="issueRows"></tbody>
-        </table>
+        <div class="tablewrap mt">
+          <table>
+            <thead><tr><th>Bike</th><th>Problem</th><th>Severity</th><th>Reported by</th><th>Date</th><th></th></tr></thead>
+            <tbody id="issueRows"></tbody>
+          </table>
+        </div>
       </div>
     </section>
 
@@ -1012,10 +1024,12 @@
       <h2 class="view-title">Inventory</h2>
       <p class="view-sub">Tools, replacement parts, locks &amp; keys, and a running order list.</p>
       <div class="card">
-        <table>
-          <thead><tr><th>Item</th><th>Category</th><th>On hand</th><th>Status</th><th></th></tr></thead>
-          <tbody id="invRows"></tbody>
-        </table>
+        <div class="tablewrap">
+          <table>
+            <thead><tr><th>Item</th><th>Category</th><th>On hand</th><th>Status</th><th></th></tr></thead>
+            <tbody id="invRows"></tbody>
+          </table>
+        </div>
         <button class="btn sm mt solid webonly" onclick="addInv()">+ Add item</button>
       </div>
 
@@ -1093,7 +1107,7 @@
 
    BUILD is rewritten on every release. Never edit it by hand.
    ========================================================================== */
-var BUILD='20260806190524';
+var BUILD='20260806194251';
 
 function checkForUpdate(){
   var url=location.pathname.replace(/[^/]*$/,'')+'index.html?cb='+Date.now();
