@@ -2449,13 +2449,42 @@ function refreshAccess(){
       if(!a||typeof a!=='object') return false;
       a=JSON.parse(JSON.stringify(a));
       if(!Array.isArray(a.people)) a.people=[];
+
+      /* Somebody added here and not yet on the server has to survive this.
+         Overwriting outright is why adding a manager did not stick: the addition
+         saved locally, its publish failed for whatever reason, and then signing
+         out and back in ran this and replaced the list with the server's — which
+         had never received the person. The addition was destroyed by the very
+         check that was meant to find them, and nothing said so.
+
+         "Added here and not yet sent" is precisely: on this device, absent from
+         the last copy we know the server had, and still absent from the server.
+         A removal does not match that test, because a removed person IS in the
+         baseline — so removals still propagate and cannot be resurrected by a
+         stale device. */
+      var pending=[];
+      var base0=(contentBase&&contentBase.access)||null;
+      if(base0){
+        var inBase={};
+        (base0.people||[]).forEach(function(p){ var e=normEmail(p&&p.email); if(e) inBase[e]=1; });
+        var onServer={};
+        (a.people||[]).forEach(function(p){ var e=normEmail(p&&p.email); if(e) onServer[e]=1; });
+        ((DB.access&&DB.access.people)||[]).forEach(function(p){
+          var e=normEmail(p&&p.email);
+          if(e && !inBase[e] && !onServer[e]){ a.people.push({email:e}); pending.push(e); }
+        });
+      }
+
       DB.access=a;
-      // The baseline moves with it, or the very next unpublishedKeys() call reads
-      // this adopted copy as a local edit and publishes it straight back.
+      // The baseline is the SERVER's copy, never the merged one — otherwise a
+      // pending addition would look already-published and never be sent.
       var base=JSON.parse(JSON.stringify(contentBase||{}));
-      base.access=JSON.parse(JSON.stringify(a));
+      base.access=JSON.parse(JSON.stringify(j.content.access));
       setContentBase(base);
       try{ localStorage.setItem(DB_KEY,JSON.stringify(DB)); }catch(e){}
+      // Anything held back is still owed to the server, so try again now rather
+      // than waiting for the next unrelated edit to carry it.
+      if(pending.length) scheduleAutoPublish();
       return true;
     })
     .catch(function(){ return false; });
