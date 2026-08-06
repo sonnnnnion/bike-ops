@@ -1093,7 +1093,7 @@
 
    BUILD is rewritten on every release. Never edit it by hand.
    ========================================================================== */
-var BUILD='20260806160556';
+var BUILD='20260806190524';
 
 function checkForUpdate(){
   var url=location.pathname.replace(/[^/]*$/,'')+'index.html?cb='+Date.now();
@@ -3286,7 +3286,11 @@ function renderWhoNote(fid){
   var el=document.getElementById(fid+'-whonote'); if(!el) return;
   var me=readMe();
   el.innerHTML = me
-    ? '<span>Filled in for <b>'+esc(me.first+' '+me.last)+'</b>. '+
+    // The Andrew ID, not the name. A name is whatever somebody typed — "Rithik S"
+    // is not what she is called — and it is the ID that lands in the sheet and
+    // has to be right. Showing the thing that matters also lets somebody catch a
+    // typo in it before it is filed again.
+    ? '<span>Filled in for <b>'+esc(me.andrew||(me.first+' '+me.last))+'</b>. '+
       '<button type="button" class="btn xs" onclick="forgetMe(\''+fid+'\')">Not you?</button></span>'
     : '';
 }
