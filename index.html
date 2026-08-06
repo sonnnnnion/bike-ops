@@ -1072,6 +1072,40 @@
 </div>
 
 <script>
+/* ============================================================================
+   BUILD STAMP AND SELF-UPDATE
+   ----------------------------------------------------------------------------
+   A phone that is holding an old copy of this page is indistinguishable, from
+   the inside, from a phone whose access has been refused — and it has now cost
+   two rounds of "it does not work for her" where nothing was actually wrong.
+   GitHub Pages caches, iOS holds on longer, and nobody thinks to hard-refresh a
+   website.
+
+   So the page checks itself. On load it re-fetches its own HTML with a
+   cache-busting query, reads the stamp out of it, and if the server has a newer
+   one it reloads ONCE. sessionStorage holds the guard, so a genuinely broken
+   comparison cannot become a reload loop — the worst case is one wasted fetch.
+
+   BUILD is rewritten on every release. Never edit it by hand.
+   ========================================================================== */
+var BUILD='20260806140415';
+
+function checkForUpdate(){
+  var url=location.pathname.replace(/[^/]*$/,'')+'index.html?cb='+Date.now();
+  fetch(url,{cache:'no-store'})
+    .then(function(r){ return r.text(); })
+    .then(function(t){
+      var m=t.match(/var BUILD='(\d+)'/);
+      if(!m || m[1]===BUILD) return;
+      // Newer only. An older stamp on the server means a rollback is in flight,
+      // and reloading into it repeatedly would fight whoever is deploying.
+      if(m[1]<=BUILD) return;
+      var once='__reloaded_for_'+m[1];
+      try{ if(sessionStorage.getItem(once)) return; sessionStorage.setItem(once,'1'); }catch(e){ return; }
+      location.reload();
+    })
+    .catch(function(){ /* offline: keep what we have, it still works */ });
+}
 /* ============================================================
    Bike Ops — CMU EMS
    Single-file static site. All editable content lives in DB and
@@ -5179,6 +5213,10 @@ restoreManager();
    state, so a slow or failed fetch costs nothing and simply leaves what was
    there. */
 pullContent();
+// And check we are not a stale copy. Last, and never blocking: if this page is
+// current it costs one small request, and if it is not, a reload is far better
+// than somebody being told they have no access by a build that predates them.
+checkForUpdate();
 </script>
 </body>
 </html>
