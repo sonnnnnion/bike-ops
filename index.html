@@ -3297,9 +3297,15 @@ function submitForm(fid){
   var warn='';
   if(missCount) warn+='\n\n'+missCount+' item'+(missCount===1?' is':'s are')+
     ' not checked off. That is fine — they will be recorded as missing so they can be restocked.';
-  // Andrew IDs are up to 8 characters; a longer or shorter one usually means a typo.
-  if(aid&&aid.length!==8) warn+='\n\nThe Andrew ID “'+aid+'” is '+aid.length+' characters. '+
-    'Andrew IDs are 8 characters — check it is not a typo.';
+  // Andrew IDs are built from the name and truncated to at most 8 characters, so
+  // most are SHORTER than 8. Warning on every short one cried wolf at the
+  // majority of real riders — rithik is 6, leyuanc and cebruno are 7 — and a
+  // warning everybody learns to click past protects nothing. Only flag what is
+  // actually wrong: too long, or characters an Andrew ID cannot contain.
+  if(aid&&aid.length>8) warn+='\n\nThe Andrew ID “'+aid+'” is '+aid.length+' characters. '+
+    'Andrew IDs are at most 8 — check it is not a typo.';
+  else if(aid&&!/^[a-z][a-z0-9]*$/i.test(aid)) warn+='\n\nThe Andrew ID “'+aid+'” has characters an '+
+    'Andrew ID does not use — check it is not a typo.';
   if(!aid) warn+='\n\nNo Andrew ID entered.';
 
   uiConfirm('You are about to submit the '+SHEET_LABEL[fid]+'.'+warn,'Submit this check?',
