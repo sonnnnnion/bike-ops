@@ -105,9 +105,7 @@
   .sb-item:hover{background:var(--bg-2);color:var(--ink)}
   .sb-item.active{background:var(--brand);color:#fff;font-weight:600;box-shadow:var(--shadow-sm)}
   .sb-item.active .ic{color:#fff;opacity:1}
-  .sb-sep{height:1px;background:var(--rule);margin:10px 6px}
   .sb-label{font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.12em;color:var(--ink-faint);padding:14px 13px 5px}
-  .sb-note{margin-top:auto;font-size:11.5px;color:var(--ink-faint);padding:12px 13px;border-top:1px solid var(--rule)}
 
   main{padding:32px clamp(18px,4vw,44px);max-width:var(--maxw)}
   .view{display:none}
@@ -173,7 +171,6 @@
     .sb-item{padding:11px 13px;font-size:15px;border-radius:var(--radius);white-space:normal}
     .sb-item .ic{display:inline-block}
     .sb-label{display:block}
-    .sb-note{display:none}
     h2.view-title{font-size:27px}
   }
   @media(prefers-reduced-motion:reduce){
@@ -327,7 +324,6 @@
   /* ---------- grounded / disabled form ---------- */
   .grounded{border:2px solid var(--rule);background:var(--oos);color:#fff;padding:13px 15px;box-shadow:var(--shadow-md);margin-bottom:16px;font-weight:700}
   .grounded .sub{font-weight:500;font-size:13px;margin-top:4px;opacity:.95}
-  .isdisabled{opacity:.4;pointer-events:none;filter:grayscale(.5)}
 
   /* ---------- form builder (manager mode) ---------- */
   .builder{border:2px dashed var(--brand);background:var(--brand-wash);padding:14px;margin-bottom:16px}
@@ -367,12 +363,6 @@
   .acc .accbody textarea{min-height:130px;font-size:13px;font-family:var(--font-body)}
 
   /* ---------- lectures ---------- */
-  .module{border:2px solid var(--rule);background:var(--card);box-shadow:var(--shadow-md);padding:0;display:flex;flex-direction:column}
-  .module .mhead{display:flex;align-items:center;gap:11px;padding:14px;cursor:pointer}
-  .module .mnum{font-family:var(--font-mono);font-size:13px;font-weight:700;color:#fff;background:var(--brand);width:30px;height:30px;display:grid;place-items:center;flex:0 0 auto}
-  .module .mtitle{font-weight:700;font-size:15px;flex:1}
-  .module .mbody{display:none;border-top:1.5px solid var(--rule-soft);padding:12px 14px}
-  .module.open .mbody{display:block}
   .embed{aspect-ratio:16/9;width:100%;border:1.5px solid var(--rule);border-radius:var(--r-md);
     background:#000;overflow:hidden;box-shadow:var(--shadow-md)}
   .embed iframe{width:100%;height:100%;border:0;display:block}
@@ -383,8 +373,6 @@
 
   /* ---------- CMU EMS logo blocks ---------- */
   .crest{width:64px;height:64px;object-fit:contain;flex:0 0 auto}
-  .crest-fallback{width:64px;height:64px;flex:0 0 auto;display:grid;place-items:center;background:var(--brand-wash);
-    border:1.5px dashed var(--brand);color:var(--brand);font-family:var(--font-mono);font-size:9px;text-align:center;line-height:1.3;padding:4px}
   .herobar{display:flex;align-items:center;gap:16px;border:2px solid var(--rule);border-left:6px solid var(--brand);
     background:linear-gradient(90deg,var(--brand-wash) 0%,#fff 60%);padding:16px 18px;box-shadow:var(--shadow-md);margin-bottom:20px}
   .herobar .htxt b{display:block;font-size:20px;font-weight:800;letter-spacing:-.01em}
@@ -419,11 +407,11 @@
      authored against the old brutalist tokens (hard 2px rules, zero radius);
      rather than rewrite each one, they are re-cornered and lightened here.
      ============================================================ */
-  .verdict,.qr,.video,.module,.herobar,.grounded,.expblock,.acc,.diagram-wrap{
+  .verdict,.qr,.video,.herobar,.grounded,.expblock,.acc{
     border-radius:var(--r-md);border-width:1px}
   .video .thumb{border-bottom-width:1px}
-  .video .thumb,.module>:first-child{border-top-left-radius:var(--r-md);border-top-right-radius:var(--r-md)}
-  .expbadge,.tag,.flagchip{border-radius:999px;border-width:1px}
+  .video .thumb{border-top-left-radius:var(--r-md);border-top-right-radius:var(--r-md)}
+  .expbadge,.tag{border-radius:999px;border-width:1px}
   .qr{border-radius:var(--r-sm)}
 
   /* Sentence case for anything a person actually reads. The global label rule
@@ -797,9 +785,6 @@
      without this the checklist reads as SHOUTED SMALL CAPS. */
   .mcheck .mct{font-size:14px;color:var(--ink-soft);line-height:1.45;
     text-transform:none;letter-spacing:0;font-weight:500}
-  .mgroup{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;
-    color:var(--ink-faint);margin:12px 0 4px}
-  .mgroup:first-child{margin-top:0}
   @media (max-width:520px){
     .modal-foot{justify-content:stretch}
     .modal-foot .btn{flex:1}
@@ -3180,8 +3165,11 @@ function calcForm(fid){
     if(gb) gb.innerHTML=grounded
       ? '<div class="grounded">⚠ BIKE RESPONSE GROUNDED — use standard response.<div class="sub">A hard-stop condition is checked. The bike itself is not the problem; conditions are. Do not dispatch bike response.</div></div>'
       : '';
-    var body=document.getElementById('safety-body');
-    if(body) body.classList.toggle('isdisabled',grounded);
+    // There used to be a line here greying out the rest of the form when
+    // grounded. It looked for an element id that does not exist, so it never
+    // once ran — and it should not: grounding says the weather is unsafe to ride
+    // in, not that the check is invalid. Disabling the form would stop somebody
+    // recording a check they had genuinely done. The banner says it.
   }
 
   // missing items
@@ -3640,17 +3628,8 @@ function deckSrc(url,slide){
   return clean+(clean.indexOf('?')>=0?'&':'?')+'wdSlideIndex='+n;
 }
 /* A module shows its own deck if it has one, otherwise the shared deck at its slide. */
-function lectureSrc(L){
-  if(L.embed) return embedSrc(L.embed);
-  if(DB.deck&&DB.deck.url&&L.slide>0) return deckSrc(DB.deck.url,L.slide);
-  return '';
-}
 // One deck usually means one shape, so the deck's setting is the default and a
 // module only overrides it when it carries its own separate embed.
-function lectureAspect(L){
-  if(L&&L.aspect) return aspectOf(L);
-  return aspectOf(DB.deck);
-}
 function renderLectures(){
   var host=document.getElementById('deckHost'); if(!host) return;
   var url=(DB.deck&&DB.deck.url)||'';
@@ -3679,45 +3658,6 @@ function editDeck(){
     if(!r) return;
     DB.deck.url=r.url.trim(); DB.deck.edit=r.edit.trim(); DB.deck.aspect=r.aspect;
     saveDB();renderLectures();
-  });
-}
-function toggleModule(id){
-  var m=document.getElementById('mod-'+id); if(m) m.classList.toggle('open');
-}
-function addLecture(){
-  uiPrompt('Modules are the sections of the bike lecture, in teaching order.','','Add a module',{okText:'Add module'})
-    .then(function(t){
-      if(!t) return;
-      DB.lectures.push({id:uid('L'),title:t.trim(),embed:'',edit:'',slide:0});
-      saveDB();renderLectures();
-    });
-}
-function editLecture(i){
-  var L=DB.lectures[i];
-  uiForm('Module links','Where this module lives in the deck.',[
-    {key:'title',label:'Module title',required:true,value:L.title||''},
-    {key:'slide',label:'Start slide in the shared deck',type:'number',value:L.slide||0,
-     hint:'A slide number, or 0 if this module uses its own separate deck.'},
-    {key:'embed',label:'Separate embed link for this module',value:L.embed||'',
-     hint:'Leave blank to use the shared deck at the slide above.'},
-    {key:'edit',label:'Separate edit link for this module',value:L.edit||'',
-     hint:'Leave blank to use the shared deck’s edit link.'},
-    {key:'aspect',label:'Shape',type:'select',value:L.aspect||'',
-     options:[{v:'',t:'Follow the shared deck'}].concat(ASPECTS),
-     hint:'Only worth changing if this module has its own embed above.'}
-  ]).then(function(r){
-    if(!r) return;
-    L.title=r.title.trim();L.slide=Math.max(0,parseInt(r.slide,10)||0);
-    L.embed=r.embed.trim();L.edit=r.edit.trim();L.aspect=r.aspect;
-    saveDB();renderLectures();
-  });
-}
-function delLecture(i){
-  var t=DB.lectures[i].title;
-  uiConfirm('“'+t+'” will be removed from the lecture. The deck itself is untouched.','Remove this module?',
-            {okText:'Remove',danger:true}).then(function(yes){
-    if(!yes) return;
-    DB.lectures.splice(i,1);saveDB();renderLectures();
   });
 }
 
