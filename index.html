@@ -1088,7 +1088,7 @@
 
    BUILD is rewritten on every release. Never edit it by hand.
    ========================================================================== */
-var BUILD='20260806140415';
+var BUILD='20260806155350';
 
 function checkForUpdate(){
   var url=location.pathname.replace(/[^/]*$/,'')+'index.html?cb='+Date.now();
@@ -2511,11 +2511,37 @@ function applyContentInner(obj){
 /* Reads the Operations Officers out of the operations site's copy. Failure is
    not an error worth reporting: it only means an officer cannot open manager
    mode here on this attempt, and every bike manager still can. */
+/* One fetch, but not one CHANCE. The Apps Script sits behind a redirect and can
+   take the better part of a second from a good connection; from a phone in a
+   basement it can take far longer or simply drop. Sign-in used to hang the whole
+   answer on a single attempt, so one stumble on a bad signal became a dead end.
+
+   Three tries, backing off, each with its own deadline so a request that will
+   never answer cannot hold the dialog open for ever. Every attempt is
+   cache-busted, so a retry cannot be served the failure that came before it. */
+function fetchJSONTries(url, tries, timeoutMs){
+  tries=tries||3; timeoutMs=timeoutMs||7000;
+  var attempt=function(n){
+    return new Promise(function(resolve,reject){
+      var done=false;
+      var timer=setTimeout(function(){ if(!done){ done=true; reject(new Error('timeout')); } },timeoutMs);
+      fetch(url+(url.indexOf('?')<0?'?':'&')+'t='+Date.now()+'.'+n)
+        .then(function(r){ return r.json(); })
+        .then(function(j){ if(!done){ done=true; clearTimeout(timer); resolve(j); } })
+        .catch(function(e){ if(!done){ done=true; clearTimeout(timer); reject(e); } });
+    }).catch(function(e){
+      if(n>=tries) throw e;
+      return new Promise(function(res){ setTimeout(res, n*400+(n-1)*400); })
+        .then(function(){ return attempt(n+1); });
+    });
+  };
+  return attempt(1);
+}
+
 function refreshOpsOfficers(){
   var url=CONTENT_ENDPOINT();
   if(!url) return Promise.resolve(false);
-  return fetch(url+(url.indexOf('?')>=0?'&':'?')+'content=1&site=ops&t='+Date.now())
-    .then(function(r){ return r.json(); })
+  return fetchJSONTries(url+(url.indexOf('?')>=0?'&':'?')+'content=1&site=ops')
     .then(function(j){
       var a=j&&j.content&&j.content.access;
       if(!a||typeof a!=='object') return false;
@@ -2542,8 +2568,7 @@ function refreshAccess(){
   // to start the bike program off would otherwise be refused by a gate that had
   // never heard of them.
   return refreshOpsOfficers().then(function(){
-  return fetch(url+(url.indexOf('?')>=0?'&':'?')+'content=1&site=bike&t='+Date.now())
-    .then(function(r){ return r.json(); })
+  return fetchJSONTries(url+(url.indexOf('?')>=0?'&':'?')+'content=1&site=bike')
     .then(function(j){
       // Same guard as applyContent: an older deployment answers with the
       // operations copy, and taking its access list would lock the Bike Manager
