@@ -482,6 +482,14 @@
   .prec.stale,.brec.stale{color:var(--warn);font-weight:600}
   @media(prefers-reduced-motion:reduce){.pick{transition:none}}
 
+  /* Settings that exist but should not be the first thing on the page. Sets no
+     `display` on the summary, so nothing here can out-rank the .webonly gate. */
+  .apiadv{margin:0 0 12px}
+  .apiadv summary{cursor:pointer;font-size:13px;color:var(--ink-mute);
+    padding:6px 0;list-style:revert}
+  .apiadv summary:hover{color:var(--ink)}
+  .apiadv[open] summary{margin-bottom:2px}
+
   /* ---------- QR codes ----------
      .qrbox and .qrurl went with the small codes that used to sit inside the two
      form cards. The codes live once now, on the stickers below. */
@@ -2182,7 +2190,22 @@ function googleUnlock(){
         }catch(e){ console.error('Google sign-in failed to initialise:',e); }
       }
     }).then(function(r){
-      if(r==='ok'){ setWeb(true); return; }
+      if(r==='ok'){
+        setWeb(true);
+        // Auto-publish only ever fired from saveDB, which means it fired on an
+        // EDIT. So the one case it never covered was the case that has to work
+        // first: a manager signs in to a site whose shared copy does not exist
+        // yet, changes nothing because there is nothing to change, and the
+        // manager access list therefore never leaves this browser. That is the
+        // state where somebody has to be told to go and press Publish, which is
+        // precisely what auto-save exists to avoid.
+        //
+        // It only actually sends when there is something to send — no baseline,
+        // or real divergence — so signing in on a synced device costs one
+        // comparison and no request.
+        scheduleAutoPublish();
+        return;
+      }
       if(r==='local'){
         return uiConfirm('Google sign-in is unavailable because the bike account it belongs to was '+
           'disabled. Opening manager mode here shows the controls on THIS device only — publishing '+
@@ -2811,6 +2834,9 @@ var FORM_HOST={jumpkit:'jumpkitForm',safety:'safetyForm'};
 // message about where a submission went, so what the site says matches what a
 // manager sees in Drive.
 var SHEET_LABEL={jumpkit:'Bike Jumpkit Check',safety:'Bike Safety Check'};
+// The tab each check writes to in the shared spreadsheet. Must match the names in
+// the Apps Script's BIKE_SHEETS, which is where the rows actually land.
+var SHEET_TAB={jumpkit:'Bike Jumpkit Checks',safety:'Bike Safety Checks'};
 // What each bike id actually refers to. Ids are storage locations and never
 // change; this is how a rename field says WHICH bike it is renaming without
 // using the current name, which is the thing being edited.
@@ -4687,20 +4713,31 @@ function renderSettings(){
    (function(){
      var u=(DB.api||{}).jumpkit||'';
      var matched=u&&u===((DB.api||{}).safety||'');
-     return '<div class="field"><label for="api-jumpkit">Web App URL</label>'+
+     // The URL is built into the page and is not something to maintain by hand any
+     // more, so the default view is a status line, not a text box. A long
+     // editable URL sitting on the settings page reads as a thing that wants
+     // attention, and the only edit it invites is one that breaks the connection.
+     // It is still reachable, one deliberate click away, because a redeploy under
+     // a NEW deployment does change it.
+     return '<p class="hint" style="margin:0 0 12px">'+(u
+         ? '<span class="tag ok">Connected</span> Both checks file into the shared spreadsheet.'+
+           (matched?'':' <b>The safety check is pointed somewhere else</b> — open Change the address below and press Save.')
+         : '<span class="tag crit">Not connected</span> Submissions are logged to the browser console only.')+'</p>'+
+       '<details class="apiadv"><summary>Change the address</summary>'+
+       '<p class="hint" style="margin:10px 0">Only needed if the Apps Script is ever deployed as a '+
+       '<b>new</b> deployment rather than a new version of the existing one, which gives it a new URL.</p>'+
+       '<div class="field"><label for="api-jumpkit">Web App URL</label>'+
        '<input type="url" id="api-jumpkit" placeholder="https://script.google.com/macros/s/…/exec" value="'+esc(u)+'">'+
        // Kept in the DOM so saveApi() still has both fields to read, and so a
        // mismatched pair inherited from the two-spreadsheet era is visible rather
        // than silently half-changed.
        '<input type="hidden" id="api-safety" value="'+esc((DB.api||{}).safety||'')+'">'+
-       '<p class="hint">'+(u
-         ? '<span class="tag ok">Connected</span> Both checks POST here.'+
-           (matched?'':' <b>The safety check is pointed somewhere else</b> — press Save to bring it onto this one.')
-         : 'Not connected — submissions are logged to the browser console only.')+'</p></div>';
+       '</div>'+
+       '<button class="btn sm solid" onclick="saveApi()">Save</button> '+
+       '<button class="btn sm ghost" onclick="clearApi()">Disconnect</button>'+
+       '</details>';
    })()+
-   '<button class="btn sm solid" onclick="saveApi()">Save</button> '+
-   '<button class="btn sm" onclick="testApi()">Test connection</button> '+
-   '<button class="btn sm ghost" onclick="clearApi()">Disconnect</button>'+
+   '<button class="btn sm" onclick="testApi()">Test connection</button>'+
    '<div id="apiTestOut"></div>'+
    '<p style="font-size:12.5px;color:var(--ink-faint);margin-top:12px">Setup steps are in <b>SETUP-BACKEND.md</b> in the project folder.</p>'+
    '</div>'+
@@ -4918,8 +4955,15 @@ function testApi(){
         var j=null; try{ j=JSON.parse(t); }catch(e){}
         if(!j||!j.ok) return {k:k,state:'notscript',raw:t.slice(0,120)};
         var serves=j.serves||[j.expects];
+        // The shared script reports a row count per TAB, because it holds both
+        // sites' forms. The old single-purpose one served one form and reported a
+        // bare `rows`. Read the tab first and fall back, or this says "undefined
+        // rows" against a deployment that is working perfectly.
+        var tabName=SHEET_TAB[k];
+        var n=(j.tabs&&typeof j.tabs[tabName]==='number')?j.tabs[tabName]
+             :(typeof j.rows==='number'?j.rows:null);
         return {k:k,state:serves.indexOf(k)>=0?'good':'swapped',expects:j.expects,
-                both:serves.length>1,rows:j.rows,sheet:j.sheet};
+                both:serves.length>1,rows:n,sheet:j.sheet};
       })
       .catch(function(e){ return {k:k,state:'unreachable',msg:String(e.message||e)}; });
   })).then(function(res){
@@ -4928,8 +4972,11 @@ function testApi(){
       if(r.state==='blank')
         return '<p class="hint"><b>'+name+'</b> — no URL saved.</p>';
       if(r.state==='good')
-        return '<p class="hint"><span class="tag ok">Live</span> <b>'+name+'</b> — reachable, '+
-               esc(String(r.rows))+' row'+(r.rows===1?'':'s')+' in “'+esc(r.sheet)+'”'+
+        return '<p class="hint"><span class="tag ok">Live</span> <b>'+name+'</b> — reachable'+
+               // A count only when there is one to give. Saying "undefined rows"
+               // reads as a fault in a deployment that is working.
+               (r.rows===null?'':', '+esc(String(r.rows))+' row'+(r.rows===1?'':'s'))+
+               ' in “'+esc(r.sheet)+'”'+
                (r.both?', in a spreadsheet holding both checks':'')+'.</p>';
       if(r.state==='swapped')
         return '<p class="hint"><span class="tag crit">Swapped</span> <b>'+name+'</b> — this deployment expects <b>'+
