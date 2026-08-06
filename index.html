@@ -2094,7 +2094,26 @@ function managerEmails(){
   (a.people||[]).forEach(function(p){ var e=normEmail(p&&p.email); if(e&&out.indexOf(e)<0) out.push(e); });
   return out;
 }
-function isAllowedEmail(e){ return managerEmails().indexOf(normEmail(e))>=0; }
+
+/* The Operations Officers, read from the operations site's copy of its own
+   People list. Held separately from managerEmails() because they are not bike
+   managers and do not belong in the bike site's own list — they simply outrank
+   it.
+
+   Without this the bike program could not be started at all. A site's access
+   list can only let somebody in once it EXISTS, and it only comes to exist by
+   being published by somebody it lets in. So a bike site whose shared copy had
+   never been written could be opened by exactly one hardcoded club account, and
+   the real answer to "who runs this" was "go and find the shared password" —
+   the thing this whole list exists to replace. The Operations Officer runs the
+   agency and the bike program sits under it, so an officer can open manager mode
+   here and get it started from their own account. The Apps Script applies the
+   same rule server-side, so this is a matching UI gate rather than a claim. */
+var opsOfficers=[];
+function isAllowedEmail(e){
+  e=normEmail(e);
+  return managerEmails().indexOf(e)>=0 || opsOfficers.indexOf(e)>=0;
+}
 
 /* ---- Google sign-in is currently BROKEN, and this is the way in --------------
    bikecmuems@gmail.com was disabled by Google on 2026-07-30 — the ops site hit
@@ -2420,9 +2439,33 @@ function applyContentInner(obj){
    had just been removed. Resolves true if the list is genuinely fresh, false if
    the network could not answer, because "not on the list" and "could not read the
    list" need opposite messages. */
+/* Reads the Operations Officers out of the operations site's copy. Failure is
+   not an error worth reporting: it only means an officer cannot open manager
+   mode here on this attempt, and every bike manager still can. */
+function refreshOpsOfficers(){
+  var url=CONTENT_ENDPOINT();
+  if(!url) return Promise.resolve(false);
+  return fetch(url+(url.indexOf('?')>=0?'&':'?')+'content=1&site=ops&t='+Date.now())
+    .then(function(r){ return r.json(); })
+    .then(function(j){
+      var a=j&&j.content&&j.content.access;
+      if(!a||typeof a!=='object') return false;
+      var out=[];
+      (a.officers||[]).forEach(function(e){ e=normEmail(e); if(e&&out.indexOf(e)<0) out.push(e); });
+      if(a.officer){ var o=normEmail(a.officer); if(o&&out.indexOf(o)<0) out.push(o); }
+      opsOfficers=out;
+      return true;
+    })
+    .catch(function(){ return false; });
+}
+
 function refreshAccess(){
   var url=CONTENT_ENDPOINT();
   if(!url) return Promise.resolve(false);
+  // Both lists, together, before anything is judged. An officer signing in here
+  // to start the bike program off would otherwise be refused by a gate that had
+  // never heard of them.
+  return refreshOpsOfficers().then(function(){
   return fetch(url+(url.indexOf('?')>=0?'&':'?')+'content=1&site=bike&t='+Date.now())
     .then(function(r){ return r.json(); })
     .then(function(j){
@@ -2473,6 +2516,7 @@ function refreshAccess(){
       return true;
     })
     .catch(function(){ return false; });
+  });
 }
 
 // Fired on load. The page has already rendered from local state by this point, so
@@ -2497,12 +2541,18 @@ function pullContent(){
       // is here, check the saved address against it: somebody added since their
       // last visit gets manager mode without signing in again, and somebody
       // removed loses it on arrival rather than keeping the buttons.
-      var e=savedEmail();
-      if(e){
-        var isOn=document.body.classList.contains('is-web');
-        if(isAllowedEmail(e)&&!isOn) setWeb(true);
-        else if(!isAllowedEmail(e)&&isOn) setWeb(false);
-      }
+      //
+      // The Operations Officers have to be read first, or an officer returning to
+      // the bike site is judged against the bike list alone and silently demoted
+      // to member view on every load.
+      refreshOpsOfficers().then(function(){
+        var e=savedEmail();
+        if(e){
+          var isOn=document.body.classList.contains('is-web');
+          if(isAllowedEmail(e)&&!isOn) setWeb(true);
+          else if(!isAllowedEmail(e)&&isOn) setWeb(false);
+        }
+      });
     })
     .catch(function(){ /* offline, or the script has no doGet yet — keep local */ });
 }
@@ -4754,9 +4804,14 @@ function renderSettings(){
      '<code>LOCAL_MANAGER_UNLOCK=false</code> in index.html once a new login exists.</p></div>':'')+
 
    '<div class="card mt"><h3>Who can open manager mode</h3>'+
-   '<p style="font-size:13px;color:var(--ink-faint);margin:0 0 12px">The bike account is always allowed. '+
-   'Add anyone else by the Google address they sign in with, so handing the role on does not mean '+
+   '<p style="font-size:13px;color:var(--ink-faint);margin:0 0 12px">The bike account is always allowed, '+
+   'and so is any <b>Operations Officer</b> — appointed on the operations site, not here. '+
+   'Add anyone else below by the Google address they sign in with, so handing the role on does not mean '+
    'sharing one password.</p>'+
+   (opsOfficers.length
+     ? '<p style="font-size:13px;color:var(--ink-faint);margin:0 0 12px">Operations Officers right now: '+
+       esc(opsOfficers.join(', '))+'.</p>'
+     : '')+
    '<div class="field"><label for="accOfficer">Bike account (always allowed)</label>'+
    '<input type="email" id="accOfficer" value="'+esc((DB.access||{}).officer||'')+'" '+
    'oninput="DB.access.officer=this.value.trim();saveDB()"></div>'+
