@@ -2252,8 +2252,18 @@ function googleUnlock(){
       if(r&&r.indexOf('deny:')===0){
         var who=r.slice(5);
         return uiAlert((who?'Signed in as '+who+'. That':'That')+
-          ' account is not on the manager access list, so manager controls stay '+
-          'hidden. The Bike Manager adds people under Site Settings.',
+          ' account is not on the manager access list, so manager controls stay hidden.'+
+          // The likeliest cause when somebody was JUST added, and the one the
+          // message used to send you looking in entirely the wrong place: this
+          // device is running a cached copy of the page from before the list
+          // could be read at all. Say it first, because it is one reload to rule
+          // out and costs nothing if it is wrong.
+          '\n\nIf you were only just added, reload this page first — a phone can '+
+          'hold an older copy of the site for a while, and an older copy cannot '+
+          'see a list it was built before.'+
+          '\n\nOtherwise: an Operations Officer adds Bike Managers on the '+
+          'operations site under People, and the Bike Manager adds people here '+
+          'under Site Settings. Either list works.',
           'No manager access');
       }
     });
