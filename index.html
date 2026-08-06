@@ -2185,6 +2185,10 @@ function googleUnlock(){
               // Manager had just added that they were not on it.
               refreshAccess().then(function(fresh){
                 if(isAllowedEmail(email)){ setSavedEmail(email); close('ok'); }
+                // Three outcomes, not two. 'nolist' means the server answered and
+                // this site has simply never been published — which needs an
+                // Operations Officer, not a better connection.
+                else if(fresh==='nolist') close('nolist:'+email);
                 else close((fresh?'deny:':'unsure:')+email);
               });
             }
@@ -2220,6 +2224,17 @@ function googleUnlock(){
       // from here and call for opposite reactions — one is a job for the Bike
       // Manager, the other is a job for the network. Saying the first when the
       // second is true sends somebody off to ask for access they already have.
+      // The server answered and this site has simply never been published, so
+      // there is no list yet to be on. Nothing is broken and the connection is
+      // fine — it needs somebody with the standing to write the first one.
+      if(r&&r.indexOf('nolist:')===0){
+        var nl=r.slice(7);
+        return uiAlert((nl?'Signed in as '+nl+'. ':'')+
+          'This site has no manager list yet, so there is nothing to check you against. '+
+          'An Operations Officer, or the bike account, can open manager mode here and '+
+          'that first sign-in creates the list. After that anyone added below can get in.',
+          'No manager list yet');
+      }
       if(r&&r.indexOf('unsure:')===0){
         var un=r.slice(7);
         return uiAlert((un?'Signed in as '+un+', but the':'The')+
@@ -2472,6 +2487,11 @@ function refreshAccess(){
       // Same guard as applyContent: an older deployment answers with the
       // operations copy, and taking its access list would lock the Bike Manager
       // out of their own site while looking like a successful check.
+      // The server answered, it simply has no bike copy yet. That is a completely
+      // different thing from not being able to reach it, and saying "check your
+      // connection" about a working connection sends somebody to fix the wrong
+      // thing. `nolist` means: read fine, nothing published here yet.
+      if(j&&j.ok&&!j.content) return 'nolist';
       if(!j||!isOurContent(j.content)) return false;
       var a=j.content.access;
       if(!a||typeof a!=='object') return false;
@@ -2628,6 +2648,14 @@ function scheduleAutoPublish(){
   },1500);
 }
 
+/* Writes into the status line, finding it fresh each time. Anything that renders
+   Site Settings replaces that element, so a reference captured earlier ends up
+   detached and the message goes nowhere. */
+function setPubMsg(t){
+  var el=document.getElementById('publishMsg');
+  if(el) el.textContent=t;
+}
+
 function publishContent(opts){
   opts=opts||{};
   var url=CONTENT_ENDPOINT();
@@ -2638,8 +2666,12 @@ function publishContent(opts){
   if(!googleIdToken&&!publishKey())
     return opts.auto?null:uiAlert('Publishing needs either a Google sign-in or a publish key. '+
                    'Add the key under Site Settings.','Cannot publish yet');
-  var out=document.getElementById('publishMsg');
-  if(out) out.textContent='Publishing…';
+  // Looked up fresh every time rather than captured once. renderSettings() runs
+  // between the send and the readback — adding somebody rebuilds the panel — and
+  // a captured reference then points at a node no longer in the document, so the
+  // result was written into nothing and the line sat blank after a save that had
+  // actually worked.
+  setPubMsg('Publishing…');
   // Snapshot what is actually being sent. The readback used to compare against a
   // FRESHLY computed payload, so any change at all between the send and the check
   // — another edit, a render touching DB — made a perfectly good publish look
@@ -2669,15 +2701,14 @@ function publishContent(opts){
         // look identical from here. Naming the overwhelmingly likelier cause
         // beats "retrying on the next edit", which is what somebody reads twenty
         // times while nothing at all is being saved.
-        if(out) out.textContent=same?'Saved for everyone.'
-          :'The server did not accept this. The address you are signed in with is '+
-           'probably not allowed to publish — set ROOT_MANAGERS in the script '+
-           '(the ems-ops SETUP-BACKEND.md, step 5).';
         if(same) renderSettings();
-      }).catch(function(){ if(out) out.textContent='Sent, but could not read it back to confirm.'; });
+        setPubMsg(same?'Saved for everyone.'
+          :'The server did not accept this. Check the Errors tab of the spreadsheet — '+
+           'it records exactly which address was refused and why.');
+      }).catch(function(){ setPubMsg('Sent, but could not read it back to confirm.'); });
     },1200);
   })
-  .catch(function(){ if(out) out.textContent='Could not reach the script.'; });
+  .catch(function(){ setPubMsg('Could not reach the script.'); });
 }
 
 function toggleWeb(){
