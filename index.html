@@ -1107,7 +1107,7 @@
 
    BUILD is rewritten on every release. Never edit it by hand.
    ========================================================================== */
-var BUILD='20260806194251';
+var BUILD='20260807000930';
 
 function checkForUpdate(){
   var url=location.pathname.replace(/[^/]*$/,'')+'index.html?cb='+Date.now();
@@ -1968,6 +1968,20 @@ function loadDB(){
     base.api={jumpkit:base.apiUrl,safety:base.apiUrl};
     base.apiUrl='';
   }
+  /* An endpoint that is blank here is a browser that first opened this site
+     before the URL shipped in DEFAULTS. It kept the empty string it stored then,
+     and nothing replaces it: `api` is in NO_SYNC, so shared content never
+     carries one, and the only view that could set it by hand is manager-only.
+
+     CONTENT_ENDPOINT() reads api.jumpkit, so a blank one means no shared content
+     at all — no manager list, and every check posting into nothing while the
+     page still says "Sent", because a no-cors reply cannot be read. The ops site
+     had the same fault and it was what stopped a real manager signing in there.
+
+     Only ever fills a BLANK slot, so a URL a manager re-pointed is untouched. */
+  ['jumpkit','safety'].forEach(function(slot){
+    if(!base.api[slot] && DEFAULTS.api && DEFAULTS.api[slot]) base.api[slot]=DEFAULTS.api[slot];
+  });
   // Retire deployments that no longer answer. Stored values beat defaults
   // everywhere else, which is right for anything a manager typed — but a URL
   // baked into an older build is not that, and a browser holding one goes on
@@ -2654,8 +2668,12 @@ function refreshAccess(){
 // a slow or failed fetch costs nothing — the site simply keeps what it had.
 function pullContent(){
   var url=CONTENT_ENDPOINT(); if(!url) return;
-  fetch(url+(url.indexOf('?')>=0?'&':'?')+'content=1&site=bike&t='+Date.now())
-    .then(function(r){ return r.json(); })
+  // Retried and patient, like refreshAccess. This was a bare fetch() with no
+  // timeout and no retry, and it is what fills the manager list at boot — so one
+  // hiccup on a phone left the device with no shared content for the whole
+  // session and no way to tell that apart from nobody being appointed. 12s
+  // because the Apps Script container cold-starts after every new deployment.
+  fetchJSONTries(url+(url.indexOf('?')>=0?'&':'?')+'content=1&site=bike', 4, 12000)
     .then(function(j){
       if(!j||!j.ok) return;                     // genuinely could not read it
       contentState.loaded=true;                  // read fine — even if empty
