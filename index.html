@@ -808,6 +808,15 @@
     .modal-foot .btn{flex:1}
   }
 </style>
+
+<!-- GoatCounter, same account as the operations site so the two can be compared.
+     No cookies, no advertising identifier, no per-person profile. The automatic
+     pageview is off because this is a hash-routed single page: it would fire
+     once on load and report a whole session as one visit. go() reports each
+     view instead. -->
+<script data-goatcounter="https://mbocksta.goatcounter.com/count"
+        data-goatcounter-settings='{"no_onload":true,"allow_local":false}'
+        async src="//gc.zgo.at/count.js"></script>
 </head>
 <body>
 
@@ -1107,7 +1116,7 @@
 
    BUILD is rewritten on every release. Never edit it by hand.
    ========================================================================== */
-var BUILD='20260807000930';
+var BUILD='20260808091218';
 
 function checkForUpdate(){
   var url=location.pathname.replace(/[^/]*$/,'')+'index.html?cb='+Date.now();
@@ -2101,7 +2110,35 @@ function go(v,fromHash){
     }
   }
   window.scrollTo(0,0);
+  countView(v);
 }
+
+/* One count per view, since a hash-routed page otherwise reports a whole visit
+   as a single pageview. The path and nothing else — no rider name, no Andrew
+   ID, no bike. See the operations site for the full reasoning; the rule is the
+   same on both, so that neither becomes the exception. */
+function countView(v){
+  try{
+    if(!window.goatcounter || !window.goatcounter.count) return;
+    window.goatcounter.count({path:'/bike/'+(v||'home'), title:'Bike · '+(v||'home'), event:false});
+  }catch(e){}
+}
+
+var visitStart=Date.now(), visitReported=false;
+function reportVisitLength(){
+  if(visitReported) return;
+  visitReported=true;
+  try{
+    if(!window.goatcounter || !window.goatcounter.count) return;
+    var s=Math.round((Date.now()-visitStart)/1000);
+    var b = s<10?'under-10s' : s<60?'10-60s' : s<300?'1-5min' : s<900?'5-15min' : 'over-15min';
+    window.goatcounter.count({path:'bike-session/'+b, title:'Session length', event:true});
+  }catch(e){}
+}
+window.addEventListener('pagehide', reportVisitLength);
+document.addEventListener('visibilitychange', function(){
+  if(document.visibilityState==='hidden') reportVisitLength();
+});
 document.getElementById('nav').addEventListener('click',function(e){
   var it=e.target.closest('.sb-item'); if(it) go(it.dataset.view);
 });
