@@ -509,12 +509,9 @@
   .qrcard .qrkicker{font-size:10px;text-transform:uppercase;letter-spacing:.16em;
     color:var(--brand);font-weight:700}
   .qrcard h3{margin:6px 0 3px;font-family:var(--font-display);font-size:19px;line-height:1.2;color:#111}
-  .qrcard .qrwho{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:#666;margin-bottom:14px}
-  .qrcard .qrframe{padding:10px;background:#fff;border:1px solid var(--rule);border-radius:10px}
-  .qrcard .qrhow{font-size:12px;color:#444;margin-top:12px}
-  .qrcard .qrlink{font-family:var(--font-mono);font-size:10px;color:#777;word-break:break-all;margin-top:8px}
-  .qrcard .qrfoot{margin-top:auto;padding-top:12px;font-size:10px;letter-spacing:.12em;
-    text-transform:uppercase;color:#999}
+  .qrcard .qrframe{margin-top:14px;padding:10px;background:#fff;border:1px solid var(--rule);border-radius:10px}
+  .qrcard .qrlink{font-family:var(--font-mono);font-size:10px;color:#777;word-break:break-all;
+    margin-top:auto;padding-top:12px}
 
   /* Print = sticker sheet. Everything that isn't a code comes off, and the codes
      are pinned to a physical size — a QR much under 2cm gets unreliable on a
@@ -539,12 +536,9 @@
     .qrcard:last-child{break-after:auto;page-break-after:auto}
     .qrcard .qrkicker{font-size:12.5px;letter-spacing:.24em}
     .qrcard h3{font-size:42px;margin:12px 0 8px}
-    .qrcard .qrwho{font-size:15px;letter-spacing:.1em;margin-bottom:32px;color:#333}
-    .qrcard .qrframe{border:0;padding:0}
+    .qrcard .qrframe{border:0;padding:0;margin-top:32px}
     .qrcard .qrsvg{width:4.5in;height:4.5in}
-    .qrcard .qrhow{font-size:17px;margin-top:30px;color:#222}
-    .qrcard .qrlink{font-size:11px;margin-top:14px}
-    .qrcard .qrfoot{margin-top:34px;padding-top:0;font-size:11px}
+    .qrcard .qrlink{font-size:11px;padding-top:26px}
     /* On the exam view, print the certificate alone — that is what "save it and
        send it to the Bike Manager" has to produce. */
     .view[data-view="exam"] .examcard,
@@ -1116,7 +1110,7 @@
 
    BUILD is rewritten on every release. Never edit it by hand.
    ========================================================================== */
-var BUILD='20260808091218';
+var BUILD='20260811151657';
 
 function checkForUpdate(){
   var url=location.pathname.replace(/[^/]*$/,'')+'index.html?cb='+Date.now();
@@ -4953,10 +4947,11 @@ function renderChecks(){
   // check of its own for the ambulance bags, and a sticker reading only "Jumpkit
   // Check" on a wall gives no way to tell which of the two form it opens.
   var cards=[
-    {v:'jumpkit-check',t:'Bike Jumpkit Check',d:'Confirm the equipment bag is complete, stocked, and nothing is expired.',
-     who:'Stick on the bike jumpkit bag'},
-    {v:'safety-check', t:'Bike Safety Check',d:'Pre-ride check: bike mechanical, rider readiness, and weather conditions.',
-     who:'Stick on each bike'}
+    // No `who`. It was a hang location printed ON the sticker, which tells
+    // somebody where to put a thing they are already standing in front of.
+    // Matched to the operations site, where the same three lines came off.
+    {v:'jumpkit-check',t:'Bike Jumpkit Check',d:'Confirm the equipment bag is complete, stocked, and nothing is expired.'},
+    {v:'safety-check', t:'Bike Safety Check',d:'Pre-ride check: bike mechanical, rider readiness, and weather conditions.'}
   ];
   // Deep-link URLs — exactly what the QR codes encode, and what gets printed onto
   // physical stickers. Emit the canonical form: drop any query string the visitor
@@ -4995,11 +4990,11 @@ function renderChecks(){
       return '<div class="qrcard">'+
         '<div class="qrkicker">CMU EMS · Bike Ops</div>'+
         '<h3>'+esc(c.t)+'</h3>'+
-        '<div class="qrwho">'+esc(c.who)+'</div>'+
         '<div class="qrframe">'+qrSVG(url,230)+'</div>'+
-        '<div class="qrhow">Point your phone camera at this code.</div>'+
+        // Nothing under the code but the address it encodes. Every other line
+        // was telling a reader something they already know from seeing a QR
+        // code, on a sticker where each one competes with the two that matter.
         '<div class="qrlink">'+esc(url)+'</div>'+
-        '<div class="qrfoot">No app, and no login, to file one</div>'+
         '</div>';
     }).join('')+'</div>'+
     '<button class="btn sm mt noprint" onclick="window.print()">Print the stickers</button>';
