@@ -119,8 +119,11 @@
   .tablewrap{overflow-x:auto;-webkit-overflow-scrolling:touch}
   .tablewrap table{margin-top:0}
   .view{display:none}
-  .view.active{display:block;animation:viewIn .42s var(--ease-out)}
-  @keyframes viewIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+  /* 200ms and 4px, down from 420ms and 8px. A view change happens every few
+     seconds in use, and at 420ms the page was still settling when the thumb
+     arrived at the next control — a wait rather than a cue. */
+  .view.active{display:block;animation:viewIn .2s var(--ease-out)}
+  @keyframes viewIn{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
   .btn{transition:transform .14s var(--ease),box-shadow .14s var(--ease)}
   .sb-item{transition:background .18s var(--ease),border-color .18s var(--ease),color .18s var(--ease)}
   @media(prefers-reduced-motion:reduce){
@@ -837,6 +840,12 @@
     .checkline input[type=checkbox],.mcheck input[type=checkbox],
     input[type=checkbox],input[type=radio]{width:20px;height:20px;flex:0 0 auto}
     .checkline input[type=checkbox]{margin-top:1px}
+
+    /* No scrollbar gutter drawn down the page on a phone. Anything that scrolls
+       SIDEWAYS keeps its bar — there, it is the only thing saying there is more
+       to the right. */
+    html,body{scrollbar-width:none}
+    html::-webkit-scrollbar,body::-webkit-scrollbar{width:0;height:0;display:none}
   }
 
   @media(prefers-reduced-motion:reduce){
@@ -1152,7 +1161,7 @@
 
    BUILD is rewritten on every release. Never edit it by hand.
    ========================================================================== */
-var BUILD='20260811154954';
+var BUILD='20260811181613';
 
 function checkForUpdate(){
   var url=location.pathname.replace(/[^/]*$/,'')+'index.html?cb='+Date.now();
