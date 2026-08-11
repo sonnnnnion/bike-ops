@@ -801,6 +801,48 @@
     .modal-foot{justify-content:stretch}
     .modal-foot .btn{flex:1}
   }
+
+  /* ---------- polish, last on purpose ----------------------------------
+     Matched to the operations site. Placed at the END of the stylesheet rather
+     than beside the rules it relates to: several of these are the same
+     specificity as existing component rules, so source order is what decides,
+     and written earlier they would silently do nothing.
+
+     Nothing here sets `display`. Manager gating is `.webonly{display:none}` plus
+     `body.is-web .webonly{display:inline-flex}` at equal specificity, and a
+     later `display` on any of those elements is exactly how this site leaked
+     manager controls into member view twice. */
+
+  .btn:active{transform:translateY(1px) scale(.985)}
+  .sb-item:active{transform:translateY(1px)}
+  .btn,.sb-item,.photo{-webkit-tap-highlight-color:transparent}
+
+  @media(hover:hover){
+    .photo{transition:transform .2s var(--ease),box-shadow .2s var(--ease)}
+    .photo:hover{transform:translateY(-2px);box-shadow:var(--shadow-md)}
+    .acchead{transition:background .16s var(--ease)}
+    .acchead:hover{background:var(--card-2)}
+  }
+
+  .btn:focus-visible,.sb-item:focus-visible,.acchead:focus-visible,
+  .photo:focus-visible,input:focus-visible,select:focus-visible,
+  textarea:focus-visible{outline:2px solid var(--brand);outline-offset:2px}
+
+  .tag{transition:background .18s var(--ease),color .18s var(--ease),
+                  border-color .18s var(--ease)}
+
+  /* A safety check is a long list of boxes tapped on a phone, outdoors, often
+     with gloves on. 16px is not a target. */
+  @media(pointer:coarse){
+    .checkline input[type=checkbox],.mcheck input[type=checkbox],
+    input[type=checkbox],input[type=radio]{width:20px;height:20px;flex:0 0 auto}
+    .checkline input[type=checkbox]{margin-top:1px}
+  }
+
+  @media(prefers-reduced-motion:reduce){
+    .btn,.sb-item,.photo,.acchead,.tag{transition:none}
+    .btn:hover,.btn:active,.sb-item:active,.photo:hover{transform:none}
+  }
 </style>
 
 <!-- GoatCounter, same account as the operations site so the two can be compared.
@@ -1110,7 +1152,7 @@
 
    BUILD is rewritten on every release. Never edit it by hand.
    ========================================================================== */
-var BUILD='20260811151657';
+var BUILD='20260811154954';
 
 function checkForUpdate(){
   var url=location.pathname.replace(/[^/]*$/,'')+'index.html?cb='+Date.now();
