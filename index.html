@@ -44,6 +44,10 @@
     --maxw:1120px;
   }
   *{box-sizing:border-box}
+  /* Stops the rubber-band bounce opening a gap above the sticky topbar —
+     the header looks like it leaves when really the page has been dragged
+     off it. Background on html too: the bounce area paints from the root. */
+  html{overscroll-behavior-y:none;background-color:var(--bg)}
   html,body{margin:0}
   body{color:var(--ink);font-family:var(--font-body);line-height:1.55;-webkit-font-smoothing:antialiased;
     text-rendering:optimizeLegibility;
@@ -158,7 +162,9 @@
      above the topbar, and swallowed every tap including the one on the hamburger
      meant to open it. Opacity alone is invisible, not intangible. */
   .navscrim{display:none;position:fixed;inset:0;z-index:29;background:rgba(36,26,29,.42);
-    opacity:0;pointer-events:none;transition:opacity .22s var(--ease)}
+    /* Matched to the drawer's .26s so the dimming and the slide finish
+       together; at .22s the scrim cleared first. */
+    opacity:0;pointer-events:none;transition:opacity .26s var(--ease)}
   body.nav-open .navscrim{opacity:1;pointer-events:auto}
 
   /* Narrow screens: the sidebar becomes a slide-in drawer rather than a horizontal
@@ -175,12 +181,18 @@
       flex-direction:column;gap:2px;padding:16px 12px calc(16px + env(safe-area-inset-bottom));
       background:var(--bg);border-right:1px solid var(--rule);border-bottom:0;
       box-shadow:var(--shadow-lg);overflow-y:auto;-webkit-overflow-scrolling:touch;
-      transform:translateX(-102%);transition:transform .26s var(--ease-out);
+      transform:translateX(-102%);
+      /* `visibility` is not interpolatable, so it flipped the instant the
+         class went and the drawer DISAPPEARED at the start of its own
+         slide-out. Delayed by exactly the slide duration on close, none on
+         open. */
+      transition:transform .26s var(--ease-out), visibility 0s linear .26s;
       visibility:hidden}
     /* translateX(0), not `none`. Transitioning between `none` and a transform
        function is unreliable — the browser has no matching start value to
        interpolate from and can leave the element parked at its start offset. */
-    body.nav-open .sidebar{transform:translateX(0);visibility:visible}
+    body.nav-open .sidebar{transform:translateX(0);visibility:visible;
+      transition:transform .26s var(--ease-out), visibility 0s linear 0s}
     .sb-item{padding:11px 13px;font-size:15px;border-radius:var(--radius);white-space:normal}
     .sb-item .ic{display:inline-block}
     .sb-label{display:block}
@@ -1161,7 +1173,7 @@
 
    BUILD is rewritten on every release. Never edit it by hand.
    ========================================================================== */
-var BUILD='20260811181613';
+var BUILD='20260811204759';
 
 function checkForUpdate(){
   var url=location.pathname.replace(/[^/]*$/,'')+'index.html?cb='+Date.now();
