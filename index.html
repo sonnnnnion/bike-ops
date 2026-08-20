@@ -650,6 +650,11 @@
   body.is-web .webonly.issx{display:inline-flex;align-items:center}
   .isslist .tag{flex:0 0 auto;margin-top:1px}
   .noissues{font-size:13.5px;color:var(--ok);font-weight:600;margin:0}
+  .srcnote{font-size:12px;color:var(--ink-faint);margin:0 0 10px}
+  .srcnote.bad{color:var(--oos)}
+  .srcnote .btn{margin-left:6px}
+  /* "10:07 AM" is one thing to read, and would otherwise break across lines. */
+  .srcnote .when{white-space:nowrap}
   .bnote{font-size:13.5px;color:var(--ink-mute);margin:8px 0 0}
 
   /* ---------- dated-kit heads-up (jumpkit view) ---------- */
@@ -946,7 +951,8 @@
             <button class="btn sm solid" onclick="go('safety-check')">Report a problem</button>
           </span>
         </div>
-        <div class="tablewrap mt">
+        <div id="issueSrc" class="mt"></div>
+        <div class="tablewrap">
           <table>
             <thead><tr><th>Bike</th><th>Problem</th><th>Severity</th><th>Reported by</th><th>Date</th><th></th></tr></thead>
             <tbody id="issueRows"></tbody>
@@ -1173,7 +1179,7 @@
 
    BUILD is rewritten on every release. Never edit it by hand.
    ========================================================================== */
-var BUILD='20260820003720';
+var BUILD='20260820101052';
 
 function checkForUpdate(){
   var url=location.pathname.replace(/[^/]*$/,'')+'index.html?cb='+Date.now();
@@ -1202,6 +1208,16 @@ function checkForUpdate(){
 function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,function(c){
   return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];});}
 function uid(p){return (p||'id')+'-'+Math.random().toString(36).slice(2,8);}
+/* For a value going into a JS string literal INSIDE an on* attribute. esc()
+   alone is not enough there: the browser turns &#39; back into an apostrophe
+   before the JavaScript is parsed, so an escaped quote still ends the string.
+   Escape for JavaScript first, then for HTML. Anything carrying text a person
+   typed — a problem signature carries the words of the report — has to go
+   through this and not through esc. */
+function jsq(s){
+  return esc(String(s==null?'':s).replace(/\\/g,'\\\\').replace(/'/g,"\\'")
+    .replace(/\r?\n/g,'\\n'));
+}
 
 /* ---------- in-site dialogs ----------
    Everything here replaces window.alert/confirm/prompt. Three reasons the native
@@ -1629,6 +1645,17 @@ var DEFAULTS={
   // check and nothing could warn anyone *before* the bag was opened. Persisting
   // them is what makes the expiry heads-up on the jumpkit view possible.
   expiry:{},
+  /* When THIS device last typed each of those dates. Not the date itself — the
+     moment it was entered, so the shared copy and this one can be told apart
+     when they disagree. Never synced: it is about this browser, not about the
+     kit. */
+  expiryAt:{},
+  /* Problems that have been dealt with, by signature. The spreadsheet is the
+     shared list now, and a row in it cannot be deleted from a phone — so
+     "resolved" is recorded here and the shared row is filtered against it.
+     Synced and merged rather than replaced: two managers ticking two different
+     things are adding to one list, not overwriting each other. */
+  resolvedKeys:[],
   // Named by Michaela 2026-07-25. `id` is the storage location the bike came
   // from and is what everything else keys on; `name` is a label a manager can
   // change without breaking a single reference.
@@ -2030,6 +2057,17 @@ function loadDB(){
   // Issues predating the id field cannot be found by editIssue/resolveIssue, so
   // both buttons did nothing at all on rows stored before that change. Backfill.
   (base.issues||[]).forEach(function(i){ if(!i.id) i.id=uid('is'); });
+  /* Issues filed against a bag by its LABEL, before the shared list arrived and
+     both sides had to agree on one spelling. Left alone they would sit beside
+     the spreadsheet's copy of the same fault as a second line that nothing ever
+     clears. Matched on the label and rewritten to the id. */
+  (function(){
+    var byLabel={};
+    (base.bags||[]).forEach(function(b){ if(b&&b.label) byLabel[String(b.label)]=b.id; });
+    (base.issues||[]).forEach(function(i){
+      if(i && i.bag && byLabel[String(i.bag)]) i.bag=byLabel[String(i.bag)];
+    });
+  })();
   if(base.apiUrl&&!base.api.jumpkit&&!base.api.safety){
     base.api={jumpkit:base.apiUrl,safety:base.apiUrl};
     base.apiUrl='';
@@ -2173,6 +2211,12 @@ function go(v,fromHash){
   if(FORM_HOST[v.replace('-check','')] && !formDone[v.replace('-check','')]){
     var _f=v.replace('-check',''); fillMe(_f); renderWhoNote(_f);
   }
+  /* Paint what we have, then replace it with the spreadsheet's copy when it
+     lands — same shape either way, so nothing jumps about. Without this the
+     problem list shows only what this device filed, which is the whole bug:
+     publishing needs a manager token and filing does not. */
+  if(LIVE_VIEWS[v]) fetchSharedState().then(function(){ renderDash(); renderExpiryAlert(); });
+  liveStart(v);
   closeNav();
   try{localStorage.setItem('bikeops_view',v);}catch(e){}
   // Keep the URL in sync without stacking history on every sidebar click.
@@ -2473,7 +2517,7 @@ var CONTENT_ENDPOINT=function(){ return (DB.api||{}).jumpkit||''; };
 var publishKey=function(){ return ((DB.api||{}).key||'').trim(); };
 // Device-local or code-owned keys never sync. `api` lives in the page, and drafts
 // are one person's half-filled form.
-var NO_SYNC={api:1,apiUrl:1,version:1};
+var NO_SYNC={api:1,apiUrl:1,version:1,expiryAt:1};
 
 /* The proof of who you are that every write carries, and the address it belongs
    to. Both used to live only in memory, which had two consequences that between
@@ -2581,7 +2625,8 @@ var SYNC_LABEL={bikes:'Bikes',issues:'Issues',bags:'Jumpkit bags',items:'Jumpkit
   safetyItems:'Safety check items',bylaws:'Bike Manager bylaws',bylawsResponse:'Bike Response bylaws',
   boundaries:'Operating boundaries',contacts:'Contacts',repairs:'How to fix',inventory:'Inventory',
   checkLog:'Check log',exam:'Practical exam',deck:'Lecture',videos:'Videos',access:'Manager access',
-  radioIds:'Radios',weather:'Weather thresholds',docs:'Documents'};
+  radioIds:'Radios',weather:'Weather thresholds',docs:'Documents',
+  expiry:'Expiration dates',resolvedKeys:'Resolved problems'};
 var BASE_KEY='bikeops_base_v1';
 var contentBase=(function(){
   try{ var r=localStorage.getItem(BASE_KEY); return r?JSON.parse(r):null; }catch(e){ return null; }
@@ -2671,7 +2716,19 @@ function mergeCheckLog(mineArr, theirsArr){
   return out;
 }
 
-var MERGE_KEYS={ checkLog: mergeCheckLog };
+/* Union of two lists of plain strings, order preserved, first sighting wins.
+   Resolved signatures are a collection, not a document: replacing meant whoever
+   published second erased the other's ticks and the problems came back open. */
+function mergeKeySet(mineArr, theirsArr){
+  var out=[], seen={};
+  (mineArr||[]).concat(theirsArr||[]).forEach(function(k){
+    if(typeof k!=='string' || !k || seen[k]) return;
+    seen[k]=1; out.push(k);
+  });
+  return out;
+}
+
+var MERGE_KEYS={ checkLog: mergeCheckLog, resolvedKeys: mergeKeySet };
 
 function applyContentInner(obj){
   var changed=false, mine=unpublishedKeys();
@@ -3353,8 +3410,9 @@ function renderForm(fid){
          '<span class="lbl">'+esc(it.label)+'</span>'+
          (it.qty?'<span class="qty">qty '+esc(it.qty)+'</span>':'')+'</label>';
       if(it.exp){
-        // Pre-filled from DB.expiry so the date is entered once, not every check.
-        var known=DB.expiry[it.id]||'';
+        // Pre-filled from the shared copy so the date is entered once by anyone,
+        // not once per person per check.
+        var known=expiryOf(it.id);
         h+='<div class="expblock"><div class="exphead">Expiration date — '+esc(it.label)+'</div>'+
            // Named for a screen reader. The heading above says which item this
            // belongs to, but a date field read on its own announces only "date",
@@ -3706,14 +3764,19 @@ function doSubmit(fid,fn,ln,aid){
   var btn=host.querySelector('button.solid');
   if(btn){ btn.disabled=true; btn.textContent='Submitting…'; }
 
-  var items={},expiries={};
+  var items={},expiries={},expiryById={};
   host.querySelectorAll('[data-item]').forEach(function(b){items[b.getAttribute('data-label')]=b.checked;});
   // Key by the human label, not the internal item id — this lands in a spreadsheet
   // a manager reads, and "Oral glucose" is useful where "i-glucose" is not.
+  // `expiryById` carries the same dates keyed the way the SITE stores them, for
+  // the shared copy the Apps Script keeps: a label is what a person reads and an
+  // id is what a lookup needs, and one field cannot be both.
   host.querySelectorAll('[data-exp]').forEach(function(i){
     var id=i.getAttribute('data-exp');
     var lbl=host.querySelector('[data-item="'+id+'"]');
-    expiries[(lbl&&lbl.getAttribute('data-label'))||id]=i.value||'';
+    var name=(lbl&&lbl.getAttribute('data-label'))||id;
+    expiries[name]=i.value||'';
+    expiryById[id]={d:i.value||'', l:name};
   });
   var conds=[];
   host.querySelectorAll('[data-cond]').forEach(function(c,i){
@@ -3730,6 +3793,12 @@ function doSubmit(fid,fn,ln,aid){
     // column is read by a person, and it records whether the bag was in service.
     bag:fid==='jumpkit'?(function(){var s=document.getElementById('jk-bag');
       return s&&s.selectedIndex>=0?s.options[s.selectedIndex].text:'';})():'',
+    /* The ids beside the labels. Everything shared keys on these, because a bag
+       label carries its own service state ("Bag 2 — active") and a bike name is
+       manager-editable — key a shared problem on either and it comes apart the
+       first time somebody renames something. */
+    bagId:fid==='jumpkit'?((document.getElementById('jk-bag')||{}).value||''):'',
+    bikeId:fid==='safety'?(activeBike||''):'',
     // Which bike this check is about. It was going into the local log only, so the
     // Bike Safety Check spreadsheet recorded a verdict with nothing to attach it to.
     bike:fid==='safety'?bikeName(activeBike):'',
@@ -3750,7 +3819,7 @@ function doSubmit(fid,fn,ln,aid){
     verdict:res.big||'',
     missing:Object.keys(items).filter(function(k){return !items[k];}),
     present:Object.keys(items).filter(function(k){return items[k];}),
-    items:items, expiries:expiries, conditions:conds,
+    items:items, expiries:expiries, expiryById:expiryById, conditions:conds,
     notes:(document.getElementById(fid+'-notes')||{}).value||''
   };
 
@@ -4537,6 +4606,254 @@ function lastCheck(bikeId){
   for(var i=0;i<DB.checkLog.length;i++){ if(DB.checkLog[i].bike===bikeId) return DB.checkLog[i]; }
   return null;
 }
+/* ============================================================================
+   PROBLEMS EVERYBODY CAN SEE
+   ============================================================================
+   The same fault the operations site had, and for the same reason. Filing a
+   check needs no sign-in — that is what lets any member file one. PUBLISHING the
+   site's shared copy needs a manager token. So a member's check wrote its
+   problems into `DB.issues` on their own phone, that phone could not publish,
+   and the Bike Manager's "Open issues" was really "issues reported on this
+   laptop" while reading as the fleet's.
+
+   The spreadsheet is the one place every filing lands whoever filed it, so the
+   Apps Script derives the same rows from the submission and this reads them
+   back. `DB.issues` stays as an OPTIMISTIC overlay — the device that just filed
+   shows its own report at once instead of waiting for a round trip — and as the
+   home for issues the manager types in directly.
+
+   Resolving cannot delete a spreadsheet row from a phone, so a resolved problem
+   is remembered here by signature and the shared list is filtered against it. */
+var remoteConcerns=null;   // [{sig,what,where,unit,area,urgency,times,first,last,by,resolved}]
+var remoteExpiry=null;     // {itemId:{date,by,at}}
+var stateFetch={loading:false, error:'', at:0, sig:''};
+
+function fetchSharedState(){
+  var url=CONTENT_ENDPOINT();
+  if(!url) return Promise.resolve(false);
+  stateFetch.loading=true;
+  return fetchJSONTries(url+(url.indexOf('?')<0?'?':'&')+'state=1&site=bike', 3, 12000)
+    .then(function(j){
+      stateFetch.loading=false;
+      if(!j||!j.ok){ stateFetch.error='the spreadsheet did not answer'; return false; }
+      /* A deployment that predates this endpoint answers the fallback reply —
+         ok:true, and no `concerns` at all. Taken as an empty list it reads as
+         "nobody has reported anything", under a line claiming to speak for
+         everybody. Could-not-ask must never render as the-answer-is-no. */
+      if(!Array.isArray(j.concerns) || !j.expiry || typeof j.expiry!=='object'){
+        stateFetch.error='the spreadsheet is running an older copy of the script '+
+                         '(paste the current one and redeploy)';
+        return false;
+      }
+      remoteConcerns=j.concerns;
+      remoteExpiry=j.expiry;
+      stateFetch.error=''; stateFetch.at=Date.now();
+      stateFetch.sig=JSON.stringify([remoteConcerns,remoteExpiry]);
+      pruneResolvedKeys();
+      return true;
+    })
+    .catch(function(e){
+      stateFetch.loading=false;
+      stateFetch.error='could not reach the spreadsheet ('+
+        (e&&e.message==='timeout'?'timed out':'connection failed')+')';
+      return false;
+    });
+}
+
+var SEV_FROM_URGENCY={Blocking:'crit', Soon:'warn', Whenever:'minor'};
+var MONTHS=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+
+/* The signature both sides key on: subject, then what kind of problem it is.
+   A row written before keys existed — the seeded ones, and anything the manager
+   typed in by hand — falls back to its own wording, which cannot collide with a
+   check's keys because those all carry a prefix. */
+function issueSig(i){
+  var key=i.key||('x:'+String(i.problem||'').trim().toLowerCase());
+  return String(i.bike||'')+'|'+String(i.bag||'')+'|'+key;
+}
+function isResolvedIssue(sig){ return (DB.resolvedKeys||[]).indexOf(sig)>=0; }
+
+// The spreadsheet sends yyyy-MM-dd; rows written here say "Aug 20". One shape.
+function concernDay(v){
+  var p=String(v||'').split('-');
+  if(p.length===3){
+    var d=new Date(+p[0],+p[1]-1,+p[2]);
+    if(!isNaN(d.getTime())) return MONTHS[d.getMonth()]+' '+d.getDate();
+  }
+  return String(v||'');
+}
+
+/* Every open problem: the spreadsheet's, plus anything this device raised that
+   has not come back yet. Deduped on the signature, so one problem is one line
+   however many checks reported it, and the shared copy wins where both have it
+   — it is the one that counts everybody. */
+function allIssues(){
+  var out=[], seen={};
+  (Array.isArray(remoteConcerns)?remoteConcerns:[]).forEach(function(c){
+    if(!c||typeof c!=='object') return;
+    var sig=String(c.sig||'');
+    if(!sig||seen[sig]) return;
+    seen[sig]=1;
+    if(c.resolved||isResolvedIssue(sig)) return;
+    var part=sig.split('|');
+    out.push({id:sig, sig:sig, remote:true,
+              bike:part[0]||'', bag:part[1]||'', key:part.slice(2).join('|'),
+              problem:c.what||'', sev:SEV_FROM_URGENCY[c.urgency]||'minor',
+              by:c.by||'', date:concernDay(c.last||c.first), count:c.times||1});
+  });
+  (DB.issues||[]).forEach(function(i){
+    if(!i||typeof i!=='object') return;
+    var sig=issueSig(i);
+    if(seen[sig]) return;
+    seen[sig]=1;
+    if(isResolvedIssue(sig)) return;
+    out.push({id:i.id||sig, sig:sig, remote:false,
+              bike:i.bike||'', bag:i.bag||'', key:i.key||'',
+              problem:i.problem||'', sev:i.sev||'minor',
+              by:i.by||'', date:i.date||'', count:i.count||1,
+              editedBy:i.editedBy, editedOn:i.editedOn});
+  });
+  return out;
+}
+function issueBySig(sig){
+  var all=allIssues();
+  for(var i=0;i<all.length;i++) if(all[i].sig===sig) return all[i];
+  return null;
+}
+
+/* Ticked-off signatures never age out. Dropping the oldest to cap the list is
+   the one trim that must not happen: the signature is the only thing holding
+   its problem down, so losing it puts a fixed problem back on the board.
+
+   A key is only doing work while there is something for it to suppress. It goes
+   when the spreadsheet already records that row as resolved — the sheet
+   remembers, so the key is spare — and when no problem with that signature
+   exists on either side. Runs only on a good read: with `remoteConcerns` null,
+   every key would look unreferenced and the whole list would clear. */
+function pruneResolvedKeys(){
+  if(!Array.isArray(remoteConcerns)) return false;
+  var keys=DB.resolvedKeys||[];
+  if(!keys.length) return false;
+  var srvOpen={}, srvDone={};
+  remoteConcerns.forEach(function(c){
+    if(!c||typeof c!=='object') return;
+    var sig=String(c.sig||'');
+    if(!sig) return;
+    if(c.resolved) srvDone[sig]=1; else srvOpen[sig]=1;
+  });
+  var local={};
+  (DB.issues||[]).forEach(function(i){ if(i&&typeof i==='object') local[issueSig(i)]=1; });
+  var kept=keys.filter(function(k){
+    if(srvDone[k]) return false;
+    return !!(srvOpen[k]||local[k]);
+  });
+  if(kept.length>2000){
+    var over=kept.length-2000, out=[];
+    for(var i=0;i<kept.length;i++){
+      if(over>0 && srvDone[kept[i]]){ over--; continue; }
+      out.push(kept[i]);
+    }
+    kept=out;
+  }
+  if(kept.length===keys.length) return false;
+  DB.resolvedKeys=kept; saveDB();
+  return true;
+}
+
+/* Reporting a problem needs no permission; deciding it is dealt with does, so
+   unlike a submission this one is checked server-side. Fire-and-forget: the
+   local tick has already happened and the signature syncs between managers, so
+   a failed post means the sheet catches up on the next one rather than the
+   click doing nothing. */
+function pushConcernResolved(sig, resolved){
+  var url=CONTENT_ENDPOINT();
+  if(!url || (!googleIdToken && !publishKey())) return;
+  try{
+    fetch(url,{method:'POST',mode:'no-cors',
+      headers:{'Content-Type':'text/plain;charset=utf-8'},
+      body:JSON.stringify({form:'__resolve', site:'bike', sig:sig, resolved:!!resolved,
+                           idToken:googleIdToken, key:publishKey()})});
+  }catch(e){}
+}
+
+/* An expiration date, from whichever side recorded it later. The shared copy is
+   everybody's, so it wins — except in the moments between somebody typing a
+   date here and the spreadsheet echoing it back, which is exactly what the
+   entered-at stamp measures. */
+function expiryOf(itemId){
+  var mine=(DB.expiry||{})[itemId]||'';
+  var rem=((remoteExpiry||{})[itemId]||{}).date||'';
+  if(!rem) return mine;
+  if(!mine) return rem;
+  return ((DB.expiryAt||{})[itemId]||0) > (stateFetch.at||0) ? mine : rem;
+}
+
+/* Where the numbers came from, how old they are, and a way to ask again. */
+function stateNote(retry){
+  if(stateFetch.error){
+    // The reason goes only to somebody who can act on it — nobody else can
+    // redeploy an Apps Script, and it is the fact, not the cause, that changes
+    // what a rider does with the list.
+    var why=document.body.classList.contains('is-web') ? ' \u2014 '+esc(stateFetch.error) : '';
+    return '<p class="srcnote bad">Showing this device\u2019s reports only'+why+'. '+
+           '<button type="button" class="btn xs" onclick="'+retry+'">Try again</button></p>';
+  }
+  if(!remoteConcerns) return '<p class="srcnote">Reading the spreadsheet\u2026</p>';
+  var t='';
+  try{ t=new Date(stateFetch.at).toLocaleTimeString([],{hour:'numeric',minute:'2-digit'}); }catch(e){}
+  return '<p class="srcnote">From the spreadsheet \u2014 everyone\u2019s reports'+
+         (t?', <span class="when">updated '+esc(t)+'</span>':'')+'. <button type="button" class="btn xs" '+
+         'onclick="'+retry+'">Refresh</button></p>';
+}
+
+/* ---- staying current while somebody is looking at it -----------------------
+   The problem list is read once on arrival and then sits there. The Bike
+   Manager leaves it open while working through the fleet and other people file
+   into it; without this it silently stops being the list.
+
+   Repaints only when the answer actually CHANGED, compared as a signature, so
+   an unchanged spreadsheet costs nothing on screen and never interrupts
+   somebody mid-scroll. Backs off while nothing is happening, because this runs
+   against an Apps Script deployment with a daily runtime budget. Asks straight
+   away when the tab comes back, which on a phone is the lock screen. */
+var LIVE_MIN=45000, LIVE_MAX=180000;
+var LIVE_VIEWS={dash:1, bikes:1};
+var liveView='', liveTimer=null, liveWait=LIVE_MIN;
+
+function liveStop(){ if(liveTimer){ clearTimeout(liveTimer); liveTimer=null; } }
+function liveArm(){
+  liveStop();
+  if(!LIVE_VIEWS[liveView]) return;
+  liveTimer=setTimeout(liveTick, liveWait);
+}
+function liveStart(v){
+  liveView=LIVE_VIEWS[v]?v:'';
+  liveWait=LIVE_MIN;
+  liveArm();
+}
+function liveTick(){
+  var v=liveView;
+  if(!LIVE_VIEWS[v]) return;
+  // Backgrounded: do not spend a request on a screen nobody is looking at.
+  if(document.hidden){ liveArm(); return; }
+  if(stateFetch.loading){ liveArm(); return; }
+  var before=stateFetch.sig;
+  fetchSharedState().then(function(){
+    // Navigated away while the request was in the air; repainting now would
+    // draw over the view they moved to.
+    if(liveView!==v) return;
+    if(stateFetch.sig!==before){ liveWait=LIVE_MIN; renderDash(); renderExpiryAlert(); }
+    else liveWait=Math.min(LIVE_MAX, Math.round(liveWait*1.5));
+    liveArm();
+  }).catch(function(){ liveArm(); });
+}
+document.addEventListener('visibilitychange',function(){
+  if(document.hidden || !LIVE_VIEWS[liveView]) return;
+  liveWait=LIVE_MIN;
+  liveStop();
+  liveTick();
+});
+
 // The last check wins. The seeded status on the bike is only a fallback for a
 // bike that has never been checked through the site.
 function statusOf(b){ var c=lastCheck(b.id); return (c&&c.verdict)||b.status||'warn'; }
@@ -4547,7 +4864,7 @@ function noteOf(b){ var c=lastCheck(b.id); return (c&&c.note)||b.note||''; }
 // Sorted worst-first: triage is the point.
 var SEV_ORDER={crit:0,warn:1,minor:2};
 function issuesFor(b){
-  return (DB.issues||[]).filter(function(i){return i.bike===b.id||i.bike===b.name;})
+  return allIssues().filter(function(i){return i.bike===b.id||i.bike===b.name;})
     .slice().sort(function(a,c){
       var x=SEV_ORDER[a.sev], y=SEV_ORDER[c.sev];
       return (x==null?3:x)-(y==null?3:y);
@@ -4571,7 +4888,9 @@ function bikeRecency(bikeId){ var c=lastCheck(bikeId); return recency(c?c.date:n
 
 /* ---------- dated kit: recorded once, surfaced before it lapses ---------- */
 function setExpiry(itemId,iso){
-  if(iso) DB.expiry[itemId]=iso; else delete DB.expiry[itemId];
+  DB.expiryAt=DB.expiryAt||{};
+  if(iso){ DB.expiry[itemId]=iso; DB.expiryAt[itemId]=Date.now(); }
+  else { delete DB.expiry[itemId]; delete DB.expiryAt[itemId]; }
   saveDB(); renderExpiryAlert();
 }
 // Every item either form flags as `exp`, with its stored date resolved. Driven
@@ -4583,7 +4902,10 @@ function datedItems(){
     (DB.forms[fid].sections||[]).forEach(function(s){
       (s.items||[]).forEach(function(it){
         if(!it.exp) return;
-        var iso=DB.expiry[it.id]||'';
+        // Everybody's date, not this phone's. A date typed on a member's phone
+        // used to be invisible to the manager, which is half of what the Dated
+        // kit panel exists to prevent.
+        var iso=expiryOf(it.id);
         out.push({id:it.id,label:it.label,date:iso,days:daysUntil(iso)});
       });
     });
@@ -4715,7 +5037,9 @@ function returnToService(id){
             '. Do this once the bike has actually been fixed and ridden.',
             'Clear '+bikeName(id)+' to ride?',{okText:'Clear to ride'}).then(function(yes){
     if(!yes) return;
-    DB.issues=DB.issues.filter(function(i){return i.bike!==id&&i.bike!==bikeName(id);});
+    // Snapshotted first: markIssueResolved rewrites the list this is read from.
+    issuesFor({id:id,name:bikeName(id)}).map(function(i){return i.sig;})
+      .forEach(function(sig){ markIssueResolved(sig); });
     setBikeStatus(id,'ok','Cleared to ride by the bike manager.');
   });
 }
@@ -4724,9 +5048,15 @@ function returnToService(id){
    the bottom of either check. A member finishing a check and typing "chain keeps
    slipping" has reported a problem — it used to land in the submission payload
    and nowhere a manager would ever look. */
+// A bag id resolves to its label; anything unrecognised is shown as stored, so
+// a row from before the bags were renamed still reads as something.
+function bagLabel(ref){
+  var b=(DB.bags||[]).filter(function(x){return x.id===ref;})[0];
+  return b?b.label:String(ref||'');
+}
 function issueSubject(i){
   if(i.bike) return bikeName(i.bike);
-  if(i.bag)  return 'Jumpkit — '+i.bag;
+  if(i.bag)  return 'Jumpkit — '+bagLabel(i.bag);
   return '—';
 }
 function issueById(id){ return DB.issues.filter(function(i){return i.id===id;})[0]; }
@@ -4775,15 +5105,27 @@ function editIssue(id){
 // from the check log, and clearing the last complaint about a bike is not the
 // same as someone having ridden it and found it sound. "Clear to ride" is the
 // deliberate, separate act.
-function resolveIssue(id){
-  var i=issueById(id); if(!i) return;
-  uiConfirm('“'+i.problem+'” will be removed from the open list. '+
+function resolveIssue(sig){
+  var i=issueBySig(sig);
+  if(!i) return uiAlert('That problem is not on the open list any more — somebody may have resolved it already.','Not found');
+  uiConfirm('“'+i.problem+'” will be taken off the open list'+(i.remote?' for everyone':'')+'. '+
             (i.bike?bikeName(i.bike)+'’s status is unchanged — use “Clear to ride” once it has actually been fixed and ridden.':''),
             'Mark this resolved?',{okText:'Resolve'}).then(function(yes){
     if(!yes) return;
-    DB.issues=DB.issues.filter(function(x){return x.id!==id;});
-    saveDB();renderDash();
+    markIssueResolved(sig);
+    renderDash();renderExpiryAlert();
   });
+}
+/* Ticked, not deleted. The row this came from may live in the spreadsheet,
+   where a phone cannot delete anything — so the signature is remembered here,
+   the shared list is filtered against it, and the spreadsheet is told
+   separately by somebody who is allowed to tell it. */
+function markIssueResolved(sig){
+  DB.resolvedKeys=DB.resolvedKeys||[];
+  if(DB.resolvedKeys.indexOf(sig)<0) DB.resolvedKeys.push(sig);
+  DB.issues=(DB.issues||[]).filter(function(x){return issueSig(x)!==sig;});
+  saveDB();
+  pushConcernResolved(sig,true);
 }
 // Called from submitForm. Three things a check can report, and none of them
 // should ever produce a second identical row:
@@ -4817,7 +5159,10 @@ function upsertIssue(key,fields){
 }
 function issueFromCheck(fid,payload,who){
   var bike=fid==='safety'?(payload.bikeId||''):'';
-  var bag =fid==='jumpkit'?(payload.bag||''):'';
+  // The id, not the label. The spreadsheet's copy of the same problem is keyed
+  // on the id, and two spellings of one subject means the same fault listed
+  // twice — once from the sheet and once from this device.
+  var bag =fid==='jumpkit'?(payload.bagId||payload.bag||''):'';
   var base={bike:bike,bag:bag,by:who||''};
   var missing=payload.missing||[];
 
@@ -4890,7 +5235,7 @@ function renderFleetSummary(){
     '<div class="fstats">'+
       '<div class="fstat"><span class="flabel">Ready to ride</span>'+
         '<span class="statnum">'+ready+'<span class="fdim"> / '+total+'</span></span></div>'+
-      '<div class="fstat"><span class="flabel">Open issues</span><span class="statnum">'+DB.issues.length+'</span></div>'+
+      '<div class="fstat"><span class="flabel">Open issues</span><span class="statnum">'+allIssues().length+'</span></div>'+
       '<div class="fstat"><span class="flabel">Unchecked 7+ days</span><span class="statnum">'+stale+'</span></div>'+
     '</div><p class="fnote">'+msg+'</p></div>';
 }
@@ -4926,7 +5271,7 @@ function renderDash(){
           return '<li>'+sevTag(i.sev)+'<span>'+esc(i.problem)+
             ((i.count||1)>1?' <span class="rept">'+i.count+'×</span>':'')+'</span>'+
             '<button class="issx webonly" title="Remove this problem" '+
-            'onclick="resolveIssue(\''+esc(i.id)+'\')">✕</button></li>';
+            'onclick="resolveIssue(\''+jsq(i.sig)+'\')">✕</button></li>';
         }).join('')+'</ul>'
       : '<p class="noissues">No open issues.</p>'+
         (noteOf(b)?'<p class="bnote">'+esc(noteOf(b))+'</p>':'');
@@ -4949,19 +5294,25 @@ function renderDash(){
 
   var rows=document.getElementById('issueRows');
   if(rows){
-    rows.innerHTML=DB.issues.length
-      ? DB.issues.map(function(i){
+    var open=allIssues();
+    rows.innerHTML=open.length
+      ? open.map(function(i){
           return '<tr><td>'+esc(issueSubject(i))+'</td><td>'+esc(i.problem)+
             ((i.count||1)>1?' <span class="rept">reported '+i.count+'×</span>':'')+'</td><td>'+sevTag(i.sev)+'</td>'+
-            '<td>'+esc(i.by)+
+            '<td>'+esc(i.by||'—')+
               (i.editedBy?'<br><span class="editedby">edited by '+esc(i.editedBy)+' '+esc(i.editedOn||'')+'</span>':'')+
             '</td><td>'+esc(i.date)+'</td>'+
             '<td><span class="row webonly" style="gap:6px;justify-content:flex-end">'+
-              '<button class="btn xs" onclick="editIssue(\''+esc(i.id)+'\')">Edit</button>'+
-              '<button class="btn xs solid" onclick="resolveIssue(\''+esc(i.id)+'\')">Resolve</button>'+
+              // Edit rewrites a row held on this device. A row that lives in the
+              // spreadsheet has no such row to rewrite, so the button is not
+              // offered rather than offered and inert.
+              (i.remote?'':'<button class="btn xs" onclick="editIssue(\''+jsq(i.id)+'\')">Edit</button>')+
+              '<button class="btn xs solid" onclick="resolveIssue(\''+jsq(i.sig)+'\')">Resolve</button>'+
             '</span></td></tr>';
         }).join('')
       : '<tr><td colspan="6"><span class="noissues">Nothing open right now.</span></td></tr>';
+    var note=document.getElementById('issueSrc');
+    if(note) note.innerHTML=stateNote('fetchSharedState().then(renderDash)');
   }
 
   var inv=document.getElementById('invRows');
@@ -5510,6 +5861,10 @@ restoreManager();
    state, so a slow or failed fetch costs nothing and simply leaves what was
    there. */
 pullContent();
+/* The shared problem list and the shared expiry dates, on the same terms:
+   not awaited, failure costs nothing, and what is on screen stays until it
+   answers. */
+fetchSharedState().then(function(ok){ if(ok){ renderDash(); renderExpiryAlert(); } });
 // And check we are not a stale copy. Last, and never blocking: if this page is
 // current it costs one small request, and if it is not, a reload is far better
 // than somebody being told they have no access by a build that predates them.
