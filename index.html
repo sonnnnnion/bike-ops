@@ -655,6 +655,14 @@
   .srcnote .btn{margin-left:6px}
   /* "10:07 AM" is one thing to read, and would otherwise break across lines. */
   .srcnote .when{white-space:nowrap}
+  /* The answer to "did that actually go through" — the question that otherwise
+     sends somebody to the spreadsheet to look for their own row. */
+  .donefiled{font-size:13px;color:var(--ink-faint);margin:10px 0 0;padding:9px 12px;
+             border-radius:8px;background:var(--card-2);line-height:1.45}
+  .donefiled.good{background:rgba(30,110,60,.10);color:var(--ok);font-weight:600}
+  .donefiled.warn{background:rgba(150,90,10,.10);color:var(--warn)}
+  .donefiled.bad{background:rgba(150,30,40,.08);color:var(--oos)}
+  .donefiled .btn{margin-left:4px}
   .bnote{font-size:13.5px;color:var(--ink-mute);margin:8px 0 0}
 
   /* ---------- dated-kit heads-up (jumpkit view) ---------- */
@@ -1179,7 +1187,7 @@
 
    BUILD is rewritten on every release. Never edit it by hand.
    ========================================================================== */
-var BUILD='20260820101052';
+var BUILD='20260820141622';
 
 function checkForUpdate(){
   var url=location.pathname.replace(/[^/]*$/,'')+'index.html?cb='+Date.now();
@@ -3476,6 +3484,7 @@ function donePanel(fid){
         r.missing.map(function(m){return '<li>'+esc(m)+'</li>';}).join('')+'</ul></div>'
       : '')+
     '<p class="donewhere">'+esc(r.where||'')+'</p>'+
+    filedLine(fid)+
     '<div class="row" style="justify-content:center;margin-top:18px">'+
       '<button class="btn solid" onclick="startNewCheck(\''+fid+'\')">Start another check</button>'+
       '<button class="btn ghost" onclick="go(\'dash\')">See bike status</button>'+
@@ -3544,7 +3553,7 @@ function renderWhoNote(fid){
   var el=document.getElementById(fid+'-whonote'); if(!el) return;
   var me=readMe();
   el.innerHTML = me
-    // The Andrew ID, not the name. A name is whatever somebody typed — "Rithik S"
+    // The Andrew ID, not the name. A name is whatever somebody typed — a first
     // is not what she is called — and it is the ID that lands in the sheet and
     // has to be right. Showing the thing that matters also lets somebody catch a
     // typo in it before it is filed again.
@@ -3743,7 +3752,7 @@ function submitForm(fid){
     ' not checked off. That is fine — they will be recorded as missing so they can be restocked.';
   // Andrew IDs are built from the name and truncated to at most 8 characters, so
   // most are SHORTER than 8. Warning on every short one cried wolf at the
-  // majority of real riders — rithik is 6, leyuanc and cebruno are 7 — and a
+  // majority of real riders — plenty are 6 or 7 characters long — and a
   // warning everybody learns to click past protects nothing. Only flag what is
   // actually wrong: too long, or characters an Andrew ID cannot contain.
   if(aid&&aid.length>8) warn+='\n\nThe Andrew ID “'+aid+'” is '+aid.length+' characters. '+
@@ -3844,7 +3853,7 @@ function doSubmit(fid,fn,ln,aid){
   var finish=function(where){
     sending[fid]=false;
     lastResult[fid]={cls:res.cls,verdict:payload.verdict,tail:tail,where:where,
-                     missing:payload.missing};
+                     missing:payload.missing, sid:payload.submissionId, filed:null};
     // Remember who filed it — here, not on every keystroke, because by now the
     // name has passed validation and a half-typed one would pre-fill a mistake.
     saveMe(payload.firstName,payload.lastName,payload.andrewId);
@@ -3853,6 +3862,9 @@ function doSubmit(fid,fn,ln,aid){
     renderForm(fid);
     var hostEl=document.getElementById(FORM_HOST[fid]);
     if(hostEl&&hostEl.scrollIntoView) hostEl.scrollIntoView({behavior:'smooth',block:'start'});
+    // The panel is on screen and the submission is in the air. Go and ask the
+    // spreadsheet whether it arrived.
+    if(endpoint) checkFiled(fid);
   };
 
   if(!endpoint){
@@ -4786,6 +4798,43 @@ function expiryOf(itemId){
   if(!rem) return mine;
   if(!mine) return rem;
   return ((DB.expiryAt||{})[itemId]||0) > (stateFetch.at||0) ? mine : rem;
+}
+
+/* Did it actually land?
+
+   A check is posted no-cors, so the browser is forbidden from reading the reply
+   — "sent" has never been the same claim as "saved", and the completion panel
+   could only ever make the weaker one. A plain GET is readable, so the site can
+   go and ask, and whoever filed it gets a yes instead of wondering.
+
+   Three tries, backing off: the row is written before the script answers, but a
+   cold container takes a few seconds and a phone on campus wifi drops requests. */
+function checkFiled(fid){
+  var r=lastResult[fid]; if(!r||!r.sid) return;
+  var url=(DB.api||{})[fid]||''; if(!url) return;
+  var paint=function(state){
+    if(!lastResult[fid]||lastResult[fid].sid!==r.sid) return;   // a newer check owns the panel
+    lastResult[fid].filed=state;
+    var el=document.getElementById(fid+'-filed');
+    if(el) el.outerHTML=filedLine(fid);
+  };
+  paint('checking');
+  fetchJSONTries(url+(url.indexOf('?')<0?'?':'&')+'filed='+encodeURIComponent(r.sid), 3, 9000)
+    .then(function(j){ paint(j&&j.ok&&j.found ? 'yes' : 'no'); })
+    .catch(function(){ paint('unreachable'); });
+}
+
+function filedLine(fid){
+  var r=lastResult[fid]||{};
+  if(!r.sid) return '';
+  var st=r.filed, cls='donefiled', txt;
+  if(st==='yes'){ cls+=' good'; txt='\u2713 On the spreadsheet. Nothing else to do.'; }
+  else if(st==='no'){ cls+=' bad'; txt='Not on the spreadsheet yet. It may still be arriving \u2014 '+
+    '<button type="button" class="btn xs" onclick="checkFiled(\''+fid+'\')">check again</button>'; }
+  else if(st==='unreachable'){ cls+=' warn'; txt='Sent, but the spreadsheet could not be reached to '+
+    'confirm it. <button type="button" class="btn xs" onclick="checkFiled(\''+fid+'\')">check again</button>'; }
+  else txt='Checking the spreadsheet\u2026';
+  return '<div id="'+fid+'-filed" class="'+cls+'">'+txt+'</div>';
 }
 
 /* Where the numbers came from, how old they are, and a way to ask again. */
