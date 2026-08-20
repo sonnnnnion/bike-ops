@@ -1173,7 +1173,7 @@
 
    BUILD is rewritten on every release. Never edit it by hand.
    ========================================================================== */
-var BUILD='20260811204759';
+var BUILD='20260820001255';
 
 function checkForUpdate(){
   var url=location.pathname.replace(/[^/]*$/,'')+'index.html?cb='+Date.now();
@@ -2607,10 +2607,69 @@ function applyContent(obj){
   try{ return applyContentInner(obj); } finally{ applyingContent=false; }
 }
 
+/* ============================================================================
+   MERGING THE CHECK LOG, NOT REPLACING IT
+   ============================================================================
+   Most synced keys are ONE DOCUMENT one person edits — the bylaws, the bike
+   list, the inventory. "Keep mine if I edited it, else take the server's" is
+   right for those.
+
+   `checkLog` is not that. It is a COLLECTION many people append to from many
+   devices, and treating it as one blob is wrong in both directions: a device
+   holding any unpublished check refuses the server's whole log forever, and
+   whichever device publishes last overwrites the array and destroys everybody
+   else's checks.
+
+   That is the reported bug exactly — a bike checked on a phone read in service
+   there and "never checked" on a computer, because each device was holding its
+   own log back from the other.
+
+   Entries union by id. The baseline stays the SERVER's copy, so this device
+   still knows it owes the server what it merged in and publishes it; both sides
+   converge instead of fighting. */
+
+/* A stable id for a log entry written before ids existed. Derived from the
+   entry itself, NOT random: the same historical check on two devices has to
+   collapse to one row, and a random id would make it two. */
+function checkEntryId(e){
+  var s=[e.bike,e.date,e.verdict,e.note,e.by].join('\u0001'), n=0;
+  for(var i=0;i<s.length;i++){ n=((n<<5)-n+s.charCodeAt(i))|0; }
+  return 'lg'+(n>>>0).toString(36);
+}
+
+function mergeCheckLog(mineArr, theirsArr){
+  var out=[], seen={};
+  (mineArr||[]).concat(theirsArr||[]).forEach(function(e){
+    if(!e||typeof e!=='object') return;
+    var id=e.id||checkEntryId(e);
+    if(seen[id]) return;
+    seen[id]=1;
+    if(!e.id) e.id=id;
+    out.push(e);
+  });
+  // Newest first, which is what lastCheck() and the dashboard both assume.
+  out.sort(function(a,b){
+    var d=String(b.date||'').localeCompare(String(a.date||''));
+    return d!==0 ? d : (b.at||0)-(a.at||0);
+  });
+  if(out.length>800) out.length=800;
+  return out;
+}
+
+var MERGE_KEYS={ checkLog: mergeCheckLog };
+
 function applyContentInner(obj){
   var changed=false, mine=unpublishedKeys();
   Object.keys(DEFAULTS).forEach(function(k){
     if(NO_SYNC[k]||!(k in obj)) return;
+    /* Collections merge whether or not this device has edits pending — that is
+       the point. Before the unpublished check, because "I hold checks the
+       server lacks" must not mean "I refuse the server's". */
+    if(MERGE_KEYS[k] && Array.isArray(obj[k]) && Array.isArray(DB[k])){
+      var merged=MERGE_KEYS[k](DB[k], obj[k]);
+      if(JSON.stringify(merged)!==JSON.stringify(DB[k])){ DB[k]=merged; changed=true; }
+      return;
+    }
     // Edited here since the last sync: keep it. Overwriting would discard work
     // with no way to get it back, where keeping it costs only that this device
     // shows something the server does not yet — which Site Settings now says.
@@ -4561,6 +4620,8 @@ function bikeName(ref){
 function recordSafetyCheck(fid,res,by){
   if(fid!=='safety'||!activeBike||!res.cls||res.grounded) return false;
   DB.checkLog.unshift({
+    id:uid('lg'),
+    at:Date.now(),
     bike:activeBike,
     date:todayISO(),          // local calendar date — see the note on todayISO
     verdict:res.cls,
@@ -4580,7 +4641,8 @@ function recordSafetyCheck(fid,res,by){
    status is derived from that log — writing the field would be overwritten by
    the next check and would leave no record of who changed it or when. ---- */
 function setBikeStatus(bikeId,verdict,note,by){
-  DB.checkLog.unshift({bike:bikeId,date:todayISO(),verdict:verdict,note:note||'',by:by||'bike manager'});
+  DB.checkLog.unshift({id:uid('lg'),at:Date.now(),bike:bikeId,date:todayISO(),
+                       verdict:verdict,note:note||'',by:by||'bike manager'});
   saveDB();renderDash();renderBikePicker();
 }
 function renameBike(id){
