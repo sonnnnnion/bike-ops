@@ -1173,7 +1173,7 @@
 
    BUILD is rewritten on every release. Never edit it by hand.
    ========================================================================== */
-var BUILD='20260820001255';
+var BUILD='20260820003720';
 
 function checkForUpdate(){
   var url=location.pathname.replace(/[^/]*$/,'')+'index.html?cb='+Date.now();
@@ -2068,9 +2068,24 @@ function loadDB(){
   });
   return base;
 }
+/* Said once, not left in the console. Private mode and a full device both land
+   here, and in both the site keeps working while nothing is written down — a
+   manager can edit all evening and lose it with the page looking normal. Once
+   per session: a failing save fails on every keystroke. */
+var storageWarned=false;
 function saveDB(){
   try{localStorage.setItem(DB_KEY,JSON.stringify(DB));}
-  catch(e){console.warn('Could not save locally:',e);}
+  catch(e){
+    console.warn('Could not save locally:',e);
+    if(!storageWarned){
+      storageWarned=true;
+      try{ uiAlert('This device will not save changes — either it is in private '+
+                   'browsing, or its storage is full. The site still works and '+
+                   'anything you send still reaches the spreadsheet, but edits '+
+                   'made here will be gone when the page reloads.',
+                   'Not saving on this device'); }catch(_){}
+    }
+  }
   markContentDirty();
   scheduleAutoPublish();
 }
