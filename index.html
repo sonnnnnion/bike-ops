@@ -650,6 +650,12 @@
   body.is-web .webonly.issx{display:inline-flex;align-items:center}
   .isslist .tag{flex:0 0 auto;margin-top:1px}
   .noissues{font-size:13.5px;color:var(--ok);font-weight:600;margin:0}
+  /* `.verdict` sets font-weight:700 on everything inside it, so this has to
+     say its own weight or the whole paragraph shouts. */
+  .refillrec{margin-top:12px;padding:11px 13px;border-radius:8px;width:100%;
+             background:#FFFDF8;border:1px solid #E8D3A8;color:#7A4D00;
+             font-size:13px;line-height:1.5;font-weight:400}
+  .refillrec b{display:block;margin-bottom:3px;font-weight:700}
   .srcnote{font-size:12px;color:var(--ink-faint);margin:0 0 10px}
   .srcnote.bad{color:var(--oos)}
   .srcnote .btn{margin-left:6px}
@@ -1187,7 +1193,7 @@
 
    BUILD is rewritten on every release. Never edit it by hand.
    ========================================================================== */
-var BUILD='20260820141622';
+var BUILD='20260821093638';
 
 function checkForUpdate(){
   var url=location.pathname.replace(/[^/]*$/,'')+'index.html?cb='+Date.now();
@@ -2065,6 +2071,21 @@ function loadDB(){
   // Issues predating the id field cannot be found by editIssue/resolveIssue, so
   // both buttons did nothing at all on rows stored before that change. Backfill.
   (base.issues||[]).forEach(function(i){ if(!i.id) i.id=uid('is'); });
+  /* Expiration dates stored before they were keyed per bag. A flat key has no
+     bag in it, and the honest owner is the bag that has actually been in
+     service — the others were never checked, so there is nothing of theirs to
+     lose. Anything already carrying a bag is left alone. */
+  (function(){
+    var live=(base.bags||[]).filter(function(b){return b.active;})[0];
+    var into=live?live.id:'bag2';
+    ['expiry','expiryAt'].forEach(function(key){
+      var src=base[key]||{}, out={};
+      Object.keys(src).forEach(function(k){
+        out[k.indexOf('|')>=0 ? k : (into+'|'+k)]=src[k];
+      });
+      base[key]=out;
+    });
+  })();
   /* Issues filed against a bag by its LABEL, before the shared list arrived and
      both sides had to agree on one spelling. Left alone they would sit beside
      the spreadsheet's copy of the same fault as a second line that nothing ever
@@ -3374,7 +3395,10 @@ function renderForm(fid){
     // Which bags are in service is set in Inventory.
     var live=DB.bags.filter(function(b){return b.active;});
     h+='<div class="field mt"><label for="jk-bag">Which jumpkit bag?</label>'+
-       '<select id="jk-bag" onchange="onFormInput(\'jumpkit\')">';
+       // Repaints the dates too: they belong to the bag, so picking a different
+       // bag has to show that bag's, not leave the last one's sitting there
+       // looking like an answer somebody already gave.
+       '<select id="jk-bag" onchange="paintBagDates();onFormInput(\'jumpkit\')">';
     if(live.length){
       live.forEach(function(b,i){
         h+='<option value="'+esc(b.id)+'"'+(i===0?' selected':'')+'>'+esc(b.label)+'</option>';
@@ -3420,14 +3444,14 @@ function renderForm(fid){
       if(it.exp){
         // Pre-filled from the shared copy so the date is entered once by anyone,
         // not once per person per check.
-        var known=expiryOf(it.id);
+        var known=expiryOf(it.id, jkBag());
         h+='<div class="expblock"><div class="exphead">Expiration date — '+esc(it.label)+'</div>'+
            // Named for a screen reader. The heading above says which item this
            // belongs to, but a date field read on its own announces only "date",
            // and there are several on the form.
            '<div class="exprow"><input type="date" data-exp="'+esc(it.id)+'" value="'+esc(known)+'"'+
            ' aria-label="Expiration date for '+esc(it.label)+'"'+
-           ' onchange="setExpiry(\''+esc(it.id)+'\',this.value);onFormInput(\''+fid+'\')">'+
+           ' onchange="setExpiry(\''+jsq(it.id)+'\',this.value,jkBag());onFormInput(\''+fid+'\')">'+
            '<span class="expbadge none" data-expbadge="'+esc(it.id)+'">No date entered</span></div>'+
            '<p style="font-size:12px;color:var(--ink-faint);margin:7px 0 0">Recorded for next time. If expired, notify the Equipment Manager.</p></div>';
       }
@@ -3481,7 +3505,10 @@ function donePanel(fid){
     ((r.missing||[]).length
       ? '<div class="donemissing"><b>Recorded as missing — '+r.missing.length+' item'+
         (r.missing.length===1?'':'s')+'</b><ul>'+
-        r.missing.map(function(m){return '<li>'+esc(m)+'</li>';}).join('')+'</ul></div>'
+        r.missing.map(function(m){return '<li>'+esc(m)+'</li>';}).join('')+'</ul></div>'+
+        // Last thing they read, because it is the last moment they are still
+        // standing next to the bag.
+        refillNote(fid, r.missing.length)
       : '')+
     '<p class="donewhere">'+esc(r.where||'')+'</p>'+
     filedLine(fid)+
@@ -3706,10 +3733,29 @@ function calcForm(fid){
     detail=(cautions?'Note: a caution-tier condition is checked — use judgment.':'Everything checked, nothing expired.');
   }
   v.className='verdict '+cls;
-  v.innerHTML='<div><span class="big">'+esc(big)+'</span><span class="detail">'+esc(detail)+'</span></div>';
+  v.innerHTML='<div><span class="big">'+esc(big)+'</span><span class="detail">'+esc(detail)+'</span></div>'+
+    refillNote(fid, missing.length);
   // Hand the verdict back so submitForm can record it without restating any of
   // the rules above. `cls` is already the ok/warn/oos vocabulary checkLog uses.
   return {cls:cls, big:big, detail:detail, grounded:grounded, missing:missing};
+}
+
+/* There is one jumpkit. Nobody can grab a different bag, so a gap found on a
+   check is a gap the bike goes out with unless the person who found it fills it
+   — and they are the one person standing at the bag with it open. Reporting it
+   is right and not enough on its own.
+
+   Only said when there genuinely is no spare: it is conditioned on how many bags
+   are in service, so activating a second one in Inventory retires the advice
+   instead of leaving the site giving a reason that has stopped being true. */
+function refillNote(fid, missingCount){
+  if(fid!=='jumpkit' || !missingCount) return '';
+  var live=(DB.bags||[]).filter(function(b){return b.active;}).length;
+  if(live!==1) return '';
+  return '<div class="refillrec"><b>Try to restock it before you ride.</b> '+
+    'There is only one jumpkit, so anything left missing goes out on the bike. '+
+    'Top it up from the supply if you can, then re-tick what you replaced \u2014 '+
+    'what is still missing when you submit is what gets reported.</div>';
 }
 
 /* ---------- submit ----------
@@ -3780,12 +3826,16 @@ function doSubmit(fid,fn,ln,aid){
   // `expiryById` carries the same dates keyed the way the SITE stores them, for
   // the shared copy the Apps Script keeps: a label is what a person reads and an
   // id is what a lookup needs, and one field cannot be both.
+  var expBag=fid==='jumpkit'?jkBag():'';
   host.querySelectorAll('[data-exp]').forEach(function(i){
     var id=i.getAttribute('data-exp');
     var lbl=host.querySelector('[data-item="'+id+'"]');
     var name=(lbl&&lbl.getAttribute('data-label'))||id;
     expiries[name]=i.value||'';
-    expiryById[id]={d:i.value||'', l:name};
+    // Keyed `<bag>|<item>`, the same key the site stores and reads back, so the
+    // shared copy is per bag too. Keyed on the item alone it would have been one
+    // date for every bag on the shared side as well.
+    expiryById[expiryKey(id,expBag)]={d:i.value||'', l:name};
   });
   var conds=[];
   host.querySelectorAll('[data-cond]').forEach(function(c,i){
@@ -4792,12 +4842,13 @@ function pushConcernResolved(sig, resolved){
    everybody's, so it wins — except in the moments between somebody typing a
    date here and the spreadsheet echoing it back, which is exactly what the
    entered-at stamp measures. */
-function expiryOf(itemId){
-  var mine=(DB.expiry||{})[itemId]||'';
-  var rem=((remoteExpiry||{})[itemId]||{}).date||'';
+function expiryOf(itemId,bagId){
+  var k=expiryKey(itemId,bagId);
+  var mine=(DB.expiry||{})[k]||'';
+  var rem=((remoteExpiry||{})[k]||{}).date||'';
   if(!rem) return mine;
   if(!mine) return rem;
-  return ((DB.expiryAt||{})[itemId]||0) > (stateFetch.at||0) ? mine : rem;
+  return ((DB.expiryAt||{})[k]||0) > (stateFetch.at||0) ? mine : rem;
 }
 
 /* Did it actually land?
@@ -4935,26 +4986,53 @@ function recency(iso){
 }
 function bikeRecency(bikeId){ var c=lastCheck(bikeId); return recency(c?c.date:null); }
 
-/* ---------- dated kit: recorded once, surfaced before it lapses ---------- */
-function setExpiry(itemId,iso){
-  DB.expiryAt=DB.expiryAt||{};
-  if(iso){ DB.expiry[itemId]=iso; DB.expiryAt[itemId]=Date.now(); }
-  else { delete DB.expiry[itemId]; delete DB.expiryAt[itemId]; }
+/* ---------- dated kit: recorded per BAG, surfaced before it lapses ----------
+   A date belongs to a physical bag, not to an item name. These were keyed on the
+   item id alone, so the aspirin in Bag 2 and the aspirin in Bag 3 shared one
+   date: whoever checked Bag 3 was shown Bag 2's dates as if they were the ones
+   in front of them, and typing the real one silently overwrote Bag 2's. The
+   operations site has always keyed these `<bag>|<item>`; this now does the
+   same. */
+function jkBag(){
+  var sel=document.getElementById('jk-bag');
+  if(sel && sel.value) return sel.value;
+  var live=(DB.bags||[]).filter(function(b){return b.active;})[0];
+  return live?live.id:'-';
+}
+function expiryKey(itemId,bagId){ return (bagId||jkBag())+'|'+itemId; }
+
+function setExpiry(itemId,iso,bagId){
+  DB.expiry=DB.expiry||{}; DB.expiryAt=DB.expiryAt||{};
+  var k=expiryKey(itemId,bagId);
+  if(iso){ DB.expiry[k]=iso; DB.expiryAt[k]=Date.now(); }
+  else { delete DB.expiry[k]; delete DB.expiryAt[k]; }
   saveDB(); renderExpiryAlert();
+}
+
+/* Repaints the date fields when the bag changes, without re-rendering the form
+   — a re-render would wipe every box the rider has already ticked. */
+function paintBagDates(){
+  var host=document.getElementById(FORM_HOST['jumpkit']); if(!host) return;
+  var bag=jkBag();
+  host.querySelectorAll('[data-exp]').forEach(function(inp){
+    inp.value=expiryOf(inp.getAttribute('data-exp'), bag);
+  });
+  calcForm('jumpkit');
+  renderExpiryAlert();
 }
 // Every item either form flags as `exp`, with its stored date resolved. Driven
 // off the form schema rather than a hard-coded list, so adding an expiring item
 // in the form builder surfaces it here automatically.
-function datedItems(){
-  var out=[];
+// For ONE bag. Everybody's dates, not this phone's — a date typed on a member's
+// phone used to be invisible to the manager, which is half of what the Dated kit
+// panel exists to prevent.
+function datedItems(bagId){
+  var out=[], bag=bagId||jkBag();
   Object.keys(DB.forms||{}).forEach(function(fid){
     (DB.forms[fid].sections||[]).forEach(function(s){
       (s.items||[]).forEach(function(it){
         if(!it.exp) return;
-        // Everybody's date, not this phone's. A date typed on a member's phone
-        // used to be invisible to the manager, which is half of what the Dated
-        // kit panel exists to prevent.
-        var iso=expiryOf(it.id);
+        var iso=expiryOf(it.id,bag);
         out.push({id:it.id,label:it.label,date:iso,days:daysUntil(iso)});
       });
     });
@@ -4963,7 +5041,8 @@ function datedItems(){
 }
 function renderExpiryAlert(){
   var el=document.getElementById('expiryAlert'); if(!el) return;
-  var items=datedItems();
+  var bag=jkBag();
+  var items=datedItems(bag);
   if(!items.length){el.innerHTML='';return;}
   var expired=items.filter(function(i){return i.days!==null&&i.days<0;}).length;
   var soon=items.filter(function(i){return i.days!==null&&i.days>=0&&i.days<=30;}).length;
@@ -4975,7 +5054,11 @@ function renderExpiryAlert(){
   else if(undated){tone='none';msg='No expiration date recorded yet for '+undated+(undated===1?' item':' items')+'. Enter it once below and it sticks.';}
   else {tone='ok';msg='All dated kit is in date.';}
 
-  el.innerHTML='<div class="kitalert '+tone+'"><div class="kahead">Dated kit</div>'+
+  // Named, because these are one bag's dates and the panel sits above a form
+  // where the bag can be changed.
+  var bagName=(DB.bags||[]).filter(function(b){return b.id===bag;})[0];
+  el.innerHTML='<div class="kitalert '+tone+'"><div class="kahead">Dated kit'+
+    (bagName?' \u2014 '+esc(bagName.label):'')+'</div>'+
     '<ul class="kalist">'+items.map(function(i){
       var cls,txt;
       if(i.days===null){cls='none';txt='No date recorded';}
