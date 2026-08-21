@@ -1193,7 +1193,7 @@
 
    BUILD is rewritten on every release. Never edit it by hand.
    ========================================================================== */
-var BUILD='20260821093638';
+var BUILD='20260821171329';
 
 function checkForUpdate(){
   var url=location.pathname.replace(/[^/]*$/,'')+'index.html?cb='+Date.now();
@@ -1626,6 +1626,16 @@ function qrSVG(text,px){
 /* ---------- default content (seed; editable in manager mode) ---------- */
 var DEFAULTS={
   version:3,
+  /* Bumped when the physical kit changes. A stored copy of `forms` and `bags` is
+     adopted wholesale on load and a published copy overrides it again after —
+     so editing the lists above reaches nobody who has ever opened the site, and
+     nothing short of this makes a real kit change land.
+
+     It replaces the jumpkit checklist and the bag list and NOTHING else, so the
+     bike list, bylaws, videos and every other manager edit are untouched. It
+     does discard hand edits to the jumpkit checklist itself, which is the point:
+     the bag has physically changed and the old list is wrong. */
+  kitLayout:2,
   // One Apps Script Web App URL per form, because the two checks live in two
   // SEPARATE spreadsheets ("Bike Jumpkit Check" and "Bike Safety Check"), not in
   // two tabs of one file. They are filled by different people on different
@@ -1737,8 +1747,12 @@ var DEFAULTS={
     people:[]                      // [{email}]
   },
 
+  /* Which bags are in service. Bag 1 replaced Bag 2 on 2026-08-21; Bag 2 stays
+     listed rather than being deleted, because expiration dates and past checks
+     key on the bag id and removing it would orphan its history. */
   bags:[
-    {id:'bag2', label:'Bag 2', active:true},
+    {id:'bag1', label:'Bag 1', active:true},
+    {id:'bag2', label:'Bag 2', active:false},
     {id:'bag3', label:'Bag 3', active:false},
     {id:'bag4', label:'Bag 4', active:false}
   ],
@@ -1746,57 +1760,71 @@ var DEFAULTS={
     jumpkit:{
       title:'Jumpkit Check',
       sections:[
-        {id:'top', name:'Top Compartment', items:[
-          {id:'i-bpcuff',  label:'Adult BP cuff', qty:1},
-          {id:'i-emesis',  label:'Emesis bag', qty:1},
-          {id:'i-steth',   label:'Stethoscope', qty:1},
-          {id:'i-shears',  label:'Trauma shears', qty:1},
-          {id:'i-pulseox', label:'Pulse ox', qty:1},
-          {id:'i-penlight',label:'Pen light', qty:1}
+        /* Bag 1's layout, as walked through by the Equipment Manager 2026-08-21.
+           Ids are `j-` so nothing collides with the previous kit's `i-` ids —
+           expiration dates key on the item id, and a stale date silently
+           attaching to a different item is worse than no date. */
+        {id:'main-top', name:'Main top compartment', items:[
+          {id:'j-opa',       label:'OPAs', qty:6},
+          {id:'j-npa',       label:'NPAs', qty:9},
+          {id:'j-surgilube', label:'Surgilube packets', qty:4}
         ]},
-        {id:'main', name:'Main Compartment', items:[
-          {id:'i-clip',    label:'Clipboard — 4 refusal, 4 alcohol refusal, 3 PEMS transfer-of-care forms, 1 pen', qty:1},
-          {id:'i-bvm',     label:'Big Blue Bag — adult BVM', qty:1},
-          {id:'i-npa',     label:'Big Blue Bag — NPA set (at least 9 NPAs)', qty:1},
-          {id:'i-opa',     label:'Big Blue Bag — OPA set (at least 6 OPAs)', qty:1},
-          {id:'i-surgilube',label:'Big Blue Bag — surgilube packets', qty:2},
-          {id:'i-glucose', label:'Oral glucose', qty:1, exp:true},
-          {id:'i-tongue',  label:'Tongue depressors', qty:3},
-          {id:'i-tissues', label:'Pack of tissues', qty:1},
-          {id:'i-splinter',label:'Splinter kit', qty:1},
-          {id:'i-n95',     label:'N-95 masks', qty:2},
-          {id:'i-surgmask',label:'Surgical masks', qty:3},
-          {id:'i-strap',   label:'Bag shoulder strap', qty:1}
+        {id:'main', name:'Main compartment', items:[
+          {id:'j-ice',       label:'Ice packs', qty:2},
+          {id:'j-hot',       label:'Hot packs', qty:2},
+          {id:'j-bvm',       label:'Big blue bag \u2014 adult BVM', qty:1},
+          {id:'j-eyewash',   label:'Bottle of eyewash', qty:1},
+          {id:'j-glasses',   label:'Pair of safety glasses', qty:1},
+          {id:'j-splinter',  label:'Splinter kit', qty:1},
+          {id:'j-surgmask',  label:'Surgical mask', qty:1},
+          {id:'j-n95',       label:'N-95 masks', qty:3},
+          {id:'j-emesis',    label:'Emesis bags', qty:2},
+          {id:'j-clip',      label:'Clipboard \u2014 4 refusals, 3 transfer of cares, 4 alcohol refusals, 1 pen', qty:1}
         ]},
-        {id:'back', name:'Back Compartment', items:[
-          {id:'i-trash', label:'Trash bag', qty:1},
-          {id:'i-bio',   label:'Biohazard bag', qty:1}
+        {id:'back', name:'Back compartment', items:[
+          {id:'j-bio',       label:'Biohazard bag', qty:1},
+          {id:'j-trash',     label:'Trash bag', qty:1}
         ]},
-        {id:'right', name:'Right Compartment', items:[
-          {id:'i-hot',    label:'Big Red Bag — hot pack', qty:1},
-          {id:'i-cold',   label:'Big Red Bag — cold packs', qty:2},
-          {id:'i-press',  label:'6" pressure dressing', qty:1},
-          {id:'i-tri',    label:'Triangle bandages', qty:2},
-          {id:'i-tape',   label:'Roll of medical tape', qty:1},
-          {id:'i-coban',  label:'Roll of coban', qty:1},
-          {id:'i-eyewash',label:'Small bottle of eyewash', qty:1},
-          {id:'i-glasses',label:'Pair of safety glasses', qty:1},
-          {id:'i-ace4',   label:'4" ace bandage', qty:2},
-          {id:'i-ace2',   label:'2" ace bandage', qty:2}
+        {id:'toppouch', name:'Top pouch', items:[
+          {id:'j-bpcuff',    label:'BP cuff', qty:1},
+          {id:'j-steth',     label:'Stethoscope', qty:1},
+          {id:'j-penlight',  label:'Pen light', qty:1},
+          {id:'j-pulseox',   label:'Pulse ox', qty:1},
+          {id:'j-glucose',   label:'Glucose', qty:1},
+          {id:'j-tongue',    label:'Tongue depressors', qty:2},
+          {id:'j-shears',    label:'Trauma shears', qty:1}
         ]},
-        {id:'left', name:'Left Compartment', items:[
-          {id:'i-b13',    label:'Blue pouch — 1x3 bandaids', qty:6},
-          {id:'i-b24',    label:'Blue pouch — 2x4 bandaids', qty:6},
-          {id:'i-vionex', label:'Blue pouch — VioNex wipes (equipment)', qty:6},
-          {id:'i-bzk',    label:'Blue pouch — BZK wipes (people)', qty:6},
-          {id:'i-g2r',    label:'Black pouch — 2" rolled gauze', qty:3},
-          {id:'i-g4r',    label:'Black pouch — 4" rolled gauze', qty:2},
-          {id:'i-g22',    label:'Red pouch — 2x2 gauze', qty:10},
-          {id:'i-g44',    label:'Red pouch — 4x4 gauze', qty:4},
-          {id:'i-combine',label:'Red pouch — 5x9 combine pads', qty:2},
-          {id:'i-petro',  label:'Red pouch — petroleum gauze pads', qty:2, exp:true},
-          {id:'i-cat',    label:'Combat application tourniquet', qty:1},
-          {id:'i-multi',  label:'Multi trauma dressing', qty:1}
+        {id:'right-red', name:'Right side pocket \u2014 tiny red pouch', items:[
+          {id:'j-g22',       label:'2x2 gauze', qty:10},
+          {id:'j-g44',       label:'4x4 gauze', qty:6},
+          {id:'j-combine',   label:'5x9 combine pads', qty:2}
+        ]},
+        {id:'right-black', name:'Right side pocket \u2014 tiny black pouch', items:[
+          {id:'j-g2r',       label:'2" rolled gauze', qty:4},
+          {id:'j-g4r',       label:'4" rolled gauze', qty:2},
+          {id:'j-tape-blk',  label:'Roll of medical tape', qty:1},
+          {id:'j-roller',    label:'Black roller gauze', qty:1}
+        ]},
+        {id:'right-blue', name:'Right side pocket \u2014 blue pouch', items:[
+          {id:'j-b13',       label:'1x3 bandaids', qty:6},
+          {id:'j-b24',       label:'2x4 bandaids', qty:6},
+          {id:'j-paws',      label:'PAWS equipment wipes', qty:6},
+          {id:'j-sanihands', label:'SaniHands alcohol wipes', qty:6},
+          {id:'j-towelette', label:'Cleaning towelette wipes', qty:6},
+          // The only dated item in this kit.
+          {id:'j-press4',    label:'4" pressure dressing', qty:1, exp:true}
+        ]},
+        {id:'left-red', name:'Left side \u2014 big red pouch', items:[
+          {id:'j-ace2',      label:'2" ace bandages', qty:2},
+          {id:'j-ace4',      label:'4" ace bandages', qty:2},
+          {id:'j-tri',       label:'Triangle bandages', qty:2},
+          {id:'j-sam',       label:'SAM splints', qty:2},
+          {id:'j-coban',     label:'Roll of coban', qty:1},
+          {id:'j-tape-red',  label:'Roll of medical tape', qty:1},
+          {id:'j-multi',     label:'Multi trauma dressing', qty:1}
+        ]},
+        {id:'attached', name:'Attached to the bag', items:[
+          {id:'j-strap',     label:'Bag shoulder strap', qty:1}
         ]}
       ]
     },
@@ -2049,6 +2077,37 @@ var DEFAULTS={
 var DEAD_ENDPOINTS=['AKfycbydJNw0_','AKfycbyJir08','AKfycbwXy8JE'];
 var DB_KEY='bikeops_db_v3';
 var DB=loadDB();
+/* Replaces the jumpkit checklist and the bag list when the physical kit has
+   changed, and only then.
+
+   Neither can be fixed by editing DEFAULTS alone: a stored copy is adopted
+   wholesale on load, and the published copy overrides it again on the next
+   content pull — so a real kit change would land on nobody's phone. Gated on a
+   version number rather than run every time, so a manager's own edits survive
+   until the kit itself actually changes.
+
+   Runs over whatever object it is handed, so it can be applied to the live copy
+   at load AND to shared content as it arrives. */
+function applyKitLayout(db, incomingLayout){
+  if(!db) return false;
+  /* Which copy is being judged. At load that is the one on this device. After
+     shared content arrives it is the copy that JUST ARRIVED — because this
+     device may already be marked current while the server is still publishing
+     the old kit, and in that case the lists it just adopted are the old ones and
+     the local marker is exactly the thing that must not be trusted. Getting this
+     wrong put the retired bag straight back into service on every content pull,
+     silently, with the marker still reading as up to date. */
+  var have = (incomingLayout===undefined) ? (db.kitLayout||0) : incomingLayout;
+  if(have >= DEFAULTS.kitLayout) return false;
+  db.forms=db.forms||{};
+  db.forms.jumpkit=db.forms.jumpkit||{};
+  db.forms.jumpkit.title=DEFAULTS.forms.jumpkit.title;
+  db.forms.jumpkit.sections=JSON.parse(JSON.stringify(DEFAULTS.forms.jumpkit.sections));
+  db.bags=JSON.parse(JSON.stringify(DEFAULTS.bags));
+  db.kitLayout=DEFAULTS.kitLayout;
+  return true;
+}
+
 function loadDB(){
   var base=JSON.parse(JSON.stringify(DEFAULTS));
   var raw=null;
@@ -2071,6 +2130,7 @@ function loadDB(){
   // Issues predating the id field cannot be found by editIssue/resolveIssue, so
   // both buttons did nothing at all on rows stored before that change. Backfill.
   (base.issues||[]).forEach(function(i){ if(!i.id) i.id=uid('is'); });
+  applyKitLayout(base);
   /* Expiration dates stored before they were keyed per bag. A flat key has no
      bag in it, and the honest owner is the bag that has actually been in
      service — the others were never checked, so there is nothing of theirs to
@@ -2761,6 +2821,16 @@ var MERGE_KEYS={ checkLog: mergeCheckLog, resolvedKeys: mergeKeySet };
 
 function applyContentInner(obj){
   var changed=false, mine=unpublishedKeys();
+  /* Replacing the kit rewrites `bags` and `forms` locally, which is
+     indistinguishable from a manager having edited them — so those two would be
+     held back as local work for ever, and a manager who later put a second bag
+     into service would find every other device refusing to hear about it.
+
+     Once the copy arriving is ITSELF current, there is nothing left to protect:
+     it already contains the new kit, so it is taken. A copy that is still behind
+     is refused by the rule above and corrected by applyKitLayout below. */
+  if((obj.kitLayout||0) >= DEFAULTS.kitLayout)
+    mine=mine.filter(function(k){ return k!=='bags' && k!=='forms'; });
   Object.keys(DEFAULTS).forEach(function(k){
     if(NO_SYNC[k]||!(k in obj)) return;
     /* Collections merge whether or not this device has edits pending — that is
@@ -2788,6 +2858,11 @@ function applyContentInner(obj){
     if(mine.indexOf(k)<0) base[k]=obj[k];
   });
   setContentBase(base);
+  /* And again over what just arrived. A published copy holding the old kit would
+     otherwise put the old checklist back every time anybody opened the site, and
+     the change would look like it had never been made. Marked dirty when it
+     bites, so the manager's next publish carries the new kit upstream. */
+  if(applyKitLayout(DB, obj.kitLayout||0)){ changed=true; markContentDirty(); }
   return changed;
 }
 /* Who may open manager mode, straight from the server, immediately before the
