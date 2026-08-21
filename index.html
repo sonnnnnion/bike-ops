@@ -1193,7 +1193,7 @@
 
    BUILD is rewritten on every release. Never edit it by hand.
    ========================================================================== */
-var BUILD='20260821171329';
+var BUILD='20260821172747';
 
 function checkForUpdate(){
   var url=location.pathname.replace(/[^/]*$/,'')+'index.html?cb='+Date.now();
@@ -2304,7 +2304,7 @@ function go(v,fromHash){
      lands — same shape either way, so nothing jumps about. Without this the
      problem list shows only what this device filed, which is the whole bug:
      publishing needs a manager token and filing does not. */
-  if(LIVE_VIEWS[v]) fetchSharedState().then(function(){ renderDash(); renderExpiryAlert(); });
+  if(LIVE_VIEWS[v]) fetchSharedState().then(function(){ liveDraw(v); });
   liveStart(v);
   closeNav();
   try{localStorage.setItem('bikeops_view',v);}catch(e){}
@@ -3933,6 +3933,14 @@ function doSubmit(fid,fn,ln,aid){
        first time somebody renames something. */
     bagId:fid==='jumpkit'?((document.getElementById('jk-bag')||{}).value||''):'',
     bikeId:fid==='safety'?(activeBike||''):'',
+    /* The ok/warn/oos class this check lands on, and whether it was about the
+       weather rather than the bike. A bike's status is derived from its last
+       check, and that lived in published content — which only a manager can
+       write. So every member's pre-ride check stayed on their own phone and the
+       fleet board read "never checked" to everybody else. Sent so the
+       spreadsheet can answer the question for everyone. */
+    statusClass:fid==='safety'?(res.cls||''):'',
+    grounded:fid==='safety'&&res.grounded?'YES':'',
     // Which bike this check is about. It was going into the local log only, so the
     // Bike Safety Check spreadsheet recorded a verdict with nothing to attach it to.
     bike:fid==='safety'?bikeName(activeBike):'',
@@ -4739,8 +4747,28 @@ var STATUS_MAP={ok:['st-ok','In service'],warn:['st-warn','Needs review'],oos:['
 
 /* ---------- status is DERIVED, never hand-set ---------- */
 // Most recent completed check for a bike, or null. checkLog is newest-first.
+/* A bike's status is its most recent check — EVERYBODY's, not this device's.
+
+   `DB.checkLog` is published content, and only a manager can publish. So a
+   member's pre-ride check was recorded on their own phone and nowhere else: the
+   fleet board showed "never checked" to everyone but them, and fell back to the
+   status the bike shipped with. A bike somebody had just cleared still read
+   "needs review" on the next person's phone.
+
+   The spreadsheet is the source now, with the local log kept as an optimistic
+   overlay so whoever just filed sees their own check at once. The newer of the
+   two wins on date, so a manager clearing a bike here beats a stale sheet and a
+   member's check on another phone beats a stale device. */
 function lastCheck(bikeId){
-  for(var i=0;i<DB.checkLog.length;i++){ if(DB.checkLog[i].bike===bikeId) return DB.checkLog[i]; }
+  var rem=(remoteChecks||{})[bikeId];
+  var loc=null;
+  for(var i=0;i<DB.checkLog.length;i++){ if(DB.checkLog[i].bike===bikeId){ loc=DB.checkLog[i]; break; } }
+  if(rem && !loc) return {id:'r-'+bikeId, at:0, bike:bikeId, date:rem.date||'',
+                          verdict:rem.verdict||'', note:rem.note||'', by:rem.by||'', remote:true};
+  if(rem && loc && String(rem.date||'') > String(loc.date||''))
+    return {id:'r-'+bikeId, at:0, bike:bikeId, date:rem.date||'',
+            verdict:rem.verdict||'', note:rem.note||'', by:rem.by||'', remote:true};
+  if(loc) return loc;
   return null;
 }
 /* ============================================================================
@@ -4762,7 +4790,8 @@ function lastCheck(bikeId){
    Resolving cannot delete a spreadsheet row from a phone, so a resolved problem
    is remembered here by signature and the shared list is filtered against it. */
 var remoteConcerns=null;   // [{sig,what,where,unit,area,urgency,times,first,last,by,resolved}]
-var remoteExpiry=null;     // {itemId:{date,by,at}}
+var remoteExpiry=null;     // {bag|itemId:{date,by,at}}
+var remoteChecks=null;     // {bikeId:{date,verdict,note,by}} — the latest per bike
 var stateFetch={loading:false, error:'', at:0, sig:''};
 
 function fetchSharedState(){
@@ -4784,6 +4813,9 @@ function fetchSharedState(){
       }
       remoteConcerns=j.concerns;
       remoteExpiry=j.expiry;
+      // Absent from a deployment that predates it; null means "not answered",
+      // which lastCheck below treats differently from "answered with nothing".
+      remoteChecks=(j.checks&&typeof j.checks==='object')?j.checks:null;
       stateFetch.error=''; stateFetch.at=Date.now();
       stateFetch.sig=JSON.stringify([remoteConcerns,remoteExpiry]);
       pruneResolvedKeys();
@@ -4992,7 +5024,18 @@ function stateNote(retry){
    against an Apps Script deployment with a daily runtime budget. Asks straight
    away when the tab comes back, which on a phone is the lock screen. */
 var LIVE_MIN=45000, LIVE_MAX=180000;
-var LIVE_VIEWS={dash:1, bikes:1};
+/* The pre-ride check belongs here as much as the status board does: it opens
+   with "which bike are you taking?", and every card on it carries a status. That
+   is the moment somebody decides which bike to ride, so it is the last screen
+   that should be showing a stale answer.
+
+   Only the PICKER is redrawn there, never the form — a re-render would wipe
+   every box already ticked. */
+var LIVE_VIEWS={dash:1, bikes:1, 'safety-check':1};
+function liveDraw(v){
+  if(v==='safety-check'){ renderBikePicker(); return; }
+  renderDash(); renderExpiryAlert();
+}
 var liveView='', liveTimer=null, liveWait=LIVE_MIN;
 
 function liveStop(){ if(liveTimer){ clearTimeout(liveTimer); liveTimer=null; } }
@@ -5017,7 +5060,7 @@ function liveTick(){
     // Navigated away while the request was in the air; repainting now would
     // draw over the view they moved to.
     if(liveView!==v) return;
-    if(stateFetch.sig!==before){ liveWait=LIVE_MIN; renderDash(); renderExpiryAlert(); }
+    if(stateFetch.sig!==before){ liveWait=LIVE_MIN; liveDraw(v); }
     else liveWait=Math.min(LIVE_MAX, Math.round(liveWait*1.5));
     liveArm();
   }).catch(function(){ liveArm(); });
@@ -6071,7 +6114,12 @@ pullContent();
 /* The shared problem list and the shared expiry dates, on the same terms:
    not awaited, failure costs nothing, and what is on screen stays until it
    answers. */
-fetchSharedState().then(function(ok){ if(ok){ renderDash(); renderExpiryAlert(); } });
+fetchSharedState().then(function(ok){
+  if(!ok) return;
+  // Every view that shows a bike's status, since any of them can be the one the
+  // page opened on.
+  renderDash(); renderBikePicker(); renderExpiryAlert();
+});
 // And check we are not a stale copy. Last, and never blocking: if this page is
 // current it costs one small request, and if it is not, a reload is far better
 // than somebody being told they have no access by a build that predates them.
