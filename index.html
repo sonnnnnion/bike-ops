@@ -1193,7 +1193,7 @@
 
    BUILD is rewritten on every release. Never edit it by hand.
    ========================================================================== */
-var BUILD='20260821190610';
+var BUILD='20260821192420';
 
 function checkForUpdate(){
   var url=location.pathname.replace(/[^/]*$/,'')+'index.html?cb='+Date.now();
@@ -1635,7 +1635,7 @@ var DEFAULTS={
      bike list, bylaws, videos and every other manager edit are untouched. It
      does discard hand edits to the jumpkit checklist itself, which is the point:
      the bag has physically changed and the old list is wrong. */
-  kitLayout:3,
+  kitLayout:4,
   // One Apps Script Web App URL per form, because the two checks live in two
   // SEPARATE spreadsheets ("Bike Jumpkit Check" and "Bike Safety Check"), not in
   // two tabs of one file. They are filled by different people on different
@@ -1765,7 +1765,10 @@ var DEFAULTS={
            Ids are `j-` so nothing collides with the previous kit's `i-` ids —
            expiration dates key on the item id, and a stale date silently
            attaching to a different item is worse than no date. */
-        {id:'main-top', name:'Main top compartment', items:[
+        // The lid of the main compartment, not a compartment of its own. Kept as
+        // its own block so the walk still reads top-down, named so nobody goes
+        // looking for a separate pocket.
+        {id:'main-top', name:'Main compartment \u2014 lid', items:[
           {id:'j-opa',       label:'OPAs', qty:6},
           {id:'j-npa',       label:'NPAs', qty:9},
           {id:'j-surgilube', label:'Surgilube packets', qty:4}
@@ -1777,7 +1780,7 @@ var DEFAULTS={
           {id:'j-eyewash',   label:'Bottle of eyewash', qty:1},
           {id:'j-glasses',   label:'Pair of safety glasses', qty:1},
           {id:'j-splinter',  label:'Splinter kit', qty:1},
-          {id:'j-surgmask',  label:'Surgical mask', qty:1},
+          {id:'j-surgmask',  label:'Surgical masks', qty:2},
           {id:'j-n95',       label:'N-95 masks', qty:3},
           {id:'j-emesis',    label:'Emesis bags', qty:2},
           {id:'j-clip',      label:'Clipboard \u2014 4 refusals, 3 transfer of cares, 4 alcohol refusals, 1 pen', qty:1}
@@ -3455,6 +3458,31 @@ function toggleFormEdit(fid){formEdit[fid]=!formEdit[fid];renderForm(fid);}
 var formDone={jumpkit:false,safety:false};
 var lastResult={};
 
+/* One label per item, unique across the whole form.
+
+   Where a label is unique it is left exactly as written. Where it is not, the
+   pouch is appended — taken from the tail of the section name, so
+   "Right side pocket — tiny black pouch" reads as "(tiny black pouch)" rather
+   than repeating the whole heading. */
+function formLabels(f){
+  var count={}, out={};
+  (f.sections||[]).forEach(function(sec){
+    (sec.items||[]).forEach(function(it){
+      var l=String(it.label||'');
+      count[l]=(count[l]||0)+1;
+    });
+  });
+  (f.sections||[]).forEach(function(sec){
+    var nm=String(sec.name||'');
+    var tail=nm.split('\u2014').pop().trim() || nm;
+    (sec.items||[]).forEach(function(it){
+      var l=String(it.label||'');
+      out[it.id] = count[l]>1 ? (l+' ('+tail+')') : l;
+    });
+  });
+  return out;
+}
+
 function renderForm(fid){
   var host=document.getElementById(FORM_HOST[fid]); if(!host) return;
   var f=DB.forms[fid]; if(!f) return;
@@ -3531,11 +3559,24 @@ function renderForm(fid){
     h+='</div><div id="groundBanner"></div>';
   }
 
+  /* Everything downstream of this form identifies an item by its LABEL: the
+     ticked/unticked map, the missing list, the row that lands in the
+     spreadsheet, and the signature a reported problem is keyed on. Two items
+     sharing a label therefore collapse into one — this kit has a roll of
+     medical tape in two different pouches, and one of them was silently
+     dropping out of every check. Tick one and not the other and the report was
+     simply wrong.
+
+     So a label that occurs more than once in a form is qualified by the pouch it
+     is in, once, here — not in the stored data, because a manager editing the
+     kit should not have to know about this and a future duplicate has to be
+     safe too. */
+  var uniqLabel=formLabels(f);
   h+='<div id="'+fid+'-body">';
   (f.sections||[]).forEach(function(sec){
     h+='<div class="card mt"><h3>'+esc(sec.name)+'</h3>';
     (sec.items||[]).forEach(function(it){
-      h+='<label class="checkline"><input type="checkbox" data-item="'+esc(it.id)+'" data-label="'+esc(it.label)+'" onchange="onFormInput(\''+fid+'\')">'+
+      h+='<label class="checkline"><input type="checkbox" data-item="'+esc(it.id)+'" data-label="'+esc(uniqLabel[it.id]||it.label)+'" onchange="onFormInput(\''+fid+'\')">'+
          '<span class="lbl">'+esc(it.label)+'</span>'+
          (it.qty?'<span class="qty">qty '+esc(it.qty)+'</span>':'')+'</label>';
       if(it.exp){
