@@ -1193,7 +1193,7 @@
 
    BUILD is rewritten on every release. Never edit it by hand.
    ========================================================================== */
-var BUILD='20260821172747';
+var BUILD='20260821190610';
 
 function checkForUpdate(){
   var url=location.pathname.replace(/[^/]*$/,'')+'index.html?cb='+Date.now();
@@ -1635,7 +1635,7 @@ var DEFAULTS={
      bike list, bylaws, videos and every other manager edit are untouched. It
      does discard hand edits to the jumpkit checklist itself, which is the point:
      the bag has physically changed and the old list is wrong. */
-  kitLayout:2,
+  kitLayout:3,
   // One Apps Script Web App URL per form, because the two checks live in two
   // SEPARATE spreadsheets ("Bike Jumpkit Check" and "Bike Safety Check"), not in
   // two tabs of one file. They are filled by different people on different
@@ -1747,12 +1747,13 @@ var DEFAULTS={
     people:[]                      // [{email}]
   },
 
-  /* Which bags are in service. Bag 1 replaced Bag 2 on 2026-08-21; Bag 2 stays
-     listed rather than being deleted, because expiration dates and past checks
-     key on the bag id and removing it would orphan its history. */
+  /* Which bags are in service. Bag 2 came back on 2026-08-21 carrying the
+     current layout, and Bag 1 went out. Nothing is ever deleted from this list:
+     expiration dates and past checks key on the bag id, so removing one would
+     orphan everything it recorded. */
   bags:[
-    {id:'bag1', label:'Bag 1', active:true},
-    {id:'bag2', label:'Bag 2', active:false},
+    {id:'bag2', label:'Bag 2', active:true},
+    {id:'bag1', label:'Bag 1', active:false},
     {id:'bag3', label:'Bag 3', active:false},
     {id:'bag4', label:'Bag 4', active:false}
   ],
@@ -2742,6 +2743,16 @@ function unpublishedKeys(){
    the server's own copy as an unpublished local change. */
 var applyingContent=false;
 
+/* Persisting what the machinery just pulled, rather than something a person
+   did. Held inside `applyingContent` so the publish path can tell the two apart
+   — otherwise a plain page load reports "this change is saved on this device
+   only" about a change nobody made. */
+function saveDBQuiet(){
+  var was=applyingContent;
+  applyingContent=true;
+  try{ saveDB(); } finally{ applyingContent=was; }
+}
+
 function applyContent(obj){
   if(!obj||typeof obj!=='object') return false;
   // Somebody else's content. Keep what this device has rather than overwrite the
@@ -3012,7 +3023,7 @@ function pullContent(){
       // returns nothing without one, since there is no basis to call anything a local
       // edit. applyContent then writes the baseline. Setting it first would make every
       // local value look edited and the server copy would never be adopted at all.
-      if(j.content&&applyContent(j.content)){ saveDB(); renderAll(); }
+      if(j.content&&applyContent(j.content)){ saveDBQuiet(); renderAll(); }
       else renderSettings();
       contentState.dirty=unpublishedKeys().length>0;
       // The list this device had at load was whatever it cached. Now the real one
@@ -3075,7 +3086,18 @@ function scheduleAutoPublish(){
   // load, before anything has been touched. Divergence from the server is the
   // test: it is what "unpublished" means, and a sync leaves none.
   if(!canPublish()){
-    if(!applyingContent && contentBase && unpublishedKeys().length) warnCannotPublish();
+    /* Say so on any real edit, baseline or not.
+
+       This used to require a baseline AND a measurable divergence, which meant a
+       device that had never synced said nothing at all — `unpublishedKeys()` is
+       empty when there is nothing to compare against, and that is exactly the
+       state a manager is in on a phone they have not used before. Clearing a
+       bike there looked like it worked, sat in that one browser, and the next
+       person's screen still said the bike needed review.
+
+       Machinery writes are excluded by `applyingContent`, which saveDBQuiet
+       holds for the one save that is not an edit. */
+    if(!applyingContent) warnCannotPublish();
     return;
   }
   clearTimeout(autoPubTimer);
