@@ -1193,7 +1193,7 @@
 
    BUILD is rewritten on every release. Never edit it by hand.
    ========================================================================== */
-var BUILD='20260821192420';
+var BUILD='20260823004405';
 
 function checkForUpdate(){
   var url=location.pathname.replace(/[^/]*$/,'')+'index.html?cb='+Date.now();
@@ -1635,7 +1635,7 @@ var DEFAULTS={
      bike list, bylaws, videos and every other manager edit are untouched. It
      does discard hand edits to the jumpkit checklist itself, which is the point:
      the bag has physically changed and the old list is wrong. */
-  kitLayout:4,
+  kitLayout:5,
   // One Apps Script Web App URL per form, because the two checks live in two
   // SEPARATE spreadsheets ("Bike Jumpkit Check" and "Bike Safety Check"), not in
   // two tabs of one file. They are filled by different people on different
@@ -1794,7 +1794,11 @@ var DEFAULTS={
           {id:'j-steth',     label:'Stethoscope', qty:1},
           {id:'j-penlight',  label:'Pen light', qty:1},
           {id:'j-pulseox',   label:'Pulse ox', qty:1},
-          {id:'j-glucose',   label:'Glucose', qty:1},
+          // Dated. It was dated in the previous kit and quietly lost the field
+          // when the layout was rebuilt from a walk-through that only called out
+          // the pressure dressing — a walk describes where things live, not
+          // which of them expire, and the two must not be conflated again.
+          {id:'j-glucose',   label:'Oral glucose', qty:1, exp:true},
           {id:'j-tongue',    label:'Tongue depressors', qty:2},
           {id:'j-shears',    label:'Trauma shears', qty:1}
         ]},
@@ -3464,6 +3468,33 @@ var lastResult={};
    pouch is appended — taken from the tail of the section name, so
    "Right side pocket — tiny black pouch" reads as "(tiny black pouch)" rather
    than repeating the whole heading. */
+/* Things this agency tracks an expiration date on, however the kit is arranged.
+
+   A walk-through of a bag describes where things LIVE; it does not say which of
+   them expire, and rebuilding the checklist from one is how the oral glucose
+   quietly lost its date field after carrying one for the whole of the previous
+   kit. Nothing in the layout could catch that, because the ids change when the
+   bag changes and there is nothing to compare against.
+
+   So the rule is written down instead of inferred. Anything whose label matches
+   one of these MUST carry `exp`, and `datedItemsAudit()` says so if it does not.
+   Add to it when the agency starts dating something new. */
+var MUST_BE_DATED=[/glucose/i, /pressure dressing/i, /petroleum/i, /epi/i, /aspirin/i, /narcan|naloxone/i];
+
+function datedItemsAudit(){
+  var missed=[];
+  Object.keys(DB.forms||{}).forEach(function(fid){
+    (DB.forms[fid].sections||[]).forEach(function(sec){
+      (sec.items||[]).forEach(function(it){
+        var l=String(it.label||'');
+        if(!it.exp && MUST_BE_DATED.some(function(re){ return re.test(l); }))
+          missed.push(fid+' / '+l+' — should carry an expiration date and does not');
+      });
+    });
+  });
+  return missed;
+}
+
 function formLabels(f){
   var count={}, out={};
   (f.sections||[]).forEach(function(sec){
