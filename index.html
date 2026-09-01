@@ -682,6 +682,45 @@
   .srcnote .btn{margin-left:6px}
   /* "10:07 AM" is one thing to read, and would otherwise break across lines. */
   .srcnote .when{white-space:nowrap}
+
+  /* ---------- the shopping list ----------------------------------------
+     Ported from the operations site so the two read alike: a manager shops from
+     both and should not have to learn two tables. Phone-first — no forced
+     width, and the columns that are context rather than work move under the
+     item name instead of pushing it into a two-character column. */
+  .tgsec{margin:22px 0 10px}
+  .invwrap{overflow-x:auto;border:1px solid var(--rule);border-radius:var(--radius);background:var(--card)}
+  .invtable{width:100%;border-collapse:collapse;font-size:14px}
+  .invtable th{text-align:left;font-family:var(--font-mono);font-size:10.5px;
+               text-transform:uppercase;letter-spacing:.06em;color:var(--ink-faint);
+               padding:11px 12px;background:var(--bg-2);border-bottom:1px solid var(--rule)}
+  .invtable td{padding:11px 12px;border-bottom:1px solid var(--rule-soft);vertical-align:middle}
+  .invtable tr:last-child td{border-bottom:none}
+  .invtable td.num{font-family:var(--font-mono);text-align:right}
+  .invtable input[type=checkbox]{width:22px;height:22px;accent-color:var(--brand);
+                                 touch-action:manipulation}
+  .dim{color:var(--ink-faint)}
+
+  .repgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;margin:16px 0}
+  .repstat{border:1px solid var(--rule);border-radius:var(--radius);background:var(--card);
+           padding:15px 17px;box-shadow:var(--shadow-sm)}
+  .repstat .rs-n{font-family:var(--font-display);font-size:26px;font-weight:700;line-height:1;color:var(--brand)}
+  .repstat .rs-l{font-size:11.5px;text-transform:uppercase;letter-spacing:.08em;color:var(--ink-faint);margin-top:6px}
+
+  /* Declared BEFORE the media query, or the query loses on source order and the
+     line never appears — the trap this stylesheet already carries a note about. */
+  .mob-only{display:none}
+  @media(max-width:560px){
+    .repgrid{grid-template-columns:repeat(2,1fr);gap:8px}
+    .repstat{padding:11px 9px}
+    .repstat .rs-n{font-size:21px}
+    .repstat .rs-l{font-size:9.5px;letter-spacing:.05em;margin-top:4px}
+    .invtable th,.invtable td{padding:9px 8px;font-size:12.9px}
+    .invtable th{font-size:10px;letter-spacing:.05em}
+    .invtable td:nth-child(2){overflow-wrap:break-word}
+    .mob-hide{display:none}
+    .mob-only{display:block}
+  }
   /* The answer to "did that actually go through" — the question that otherwise
      sends somebody to the spreadsheet to look for their own row. */
   .donefiled{font-size:13px;color:var(--ink-faint);margin:10px 0 0;padding:9px 12px;
@@ -950,6 +989,7 @@
     <button type="button" class="sb-item" data-view="exam"><span class="ic">✎</span>Practical Exam</button>
     <div class="sb-label">Reference</div>
     <button type="button" class="sb-item webonly" data-view="repairs"><span class="ic">✱</span>Repairs &amp; Fixes</button>
+    <button type="button" class="sb-item webonly" data-view="restock"><span class="ic">▥</span>To Get</button>
     <button type="button" class="sb-item webonly" data-view="inventory"><span class="ic">▦</span>Inventory</button>
     <button type="button" class="sb-item" data-view="bylaws"><span class="ic">§</span>Bylaws</button>
     <button type="button" class="sb-item" data-view="docs"><span class="ic">◈</span>Role &amp; Boundaries</button>
@@ -1127,6 +1167,15 @@
     </section>
 
     <!-- ===== INVENTORY ===== -->
+    <!-- ===== TO GET ========================================================
+         Every bike check that finds something missing has been writing to a
+         Bike Restock tab that nothing could read. The list only ever grew, and
+         the only way to shop from it was to open the spreadsheet. -->
+    <section class="view" data-view="restock">
+      <h2 class="view-title">To <em>get</em></h2>
+      <div id="bikeRestockHost"></div>
+    </section>
+
     <section class="view" data-view="inventory">
       <h2 class="view-title">Inventory</h2>
       <p class="view-sub">Tools, replacement parts, locks &amp; keys, and a running order list.</p>
@@ -1214,7 +1263,7 @@
 
    BUILD is rewritten on every release. Never edit it by hand.
    ========================================================================== */
-var BUILD='20260823215308';
+var BUILD='20260831223020';
 
 function checkForUpdate(){
   var url=location.pathname.replace(/[^/]*$/,'')+'index.html?cb='+Date.now();
@@ -2261,8 +2310,11 @@ pullContent();
 /* ============================================================
    ROUTER — hash-based so every form has a linkable URL for QR
    ============================================================ */
+/* Every routable view. A section and a nav button are not enough: go() refuses
+   anything not named here and sends it home instead, which is a view that exists,
+   is linked, and cannot be opened. */
 var VIEWS=['dash','bikes','oos','checks','jumpkit-check','safety-check','videos','exam',
-           'lectures','repairs','inventory','bylaws','docs','settings'];
+           'lectures','repairs','restock','inventory','bylaws','docs','settings'];
 // Both check views now have their own top-level sidebar entry under "Ride", so
 // a QR deep-link lights itself and this map is empty. Kept because any future
 // view opened only from inside another one still needs its parent lit.
@@ -2273,7 +2325,7 @@ var HOME='safety-check';
 // Views a member has no business in. Hiding the nav item is not enough on its own —
 // these are hash-addressable, so a stale bookmark or a shared link would walk
 // straight past the sidebar into the page.
-var MANAGER_VIEWS=['settings','inventory','repairs','bikes','oos'];
+var MANAGER_VIEWS=['settings','inventory','repairs','bikes','oos','restock'];
 function isManager(){ return document.body.classList.contains('is-web'); }
 /* ---------- mobile navigation drawer ----------
    Below 820px the sidebar is off-canvas and opened by the hamburger. It closes on
@@ -2333,7 +2385,8 @@ function go(v,fromHash){
      lands — same shape either way, so nothing jumps about. Without this the
      problem list shows only what this device filed, which is the whole bug:
      publishing needs a manager token and filing does not. */
-  if(LIVE_VIEWS[v]) fetchSharedState().then(function(){ liveDraw(v); });
+  if(v==='restock'){ renderBikeRestock(); fetchBikeRestock().then(renderBikeRestock); }
+  else if(LIVE_VIEWS[v]) fetchSharedState().then(function(){ liveDraw(v); });
   liveStart(v);
   closeNav();
   try{localStorage.setItem('bikeops_view',v);}catch(e){}
@@ -5110,6 +5163,117 @@ function filedLine(fid){
   return '<div id="'+fid+'-filed" class="'+cls+'">'+txt+'</div>';
 }
 
+/* ---- the bike kit's shopping list ------------------------------------------
+   Written by every check that found something missing, and until now read by
+   nothing: the tab only grew, and the only way to shop from it was to open the
+   spreadsheet. Same two questions as the operations list — what is outstanding,
+   and what has been dealt with — and ticking one records WHO did it and when,
+   so the report can say what was got through. */
+var bikeRestock=null, bikeRestockState={loading:false, error:'', at:0};
+
+function fetchBikeRestock(){
+  var url=CONTENT_ENDPOINT();
+  if(!url) return Promise.resolve(null);
+  bikeRestockState.loading=true;
+  return fetchJSONTries(url+(url.indexOf('?')<0?'?':'&')+'restock=1&site=bike', 3, 12000)
+    .then(function(j){
+      bikeRestockState.loading=false;
+      // The shape, not just the status: a deployment that predates this answers
+      // the fallback reply, and an empty list would read as "nothing to buy".
+      if(!j||!j.ok||!Array.isArray(j.restock)){
+        bikeRestockState.error='the spreadsheet is running an older copy of the script '+
+                               '(paste the current one and redeploy)';
+        return null;
+      }
+      bikeRestock=j.restock; bikeRestockState.error=''; bikeRestockState.at=Date.now();
+      return bikeRestock;
+    })
+    .catch(function(){
+      bikeRestockState.loading=false;
+      bikeRestockState.error='could not reach the spreadsheet';
+      return null;
+    });
+}
+
+function tickBikeRestock(item,got){
+  var url=CONTENT_ENDPOINT(); if(!url) return;
+  var row=(bikeRestock||[]).filter(function(r){return r.item===item;})[0];
+  if(row) row.got=got;                       // optimistic, so the tick feels instant
+  renderBikeRestock();
+  var msg=document.getElementById('bikeRestockMsg');
+  if(msg) msg.textContent='Saving…';
+  try{
+    fetch(url,{method:'POST', mode:'no-cors',
+      headers:{'Content-Type':'text/plain;charset=utf-8'},
+      body:JSON.stringify({form:'__restock', site:'bike', item:item, got:got,
+                           idToken:googleIdToken, key:publishKey()})});
+  }catch(e){}
+  // no-cors means the reply is unreadable, so the only honest confirmation is to
+  // read the list back and redraw from what it actually says.
+  setTimeout(function(){
+    fetchBikeRestock().then(function(){
+      renderBikeRestock();
+      var m=document.getElementById('bikeRestockMsg');
+      if(m) m.textContent=bikeRestockState.error?'':'Saved to the spreadsheet.';
+    });
+  },1200);
+}
+
+function renderBikeRestock(){
+  var host=document.getElementById('bikeRestockHost'); if(!host) return;
+  var list=Array.isArray(bikeRestock)?bikeRestock.filter(function(r){return r&&typeof r==='object';}):[];
+  var open=list.filter(function(r){return !r.got;});
+  var done=list.filter(function(r){return r.got;});
+  var h='';
+  if(bikeRestockState.error){
+    h+='<p class="srcnote bad">'+esc(bikeRestockState.error)+
+       ' <button type="button" class="btn xs" onclick="fetchBikeRestock().then(renderBikeRestock)">Try again</button></p>';
+  }else if(bikeRestock){
+    var t='';
+    try{ t=new Date(bikeRestockState.at).toLocaleTimeString([],{hour:'numeric',minute:'2-digit'}); }catch(e){}
+    h+='<p class="srcnote">From the spreadsheet \u2014 everything any check has reported missing'+
+       (t?', <span class="when">updated '+esc(t)+'</span>':'')+
+       '. <button type="button" class="btn xs" onclick="fetchBikeRestock().then(renderBikeRestock)">Refresh</button></p>';
+  }else{
+    h+='<p class="srcnote">Reading the spreadsheet\u2026</p>';
+  }
+  if(!list.length){
+    h+='<div class="card"><p class="hint" style="margin:0">Nothing outstanding. Anything a '+
+       'jumpkit or bike check reports missing lands here.</p></div>';
+    host.innerHTML=h+'<p id="bikeRestockMsg" class="srcnote"></p>'; return;
+  }
+  var row=function(r,isOpen){
+    return '<tr><td><input type="checkbox"'+(isOpen?'':' checked')+
+      ' onchange="tickBikeRestock(\''+jsq(r.item)+'\','+(isOpen?'true':'false')+')" '+
+      'aria-label="Mark handled"></td>'+
+      '<td>'+esc(r.item)+
+        '<span class="mob-only" style="font-size:11px;color:var(--ink-faint)">'+
+        esc(r.who||'\u2014')+' \u00b7 '+esc(r.last||'')+'</span></td>'+
+      '<td style="font-size:12px">'+(r.where?esc(r.where):'<span class="dim">anywhere</span>')+'</td>'+
+      '<td class="num mob-hide"'+((r.times||1)>1?' style="font-weight:700;color:var(--warn)"':'')+'>'+
+      (r.times||1)+'</td>'+
+      '<td class="mob-hide" style="font-size:12px">'+esc(r.who||'\u2014')+
+        '<br><span style="font-size:11px;color:var(--ink-faint)">'+esc(r.last||'')+'</span></td></tr>';
+  };
+  var table=function(rows,isOpen){
+    return '<div class="invwrap"><table class="invtable"><thead><tr>'+
+      '<th></th><th>Item</th><th>Where</th><th class="mob-hide">Asked</th>'+
+      '<th class="mob-hide">Reported by</th></tr></thead><tbody>'+
+      rows.map(function(r){return row(r,isOpen);}).join('')+'</tbody></table></div>';
+  };
+  h+='<div class="repgrid">'+
+     '<div class="repstat"><div class="rs-n">'+open.length+'</div><div class="rs-l">still to get</div></div>'+
+     '<div class="repstat"><div class="rs-n">'+done.length+'</div><div class="rs-l">got</div></div></div>';
+  h+='<h3 class="tgsec">Still to get</h3>';
+  h+= open.length ? table(open,true) : '<p class="noissues">Nothing outstanding.</p>';
+  if(done.length)
+    h+='<div class="acc mt"><button type="button" class="acchead" onclick="toggleAcc(this)">'+
+       '<span class="num">'+done.length+'</span><span>Got</span><span class="chev">\u25be</span></button>'+
+       '<div class="accbody">'+table(done,false)+'</div></div>';
+  h+='<p id="bikeRestockMsg" class="srcnote"></p>';
+  host.innerHTML=h;
+}
+
 /* Where the numbers came from, how old they are, and a way to ask again. */
 function stateNote(retry){
   if(stateFetch.error){
@@ -5146,9 +5310,10 @@ var LIVE_MIN=45000, LIVE_MAX=180000;
 
    Only the PICKER is redrawn there, never the form — a re-render would wipe
    every box already ticked. */
-var LIVE_VIEWS={dash:1, bikes:1, 'safety-check':1};
+var LIVE_VIEWS={dash:1, bikes:1, 'safety-check':1, restock:1};
 function liveDraw(v){
   if(v==='safety-check'){ renderBikePicker(); return; }
+  if(v==='restock'){ renderBikeRestock(); return; }
   renderDash(); renderExpiryAlert();
 }
 var liveView='', liveTimer=null, liveWait=LIVE_MIN;
@@ -5169,6 +5334,12 @@ function liveTick(){
   if(!LIVE_VIEWS[v]) return;
   // Backgrounded: do not spend a request on a screen nobody is looking at.
   if(document.hidden){ liveArm(); return; }
+  if(v==='restock'){
+    // Its own list, its own request.
+    fetchBikeRestock().then(function(){ if(liveView===v) renderBikeRestock(); liveArm(); })
+      .catch(function(){ liveArm(); });
+    return;
+  }
   if(stateFetch.loading){ liveArm(); return; }
   var before=stateFetch.sig;
   fetchSharedState().then(function(){
