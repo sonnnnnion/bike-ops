@@ -885,6 +885,18 @@
     padding:20px;background:rgba(36,26,29,.44);backdrop-filter:blur(2px);
     animation:mfade .16s var(--ease-out)}
   .modal-wrap[hidden]{display:none}
+  /* The `hidden` property has to actually hide things.
+
+     It did not. Every rule here that sets `display` outranks the attribute's
+     default styling, so `el.hidden = true` on anything carrying a class with a
+     display of its own — `.btn{display:inline-flex}` is the common one — set
+     the attribute and changed nothing on screen. The element stayed visible
+     while the code that set it believed it was gone.
+
+     That is the same failure the manager gating has hit twice on this site, and
+     it is why the Operations site gates in JS with this exact rule underneath.
+     `!important` has nothing to lose to source order or specificity. */
+  [hidden]{display:none !important}
   @keyframes mfade{from{opacity:0}to{opacity:1}}
   @keyframes mrise{from{opacity:0;transform:translateY(10px) scale(.985)}to{opacity:1;transform:none}}
   .modal{background:var(--card);border:1px solid var(--rule);border-radius:var(--r-lg);
@@ -1289,7 +1301,7 @@
 
    BUILD is rewritten on every release. Never edit it by hand.
    ========================================================================== */
-var BUILD='20260903232655';
+var BUILD='20260904181536';
 
 function checkForUpdate(){
   var url=location.pathname.replace(/[^/]*$/,'')+'index.html?cb='+Date.now();
@@ -5325,6 +5337,9 @@ function actPeriodStart(p){
 function fetchActivity(more){
   var url=CONTENT_ENDPOINT();
   if(!url){ actState.error='no spreadsheet is connected'; return Promise.resolve(false); }
+  // One request at a time. "Load more" said "Loading\u2026" but stayed pressable,
+  // so a second tap asked for the SAME offset and appended page two twice.
+  if(actState.loading) return Promise.resolve(false);
   var offset=more?actRows.length:0;
   actState.loading=true; if(!more) actState.error='';
   var since=actPeriodStart(actFilter.period);
@@ -5351,17 +5366,39 @@ function fetchActivity(more){
       return false;
     });
 }
-function setActPeriod(p){ actFilter.period=p; actRows=[]; renderActivity();
-  fetchActivity(false).then(renderActivity); }
-function setActFilter(k,v){ actFilter[k]=v; renderActivity(); }
+function setActPeriod(p){
+  actFilter.period=p; actRows=[];
+  // The old period's count described rows that are gone; left in place it read
+  // as fact above an empty table.
+  actState.total=0; actState.more=false; actState.at=0;
+  renderActivity();
+  fetchActivity(false).then(renderActivity);
+}
+/* Only the rows repaint. Rebuilding the whole panel replaced the search box
+   mid-keystroke, so it lost focus \u2014 and on a phone the keyboard closed \u2014
+   after exactly one character. */
+function setActFilter(k,v){ actFilter[k]=v; renderActRows(); }
+function clearActFilters(){ actFilter.kit=''; actFilter.who=''; actFilter.kind=''; renderActivity(); }
 function moreActivity(){ fetchActivity(true).then(renderActivity); }
+function actFiltered(){ return !!(actFilter.kit || actFilter.who.trim() || actFilter.kind); }
+
+/* A post-call that opened two bags names both. Kept as a list rather than one
+   "Bag 1, Bag 2" string, because an exact-match filter on that string matched
+   neither bag \u2014 so the calls that used the most equipment were the ones the
+   bag filter could not find. */
+function actSubjects(a){
+  if(!a) return [];
+  if(Array.isArray(a.subjects) && a.subjects.length) return a.subjects;
+  var t=String(a.subject||'').trim();
+  return t ? t.split(/\s*,\s*/).filter(Boolean) : [];
+}
 
 function actVisible(){
   var kit=actFilter.kit, who=actFilter.who.trim().toLowerCase(), kind=actFilter.kind;
   return actRows.filter(function(a){
     if(!a||typeof a!=='object') return false;
     if(kind && a.kind!==kind) return false;
-    if(kit && String(a.subject||'')!==kit) return false;
+    if(kit && actSubjects(a).indexOf(kit)<0) return false;
     if(who){
       var hay=(String(a.who||'')+' '+String(a.andrew||'')).toLowerCase();
       if(hay.indexOf(who)<0) return false;
@@ -5372,16 +5409,21 @@ function actVisible(){
 function actKits(){
   var seen={}, out=[];
   actRows.forEach(function(a){
-    var k=a&&String(a.subject||'').trim();
-    if(k&&!seen[k]){ seen[k]=1; out.push(k); }
+    actSubjects(a).forEach(function(k){
+      k=k.trim(); if(k&&!seen[k]){ seen[k]=1; out.push(k); }
+    });
   });
-  return out.sort();
+  out.sort();
+  // A bag picked in one period may not appear in the next. Dropping it from the
+  // list did not drop it from the filter: the picker snapped back to "Every bag
+  // and bike" while rows were still being excluded, and the screen then said
+  // nothing had been filed at all.
+  if(actFilter.kit && out.indexOf(actFilter.kit)<0) out.unshift(actFilter.kit);
+  return out;
 }
 
 function renderActivity(){
   var host=document.getElementById('activityHost'); if(!host) return;
-  var rows=actVisible();
-  var kindLabel={check:'Check', usage:'Used on a call', report:'Reported'};
 
   var h='<div class="periodbar">'+
     [['week','This week'],['month','This month'],['ytd','Year to date'],['all','Everything']]
@@ -5408,38 +5450,66 @@ function renderActivity(){
        }).join('')+'</select>'+
      '<input type="search" placeholder="Who \u2014 name or Andrew ID" value="'+esc(actFilter.who)+'" '+
        'aria-label="Who filed it" oninput="setActFilter(\'who\',this.value)">'+
-     '</div>';
+     '<button type="button" class="btn xs" id="actClear" onclick="clearActFilters()"'+
+       (actFiltered()?'':' hidden')+'>Clear filters</button>'+
+     '</div><div id="actRowsHost"></div>';
+  host.innerHTML=h;
+  renderActRows();
+}
+
+function renderActRows(){
+  var host=document.getElementById('actRowsHost'); if(!host) return;
+  var clear=document.getElementById('actClear'); if(clear) clear.hidden=!actFiltered();
+  var rows=actVisible(), h='';
 
   if(!rows.length){
-    h+='<div class="card"><p class="hint" style="margin:0">'+
-       (actRows.length?'Nothing matches those filters.':'Nothing has been filed in this period.')+
-       '</p></div>';
-    host.innerHTML=h; return;
+    /* Three different situations that used to share one sentence. Saying
+       "nothing has been filed in this period" while a filter was quietly
+       excluding everything was the worst of them: it reported an absence that
+       was not true. */
+    var msg = actState.loading ? 'Reading the spreadsheet\u2026'
+            : actFiltered()    ? (actRows.length
+                                    ? 'Nothing in what has loaded matches those filters.'
+                                    : 'Nothing loaded yet to match against.')
+            : actState.at      ? 'Nothing has been filed in this period.'
+            : 'Reading the spreadsheet\u2026';
+    h+='<div class="card"><p class="hint" style="margin:0">'+msg+'</p></div>';
+  }else{
+    h+='<div class="invwrap"><table class="invtable"><thead><tr>'+
+       '<th>When</th><th>Who</th><th>What</th>'+
+       '<th class="mob-hide">Bag or bike</th><th class="mob-hide">Details</th>'+
+       '</tr></thead><tbody>';
+    rows.forEach(function(a){
+      var tone = (a.missing>0) ? 'warn' : 'ok';
+      var subj = actSubjects(a).join(', ');
+      h+='<tr>'+
+         '<td style="font-size:12px;white-space:nowrap">'+esc(a.date)+
+           '<br><span style="color:var(--ink-faint)">'+esc(a.time)+'</span></td>'+
+         '<td>'+esc(a.who||'\u2014')+
+           (a.andrew?'<br><span style="font-size:11px;color:var(--ink-faint)">'+esc(a.andrew)+'</span>':'')+'</td>'+
+         '<td><span class="tag '+tone+'">'+esc(a.form)+'</span>'+
+           '<span class="mob-only" style="font-size:11.5px;color:var(--ink-faint)">'+
+           (subj?esc(subj)+' \u00b7 ':'')+esc(a.summary)+'</span></td>'+
+         '<td class="mob-hide" style="font-size:12.5px">'+(subj?esc(subj):'<span class="dim">\u2014</span>')+'</td>'+
+         '<td class="mob-hide" style="font-size:12.5px">'+esc(a.summary)+'</td>'+
+         '</tr>';
+    });
+    h+='</tbody></table></div>';
   }
 
-  h+='<div class="invwrap"><table class="invtable"><thead><tr>'+
-     '<th>When</th><th>Who</th><th>What</th>'+
-     '<th class="mob-hide">Bag or bike</th><th class="mob-hide">Details</th>'+
-     '</tr></thead><tbody>';
-  rows.forEach(function(a){
-    var tone = (a.missing>0) ? 'warn' : 'ok';
-    h+='<tr>'+
-       '<td style="font-size:12px;white-space:nowrap">'+esc(a.date)+
-         '<br><span style="color:var(--ink-faint)">'+esc(a.time)+'</span></td>'+
-       '<td>'+esc(a.who||'\u2014')+
-         (a.andrew?'<br><span style="font-size:11px;color:var(--ink-faint)">'+esc(a.andrew)+'</span>':'')+'</td>'+
-       '<td><span class="tag '+tone+'">'+esc(a.form)+'</span>'+
-         '<span class="mob-only" style="font-size:11.5px;color:var(--ink-faint)">'+
-         (a.subject?esc(a.subject)+' \u00b7 ':'')+esc(a.summary)+'</span></td>'+
-       '<td class="mob-hide" style="font-size:12.5px">'+(a.subject?esc(a.subject):'<span class="dim">\u2014</span>')+'</td>'+
-       '<td class="mob-hide" style="font-size:12.5px">'+esc(a.summary)+'</td>'+
-       '</tr>';
-  });
-  h+='</tbody></table></div>';
-  if(actState.more)
-    h+='<div class="row mt"><button class="btn" onclick="moreActivity()">'+
+  /* Outside the empty branch on purpose. It used to sit after an early return,
+     so filtering to somebody whose checks were on page two produced "nothing
+     matches" and no way to look any further \u2014 the answer was one press away
+     and the button had been taken off the screen. */
+  if(actState.more){
+    var shown = actFiltered()
+      ? 'Showing '+rows.length+' of the '+actRows.length+' loaded \u00b7 '+actState.total+' in this period'
+      : 'Showing '+actRows.length+' of '+actState.total;
+    h+='<div class="row mt"><button class="btn" onclick="moreActivity()"'+
+       (actState.loading?' disabled':'')+'>'+
        (actState.loading?'Loading\u2026':'Load more')+'</button>'+
-       '<span class="hint">Showing '+actRows.length+' of '+actState.total+'</span></div>';
+       '<span class="hint">'+shown+'</span></div>';
+  }
   host.innerHTML=h;
 }
 
