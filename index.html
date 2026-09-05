@@ -1325,7 +1325,7 @@
 
    BUILD is rewritten on every release. Never edit it by hand.
    ========================================================================== */
-var BUILD='20260905000120';
+var BUILD='20260905130234';
 
 function checkForUpdate(){
   var url=location.pathname.replace(/[^/]*$/,'')+'index.html?cb='+Date.now();
@@ -5176,7 +5176,52 @@ function issueSig(i){
   var key=i.key||('x:'+String(i.problem||'').trim().toLowerCase());
   return String(i.bike||'')+'|'+String(i.bag||'')+'|'+key;
 }
-function isResolvedIssue(sig){ return (DB.resolvedKeys||[]).indexOf(sig)>=0; }
+/* MARKING SOMETHING FIXED IS ABOUT A REPORT, NOT ABOUT A SENTENCE FOREVER.
+   ----------------------------------------------------------------------------
+   A resolution used to bank the bare signature in a permanent list, and
+   anything carrying it was hidden from then on. So the first time a fault was
+   dealt with it was silenced — and the NEXT time the same fault was reported on
+   the same bike, the spreadsheet filed it, everyone else could see it, and the
+   one person who had fixed it before could not. The prune could not save it
+   either: it keeps a key while the sheet still has an OPEN copy, which is
+   exactly the recurrence case.
+
+   A resolution now records the day of the report it was about, and anything
+   reported after that day is a new occurrence. Keys banked by older builds
+   carry no day and behave as they always did. */
+var RESOLVED_SEP='\u0001';
+function resolvedBase(e){ var s=String(e), i=s.indexOf(RESOLVED_SEP); return i<0?s:s.slice(0,i); }
+function resolvedDay(e){ var s=String(e), i=s.indexOf(RESOLVED_SEP); return i<0?'':s.slice(i+1); }
+/* Newest day banked for this signature; '' if only an undated entry exists, or
+   null if nothing is banked. Newest wins: the later clear describes now. */
+function resolvedUpTo(sig){
+  var keys=DB.resolvedKeys||[], found=false, best='';
+  for(var i=0;i<keys.length;i++){
+    if(resolvedBase(keys[i])!==sig) continue;
+    found=true;
+    var d=resolvedDay(keys[i]);
+    if(d && d>best) best=d;
+  }
+  return found?best:null;
+}
+function isResolvedIssue(sig,lastDay){
+  var upTo=resolvedUpTo(sig);
+  if(upTo===null) return false;
+  if(!upTo || !lastDay) return true;      // legacy key, or nothing to compare
+  return !(String(lastDay) > upTo);       // reported since: a live fault
+}
+/* The day of the report being cleared, read off the concern rather than off
+   this device's clock. */
+function concernLastDay(sig){
+  var list=Array.isArray(remoteConcerns)?remoteConcerns:[];
+  for(var i=0;i<list.length;i++){
+    var c=list[i]; if(!c||typeof c!=='object') continue;
+    if(String(c.sig||'')!==sig) continue;
+    var d=String(c.last||c.first||'');
+    if(d) return d;
+  }
+  return todayISO();
+}
 
 // The spreadsheet sends yyyy-MM-dd; rows written here say "Aug 20". One shape.
 function concernDay(v){
@@ -5199,7 +5244,7 @@ function allIssues(){
     var sig=String(c.sig||'');
     if(!sig||seen[sig]) return;
     seen[sig]=1;
-    if(c.resolved||isResolvedIssue(sig)) return;
+    if(c.resolved||isResolvedIssue(sig,c.last||c.first)) return;
     var part=sig.split('|');
     out.push({id:sig, sig:sig, remote:true,
               bike:part[0]||'', bag:part[1]||'', key:part.slice(2).join('|'),
@@ -5211,7 +5256,7 @@ function allIssues(){
     var sig=issueSig(i);
     if(seen[sig]) return;
     seen[sig]=1;
-    if(isResolvedIssue(sig)) return;
+    if(isResolvedIssue(sig,i.date||'')) return;
     out.push({id:i.id||sig, sig:sig, remote:false,
               bike:i.bike||'', bag:i.bag||'', key:i.key||'',
               problem:i.problem||'', sev:i.sev||'minor',
@@ -5239,23 +5284,31 @@ function pruneResolvedKeys(){
   if(!Array.isArray(remoteConcerns)) return false;
   var keys=DB.resolvedKeys||[];
   if(!keys.length) return false;
-  var srvOpen={}, srvDone={};
+  var srvOpen={}, srvDone={}, srvOpenDay={};
   remoteConcerns.forEach(function(c){
     if(!c||typeof c!=='object') return;
     var sig=String(c.sig||'');
     if(!sig) return;
-    if(c.resolved) srvDone[sig]=1; else srvOpen[sig]=1;
+    if(c.resolved){ srvDone[sig]=1; return; }
+    srvOpen[sig]=1;
+    var d=String(c.last||c.first||'');
+    if(d && (!srvOpenDay[sig] || d>srvOpenDay[sig])) srvOpenDay[sig]=d;
   });
   var local={};
   (DB.issues||[]).forEach(function(i){ if(i&&typeof i==='object') local[issueSig(i)]=1; });
+  /* A key whose report has since happened again is spare, even while the sheet's
+     copy is open — that IS the recurrence, and keeping it hid a live fault from
+     the one person who had fixed it before. */
   var kept=keys.filter(function(k){
-    if(srvDone[k]) return false;
-    return !!(srvOpen[k]||local[k]);
+    var base=resolvedBase(k), day=resolvedDay(k);
+    if(srvDone[base]) return false;
+    if(day && srvOpenDay[base] && srvOpenDay[base] > day) return false;
+    return !!(srvOpen[base]||local[base]);
   });
   if(kept.length>2000){
     var over=kept.length-2000, out=[];
     for(var i=0;i<kept.length;i++){
-      if(over>0 && srvDone[kept[i]]){ over--; continue; }
+      if(over>0 && srvDone[resolvedBase(kept[i])]){ over--; continue; }
       out.push(kept[i]);
     }
     kept=out;
@@ -6146,7 +6199,9 @@ function resolveIssue(sig){
    separately by somebody who is allowed to tell it. */
 function markIssueResolved(sig){
   DB.resolvedKeys=DB.resolvedKeys||[];
-  if(DB.resolvedKeys.indexOf(sig)<0) DB.resolvedKeys.push(sig);
+  // Earlier entries described earlier reports; this one supersedes them.
+  DB.resolvedKeys=DB.resolvedKeys.filter(function(x){ return resolvedBase(x)!==sig; });
+  DB.resolvedKeys.push(sig+RESOLVED_SEP+concernLastDay(sig));
   DB.issues=(DB.issues||[]).filter(function(x){return issueSig(x)!==sig;});
   saveDB();
   pushConcernResolved(sig,true);
