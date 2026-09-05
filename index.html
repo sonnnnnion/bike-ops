@@ -1325,7 +1325,7 @@
 
    BUILD is rewritten on every release. Never edit it by hand.
    ========================================================================== */
-var BUILD='20260904233600';
+var BUILD='20260905000120';
 
 function checkForUpdate(){
   var url=location.pathname.replace(/[^/]*$/,'')+'index.html?cb='+Date.now();
@@ -2817,6 +2817,51 @@ function restoreManager(){
   else { setIdToken(''); }
   var e=savedEmail();
   if(e && isAllowedEmail(e)) setWeb(true);
+}
+
+/* IS THE SIGN-IN STILL GOOD, RIGHT NOW.
+   ----------------------------------------------------------------------------
+   A Google ID token lives about an hour, and that was checked exactly once, on
+   load. Worse here than on the Operations site: manager mode is restored from a
+   SAVED EMAIL, so this site would put somebody back in manager mode with no
+   token at all — every button on screen, every write refused.
+
+   The failure looks like the site being broken rather than like being signed
+   out: a To Get item ticks, un-ticks a second later when the list is read back,
+   and the header says "Bike Manager" throughout.
+
+   Asked at the moment of writing now, because that is the only moment the
+   answer matters. A publish key counts too; it does not expire. */
+function authIsLive(){
+  if(publishKey()) return true;
+  if(!googleIdToken) return false;
+  return tokenExpiry(googleIdToken)*1000 > Date.now()+10000;
+}
+
+function requireAuth(what){
+  if(authIsLive()) return true;
+  signedOutNow();
+  uiConfirm('Your Google sign-in has expired, so the spreadsheet will not accept '+
+            (what||'this change')+'. Signing in again takes a moment and nothing is lost.',
+            'Signed out', {okText:'Sign in again', cancelText:'Not now'})
+    .then(function(yes){ if(yes) googleUnlock(); });
+  return false;
+}
+
+/* Leaving manager mode is part of the fix, not a side effect: those are exactly
+   the controls that no longer do anything. */
+function signedOutNow(){
+  setIdToken('');
+  if(document.body.classList.contains('is-web')) setWeb(false);
+}
+
+function watchAuth(){
+  setInterval(function(){
+    if(googleIdToken && !authIsLive()) signedOutNow();
+  }, 60000);
+  document.addEventListener('visibilitychange', function(){
+    if(!document.hidden && googleIdToken && !authIsLive()) signedOutNow();
+  });
 }
 var contentState={loaded:false,dirty:false,at:0,everPublished:false};
 // Tracks whether this device holds edits that have not been published. The real
@@ -5227,7 +5272,8 @@ function pruneResolvedKeys(){
    click doing nothing. */
 function pushConcernResolved(sig, resolved){
   var url=CONTENT_ENDPOINT();
-  if(!url || (!googleIdToken && !publishKey())) return;
+  if(!url) return;
+  if(!requireAuth('this being marked fixed')) return;
   try{
     fetch(url,{method:'POST',mode:'no-cors',
       headers:{'Content-Type':'text/plain;charset=utf-8'},
@@ -5320,6 +5366,10 @@ function fetchBikeRestock(){
 
 function tickBikeRestock(item,got){
   var url=CONTENT_ENDPOINT(); if(!url) return;
+  /* Asked BEFORE the row is ticked on screen. Sending a write nobody will accept
+     is what produced the complaint: the row ticked, the request was refused
+     unread, the list was re-read and the tick vanished. */
+  if(!requireAuth('this item being ticked off')) return;
   var row=(bikeRestock||[]).filter(function(r){return r.item===item;})[0];
   if(row) row.got=got;                       // optimistic, so the tick feels instant
   renderBikeRestock();
@@ -6813,6 +6863,9 @@ startOutbox();
 // Put manager mode back before routing, so the "managers get their last view"
 // branch below can tell whether it is dealing with one.
 restoreManager();
+// And keep noticing: a token that dies while the page sits open must not leave
+// the header claiming a sign-in that no longer works.
+watchAuth();
 
 // Open to everyone. Hash wins so QR deep-links land exactly where the sticker
 // promised. Otherwise home is the pre-ride check — someone opening this URL is
