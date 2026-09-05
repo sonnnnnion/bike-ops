@@ -113,6 +113,12 @@
   /* A link off this site, styled as a nav row. `text-decoration:none` because an
      underlined row among unstyled ones reads as two different kinds of control. */
   .sb-item.sb-ext{text-decoration:none}
+  /* Waiting checks. Amber, not red: nothing is lost and nothing is asked of
+     anybody — it sends itself — so this is a state, not a fault. */
+  .outboxnote{background:var(--warn-wash);border:1px solid var(--warn);
+    color:var(--ink);border-radius:var(--radius);padding:10px 14px;margin:0 0 16px;
+    font-size:13.5px;line-height:1.5}
+  .outboxnote b{color:var(--warn)}
   /* On a solid button the mark sat at 1.7:1 — faint mauve on brand red, which is
      not a low-contrast arrow so much as an absent one. Inside a filled control it
      takes the control's own colour and stays secondary by opacity instead. */
@@ -1043,6 +1049,10 @@
 
   <main>
 
+    <!-- Above every view, because whoever picks the phone back up is not
+         reliably the rider who filed the thing that is still waiting. -->
+    <div id="outboxNote" class="outboxnote" hidden></div>
+
     <!-- ===== FLEET STATUS =====
          Secondary to the pre-ride check. A bike's status is derived from its
          last completed check rather than hand-set, so this view is a readout. -->
@@ -1315,11 +1325,24 @@
 
    BUILD is rewritten on every release. Never edit it by hand.
    ========================================================================== */
-var BUILD='20260904230739';
+var BUILD='20260904233600';
 
 function checkForUpdate(){
   var url=location.pathname.replace(/[^/]*$/,'')+'index.html?cb='+Date.now();
-  fetch(url,{cache:'no-store'})
+  /* Only the part of the file the stamp is in.
+
+     This used to download the WHOLE page again — a third of a megabyte, every
+     single time anybody opened the site — to read a fourteen-digit number out
+     of the top of it. On somebody's phone data on the way to a call that is a
+     straightforwardly bad trade.
+
+     The stamp sits inside the first 128 KB, so that is all that is asked for. A
+     server that honours Range sends a fraction of the file; one that ignores it
+     sends all of it and answers 200, which is exactly the old behaviour, so
+     there is nothing to fall back to and nothing to detect. If the slice somehow
+     arrives without the stamp in it, no match means no reload, which is the
+     same safe answer this has always given when it could not tell. */
+  fetch(url,{cache:'no-store',headers:{'Range':'bytes=0-131071'}})
     .then(function(r){ return r.text(); })
     .then(function(t){
       var m=t.match(/var BUILD='(\d+)'/);
@@ -4276,18 +4299,18 @@ function doSubmit(fid,fn,ln,aid){
   }
   var msg=document.getElementById(fid+'-savemsg');
   if(msg) msg.textContent='Sending…';
-  fetch(endpoint,{method:'POST',mode:'no-cors',
-    headers:{'Content-Type':'text/plain;charset=utf-8'},
-    body:JSON.stringify(payload)})
-  .then(function(){
-    // no-cors means this resolves even if the script errored, so this says "sent"
-    // and not "saved". Site Settings ▸ Test connection is what actually proves the
-    // endpoint is live.
-    finish('Sent to “'+sheetName+'”.');
-  })
-  .catch(function(err){
-    console.error(err);
-    finish('Could not reach the “'+sheetName+'” sheet. The check is recorded on this device.');
+  // Written to the phone BEFORE it is sent. The bike racks and the lower floors
+  // of several buildings have no usable signal, and that is exactly where
+  // somebody stands while going through a jumpkit.
+  outboxAdd(payload);
+  drainOutbox().then(function(){
+    // no-cors means a resolved send proves the request LEFT, not that it stored;
+    // Site Settings ▸ Test connection is what proves the endpoint is live. What
+    // it does prove is whether this is still sitting on the phone.
+    var waiting=outboxRead().some(function(q){ return q.sid===payload.submissionId; });
+    finish(waiting
+      ? 'Saved on this phone, waiting for signal — it will send itself.'
+      : 'Sent to “'+sheetName+'”.');
   });
 }
 
@@ -5313,10 +5336,120 @@ function tickBikeRestock(item,got){
   setTimeout(function(){
     fetchBikeRestock().then(function(){
       renderBikeRestock();
-      var m=document.getElementById('bikeRestockMsg');
-      if(m) m.textContent=bikeRestockState.error?'':'Saved to the spreadsheet.';
+      var m=document.getElementById('bikeRestockMsg'); if(!m) return;
+      if(bikeRestockState.error){ m.textContent=''; return; }
+
+      /* Did the tick actually take?
+
+         This used to print "Saved to the spreadsheet." whenever the RE-READ
+         succeeded, which says nothing about whether the WRITE did. The
+         spreadsheet can refuse a tick perfectly happily: the reply is
+         unreadable through no-cors, the read a second later comes back fine,
+         and the row returns exactly as it was. What you saw was an item tick,
+         sit there for a second, quietly untick itself, and a message
+         underneath claiming the opposite. */
+      var after=(bikeRestock||[]).filter(function(r){return r&&r.item===item;})[0];
+      if(after && !!after.got===!!got){
+        m.style.color=''; m.textContent='Saved to the spreadsheet.';
+        return;
+      }
+      m.style.color='var(--oos)';
+      m.innerHTML='<b>That did not save.</b> The spreadsheet took the tick back, '+
+        'which is nearly always one of two things: you are not signed in with '+
+        'Google on this device \u2014 the list can be read by anyone but only a '+
+        'signed-in manager can change it \u2014 or the spreadsheet is running an '+
+        'older copy of the script and cannot match this row yet.';
     });
   },1200);
+}
+
+/* ============================================================================
+   THE OUTBOX
+   ----------------------------------------------------------------------------
+   The same queue the Operations site keeps, for the same reason: a check used to
+   be one fire-and-forget POST, and where the bikes actually live there is often
+   no signal. The payload is written to this phone first and only dropped once a
+   send has left the device; anything still queued is retried on load, when the
+   browser says it is back online, and whenever another check is filed.
+
+   Retrying is safe because every payload carries a `submissionId` minted once
+   with the check, so a retry is the same request byte for byte, and the script
+   drops an id it has already written. Without that this queue would duplicate
+   rows rather than rescue them.
+
+   Its own key. The two sites share an origin, so a shared outbox would have one
+   site draining the other's submissions to the endpoint IT happens to be
+   configured with — which for a rider on a phone that has both is a bike check
+   posted at whatever the Operations site had. Identity is worth sharing; a
+   queue of pending writes is not. */
+var LS_OUTBOX='bikeops_outbox_v1', outboxBusy=false;
+
+function outboxRead(){
+  try{ var v=JSON.parse(localStorage.getItem(LS_OUTBOX)||'[]'); return Array.isArray(v)?v:[]; }
+  catch(e){ return []; }
+}
+function outboxWrite(l){
+  try{ localStorage.setItem(LS_OUTBOX,JSON.stringify(l)); return true; }catch(e){ return false; }
+}
+function outboxAdd(payload){
+  var l=outboxRead();
+  l.push({at:Date.now(), body:JSON.stringify(payload), sid:payload.submissionId||''});
+  // Capped so a phone left offline cannot fill its storage and start losing
+  // drafts too. The oldest goes; the newest is the one somebody is waiting on.
+  while(l.length>60) l.shift();
+  outboxWrite(l); paintOutbox();
+}
+function outboxCount(){ return outboxRead().length; }
+
+function drainOutbox(){
+  if(outboxBusy) return Promise.resolve(0);
+  var url=CONTENT_ENDPOINT();
+  var l=outboxRead();
+  if(!url || !l.length){ paintOutbox(); return Promise.resolve(0); }
+  outboxBusy=true;
+  var n=0;
+  // One at a time, in order, stopping at the first failure — firing all of them
+  // at a phone with one bar turns a queue that would have drained into a pile of
+  // rejections.
+  var step=function(){
+    var q=outboxRead();
+    if(!q.length) return Promise.resolve();
+    var item=q[0];
+    return fetch(url,{method:'POST',mode:'no-cors',
+        headers:{'Content-Type':'text/plain;charset=utf-8'}, body:item.body})
+      .then(function(){
+        var cur=outboxRead();
+        for(var i=0;i<cur.length;i++){
+          if(cur[i].at===item.at && cur[i].body===item.body){ cur.splice(i,1); break; }
+        }
+        outboxWrite(cur); n++;
+        return step();
+      });
+  };
+  return step()
+    .catch(function(){ /* no signal; what is left stays queued */ })
+    .then(function(){ outboxBusy=false; paintOutbox(); return n; });
+}
+
+/* Silent when the queue is empty — a permanent "0 waiting" is furniture, and
+   this has to read as an exception. */
+function paintOutbox(){
+  var el=document.getElementById('outboxNote'); if(!el) return;
+  var n=outboxCount();
+  if(!n){ el.hidden=true; el.innerHTML=''; return; }
+  el.hidden=false;
+  el.innerHTML='<b>'+n+' '+(n===1?'check is':'checks are')+' waiting to send.</b> '+
+    'They are saved on this phone and will go out on their own once there is signal. '+
+    '<button type="button" class="btn xs" onclick="drainOutbox().then(paintOutbox)">Try now</button>';
+}
+
+function startOutbox(){
+  paintOutbox();
+  drainOutbox();
+  window.addEventListener('online', function(){ drainOutbox(); });
+  document.addEventListener('visibilitychange', function(){
+    if(!document.hidden) drainOutbox();
+  });
 }
 
 function renderBikeRestock(){
@@ -6673,6 +6806,9 @@ function renderAll(){
   renderSettings();
 }
 renderAll();
+
+// Anything this phone filed without signal, sent now.
+startOutbox();
 
 // Put manager mode back before routing, so the "managers get their last view"
 // branch below can tell whether it is dealing with one.
