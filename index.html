@@ -22,7 +22,7 @@
        hard 2px/0-offset brutalist values, so every component that references
        them softens at once rather than needing 200 individual edits. ---- */
     --bg:#FBF8F4; --bg-2:#F4EFE7; --card:#FFFFFF; --card-2:#FDFBF8;
-    --ink:#241A1D; --ink-soft:#4A3A3F; --ink-mute:#6B5C61; --ink-faint:#8E7F84;
+    --ink:#241A1D; --ink-soft:#4A3A3F; --ink-mute:#6B5C61; --ink-faint:#776569;
     --rule:#E7E1D6; --rule-soft:#EFE9DF; --rule-strong:#D8CFC2; --rule-ink:#241A1D;
     --brand:#8c1c2b; --brand-2:#a81f33; --brand-deep:#6d1522;
     --brand-wash:#F7E9EB; --brand-tint:#FCF2F3;
@@ -38,7 +38,7 @@
     --font-mono:'JetBrains Mono',ui-monospace,'SF Mono',monospace;
     --display-wt:700;
     --r-sm:6px; --radius:10px; --r-md:14px; --r-lg:20px; --r-xl:28px;
-    --ok:#2F7A4A; --warn:#B45309; --oos:#C8102E;
+    --ok:#2C7345; --warn:#A64B08; --oos:#C8102E;
     --ok-wash:#E1F0E5; --warn-wash:#FBF0DC; --oos-wash:#FBE7EA;
     --ease:cubic-bezier(.2,.7,.2,1); --ease-out:cubic-bezier(.16,1,.3,1);
     --maxw:1120px;
@@ -113,6 +113,10 @@
   /* A link off this site, styled as a nav row. `text-decoration:none` because an
      underlined row among unstyled ones reads as two different kinds of control. */
   .sb-item.sb-ext{text-decoration:none}
+  /* On a solid button the mark sat at 1.7:1 — faint mauve on brand red, which is
+     not a low-contrast arrow so much as an absent one. Inside a filled control it
+     takes the control's own colour and stays secondary by opacity instead. */
+  .btn.solid .ext-mark, .btn.solid:hover .ext-mark{color:inherit;opacity:.8}
   .ext-mark{margin-left:auto;color:var(--ink-faint);font-size:12px}
   .sb-item.sb-ext:hover .ext-mark{color:var(--ink)}
 
@@ -551,7 +555,7 @@
     color:var(--brand);font-weight:700}
   .qrcard h3{margin:6px 0 3px;font-family:var(--font-display);font-size:19px;line-height:1.2;color:#111}
   .qrcard .qrframe{margin-top:14px;padding:10px;background:#fff;border:1px solid var(--rule);border-radius:10px}
-  .qrcard .qrlink{font-family:var(--font-mono);font-size:10px;color:#777;word-break:break-all;
+  .qrcard .qrlink{font-family:var(--font-mono);font-size:10px;color:var(--ink-mute);word-break:break-all;
     margin-top:auto;padding-top:12px}
 
   /* Print = sticker sheet. Everything that isn't a code comes off, and the codes
@@ -1311,7 +1315,7 @@
 
    BUILD is rewritten on every release. Never edit it by hand.
    ========================================================================== */
-var BUILD='20260904230055';
+var BUILD='20260904230739';
 
 function checkForUpdate(){
   var url=location.pathname.replace(/[^/]*$/,'')+'index.html?cb='+Date.now();
