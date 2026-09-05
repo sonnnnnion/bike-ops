@@ -110,6 +110,11 @@
   .sb-item.active{background:var(--brand);color:#fff;font-weight:600;box-shadow:var(--shadow-sm)}
   .sb-item.active .ic{color:#fff;opacity:1}
   .sb-label{font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.12em;color:var(--ink-faint);padding:14px 13px 5px}
+  /* A link off this site, styled as a nav row. `text-decoration:none` because an
+     underlined row among unstyled ones reads as two different kinds of control. */
+  .sb-item.sb-ext{text-decoration:none}
+  .ext-mark{margin-left:auto;color:var(--ink-faint);font-size:12px}
+  .sb-item.sb-ext:hover .ext-mark{color:var(--ink)}
 
   /* `min-width:0` because a grid item defaults to min-width:auto, which is its
      min-CONTENT width — so one wide child (the deck iframe, a button row, the
@@ -1024,6 +1029,11 @@
     <button type="button" class="sb-item" data-view="bylaws"><span class="ic">§</span>Bylaws</button>
     <button type="button" class="sb-item" data-view="docs"><span class="ic">◈</span>Role &amp; Boundaries</button>
     <button type="button" class="sb-item" data-view="checks"><span class="ic">▩</span>QR Codes</button>
+    <!-- The way back. The Operations site has linked here since it launched and
+         nothing linked the other way, so a rider standing over a bike with a
+         problem that is not a bike problem — a room, a jumpkit, anything on the
+         other site — had to already know that URL. -->
+    <a class="sb-item sb-ext" href="https://sonnnnnion.github.io/ems-ops/" target="_blank" rel="noopener"><span class="ic">⊕</span>Operations<span class="ext-mark">↗</span></a>
     <button type="button" class="sb-item webonly" data-view="settings"><span class="ic">⚙</span>Site Settings</button>
   </nav>
 
@@ -1301,7 +1311,7 @@
 
    BUILD is rewritten on every release. Never edit it by hand.
    ========================================================================== */
-var BUILD='20260904181536';
+var BUILD='20260904230055';
 
 function checkForUpdate(){
   var url=location.pathname.replace(/[^/]*$/,'')+'index.html?cb='+Date.now();
@@ -3843,15 +3853,62 @@ function onFormInput(fid){
    from DB, which syncs and exports — this is one person's own name on their own
    phone and must never travel. One tap clears it for whoever it is not. */
 var LS_ME='bikeops_me_v1';
+
+/* The rider is the same person on both sites.
+
+   Bike Ops and Operations are separate sites with separate code and they stay
+   that way. But GitHub Pages serves both from sonnnnnion.github.io, so they
+   share an origin and therefore share localStorage — and the same rider was
+   typing the same first name, last name and Andrew ID into two different stores
+   on the same phone, because nothing had ever said they were the same person.
+
+   They agree on a third key and nothing else. Neither site loads a line of the
+   other's code, and either one works alone off its own key if the other is gone.
+
+   `bikeops_me_v1` is still written, so a phone on a cached older copy of this
+   page keeps working. */
+var LS_ME_SHARED='cmuems_me_v1';
+
 function readMe(){
-  try{ return JSON.parse(localStorage.getItem(LS_ME)||'null')||null; }catch(e){ return null; }
+  var read=function(k){
+    try{ return JSON.parse(localStorage.getItem(k)||'null')||null; }catch(e){ return null; }
+  };
+  var shared=read(LS_ME_SHARED);
+  if(shared && shared.first && shared.last) return shared;
+  var mine=read(LS_ME);
+  if(mine && mine.first && mine.last){ saveMe(mine.first,mine.last,mine.andrew); return mine; }
+  return null;
 }
+
 function saveMe(fn,ln,aid){
   if(!fn||!ln) return;
-  try{ localStorage.setItem(LS_ME,JSON.stringify({first:fn,last:ln,andrew:aid||''})); }catch(e){}
+  var rec={first:fn,last:ln,andrew:aid||''};
+  try{
+    /* Merge, never replace. The Operations site keeps a callsign on this record
+       and this site has no idea what one is — a plain write from here would drop
+       it every time a rider filed a bike check, and it would come back as an
+       empty box over there with no explanation. Anything this site does not
+       manage is carried through untouched. */
+    var prev=JSON.parse(localStorage.getItem(LS_ME_SHARED)||'null');
+    if(prev && typeof prev==='object')
+      Object.keys(prev).forEach(function(k){ if(!rec[k]) rec[k]=prev[k]; });
+  }catch(e){}
+  try{ localStorage.setItem(LS_ME_SHARED,JSON.stringify(rec)); }catch(e){}
+  try{ localStorage.setItem(LS_ME,JSON.stringify(rec)); }catch(e){}
 }
+
+/* Every key on this phone that can name a person — including the one the
+   Operations site owns.
+
+   Clearing fewer than all of them does not forget anybody. Clear the shared key
+   and this site's own, and the next read falls back to whichever legacy key was
+   left behind and ADOPTS that person straight back into the shared key: the
+   button reports success and the previous rider is filed on the next check.
+   These are per-device conveniences, not records. */
+var ME_KEYS=[LS_ME_SHARED, LS_ME, 'emsops_me_v1'];
+
 function forgetMe(fid){
-  try{ localStorage.removeItem(LS_ME); }catch(e){}
+  ME_KEYS.forEach(function(k){ try{ localStorage.removeItem(k); }catch(e){} });
   ['fn','ln','aid'].forEach(function(k){
     var el=document.getElementById(fid+'-'+k); if(el) el.value='';
   });
