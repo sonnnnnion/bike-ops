@@ -1325,7 +1325,7 @@
 
    BUILD is rewritten on every release. Never edit it by hand.
    ========================================================================== */
-var BUILD='20260905130234';
+var BUILD='20260909141843';
 
 function checkForUpdate(){
   var url=location.pathname.replace(/[^/]*$/,'')+'index.html?cb='+Date.now();
@@ -3826,6 +3826,18 @@ function renderForm(fid){
 
   h+='<div class="card mt"><h3>Is there anything else to note?</h3>'+
      '<p style="font-size:13px;color:var(--ink-mute);margin:0 0 10px">Optional. Anything the checklist above does not cover.</p>'+
+     /* Topping the bag up off the shelf is the one thing that happens on this
+        check and leaves no trace: the item IS in the bag by the time it is
+        ticked, so the checklist reads complete, and nothing anywhere asks about
+        the Equipment Room shelf it came off. Worded exactly as the Operations
+        checkout words it — the same act, said the same way, on both sites.
+
+        Only on the jumpkit check. The safety check is about the bike, and
+        nobody tops up a bike from the Equipment Room. */
+     (fid==='jumpkit'
+       ? '<p class="hint" style="margin:-4px 0 10px">If you took anything from the '+
+         'Equipment Room to top this bag up, say what.</p>'
+       : '')+
      '<textarea id="'+fid+'-notes" rows="3" placeholder="Leave blank if nothing" oninput="onFormInput(\''+fid+'\')"></textarea>'+
      '<p class="hint">Anything written here is added to the issue list for the Bike Manager.</p></div>';
 
