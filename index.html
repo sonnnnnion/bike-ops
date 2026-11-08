@@ -1033,7 +1033,6 @@
     <button type="button" class="sb-item" data-view="exam"><span class="ic">✎</span>Practical Exam</button>
     <div class="sb-label">Reference</div>
     <button type="button" class="sb-item webonly" data-view="repairs"><span class="ic">✱</span>Repairs &amp; Fixes</button>
-    <button type="button" class="sb-item webonly" data-view="activity"><span class="ic">≡</span>Activity</button>
     <button type="button" class="sb-item webonly" data-view="restock"><span class="ic">▥</span>To Get</button>
     <button type="button" class="sb-item webonly" data-view="inventory"><span class="ic">▦</span>Inventory</button>
     <button type="button" class="sb-item" data-view="bylaws"><span class="ic">§</span>Bylaws</button>
@@ -1225,13 +1224,8 @@
          Every bike check that finds something missing has been writing to a
          Bike Restock tab that nothing could read. The list only ever grew, and
          the only way to shop from it was to open the spreadsheet. -->
-    <!-- ===== ACTIVITY =======================================================
-         Who filed what, when, on which bag or bike. Read across the two check
-         tabs that already hold every submission. -->
-    <section class="view" data-view="activity">
-      <h2 class="view-title">Activity</h2>
-      <div id="activityHost"></div>
-    </section>
+    <!-- Activity moved to the Operations site, where both of these check tabs
+         now show on its Activity page beside every other form. -->
 
     <section class="view" data-view="restock">
       <h2 class="view-title">To <em>get</em></h2>
@@ -1325,7 +1319,7 @@
 
    BUILD is rewritten on every release. Never edit it by hand.
    ========================================================================== */
-var BUILD='20260909142328';
+var BUILD='20261107193321';
 
 function checkForUpdate(){
   var url=location.pathname.replace(/[^/]*$/,'')+'index.html?cb='+Date.now();
@@ -2389,7 +2383,7 @@ pullContent();
    anything not named here and sends it home instead, which is a view that exists,
    is linked, and cannot be opened. */
 var VIEWS=['dash','bikes','oos','checks','jumpkit-check','safety-check','videos','exam',
-           'lectures','repairs','restock','activity','inventory','bylaws','docs','settings'];
+           'lectures','repairs','restock','inventory','bylaws','docs','settings'];
 // Both check views now have their own top-level sidebar entry under "Ride", so
 // a QR deep-link lights itself and this map is empty. Kept because any future
 // view opened only from inside another one still needs its parent lit.
@@ -2400,7 +2394,7 @@ var HOME='safety-check';
 // Views a member has no business in. Hiding the nav item is not enough on its own —
 // these are hash-addressable, so a stale bookmark or a shared link would walk
 // straight past the sidebar into the page.
-var MANAGER_VIEWS=['settings','inventory','repairs','bikes','oos','restock','activity'];
+var MANAGER_VIEWS=['settings','inventory','repairs','bikes','oos','restock'];
 function isManager(){ return document.body.classList.contains('is-web'); }
 /* ---------- mobile navigation drawer ----------
    Below 820px the sidebar is off-canvas and opened by the hamburger. It closes on
@@ -2460,8 +2454,7 @@ function go(v,fromHash){
      lands — same shape either way, so nothing jumps about. Without this the
      problem list shows only what this device filed, which is the whole bug:
      publishing needs a manager token and filing does not. */
-  if(v==='activity'){ renderActivity(); if(!actRows.length) fetchActivity(false).then(renderActivity); }
-  else if(v==='restock'){ renderBikeRestock(); fetchBikeRestock().then(renderBikeRestock); }
+  if(v==='restock'){ renderBikeRestock(); fetchBikeRestock().then(renderBikeRestock); }
   else if(LIVE_VIEWS[v]) fetchSharedState().then(function(){ liveDraw(v); });
   liveStart(v);
   closeNav();
