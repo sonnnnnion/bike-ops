@@ -528,6 +528,8 @@
     padding:15px 16px;border:1.5px solid var(--rule-strong);border-radius:var(--radius);
     background:var(--card);cursor:pointer;transition:border-color .16s var(--ease),box-shadow .16s var(--ease),background .16s var(--ease)}
   .pick:hover{border-color:var(--brand);box-shadow:var(--shadow-md)}
+  .pick.inuse{opacity:.6;cursor:not-allowed;background:repeating-linear-gradient(135deg,#F3EFE9 0 8px,#ECE6DD 8px 16px)}
+  .status.st-use{color:var(--ink-mute)}
   .pick.on{border-color:var(--brand);border-width:2px;background:var(--brand-tint);box-shadow:var(--shadow-md)}
   .pname{font-family:var(--font-display);font-size:17px;font-weight:600;letter-spacing:-.01em;
     color:var(--ink);-webkit-text-fill-color:var(--ink)}
@@ -1319,7 +1321,7 @@
 
    BUILD is rewritten on every release. Never edit it by hand.
    ========================================================================== */
-var BUILD='20261112193013';
+var BUILD='20261114231250';
 
 function checkForUpdate(){
   var url=location.pathname.replace(/[^/]*$/,'')+'index.html?cb='+Date.now();
@@ -4310,6 +4312,8 @@ function doSubmit(fid,fn,ln,aid){
   // this log, and whether the Sheet is reachable has no bearing on whether the
   // bike was just checked — a failed POST must not leave the fleet view stale.
   var logged=recordSafetyCheck(fid,res,fn.trim()+' '+ln.trim());
+  if(fid==='safety' && activeBike && !res.grounded && res.cls!=='oos')
+    remoteInUse[activeBike]={by:(fn.trim()+' '+ln.trim()), at:''};
   // Anything written in "Is there anything else to note?" is a problem report —
   // file it where the manager actually reads, not only into the payload.
   issueFromCheck(fid,Object.assign({},payload,{bikeId:activeBike}),fn.trim()+' '+ln.trim());
@@ -5125,6 +5129,9 @@ function lastCheck(bikeId){
 var remoteConcerns=null;   // [{sig,what,where,unit,area,urgency,times,first,last,by,resolved}]
 var remoteExpiry=null;     // {bag|itemId:{date,by,at}}
 var remoteChecks=null;     // {bikeId:{date,verdict,note,by}} — the latest per bike
+/* Bikes out on a cleared pre-ride check and not yet returned — returned by the
+   After Duty form on the operations site, or by a Bike Manager here. */
+var remoteInUse={};        // {bikeId:{by,at}}
 var stateFetch={loading:false, error:'', at:0, sig:''};
 
 function fetchSharedState(){
@@ -5149,6 +5156,9 @@ function fetchSharedState(){
       // Absent from a deployment that predates it; null means "not answered",
       // which lastCheck below treats differently from "answered with nothing".
       remoteChecks=(j.checks&&typeof j.checks==='object')?j.checks:null;
+      remoteInUse=(j.inUse&&typeof j.inUse==='object')?j.inUse:{};
+      if(activeBike && remoteInUse[activeBike]) activeBike=null;
+      try{ renderBikePicker(); renderDash(); }catch(e){}
       stateFetch.error=''; stateFetch.at=Date.now();
       stateFetch.sig=JSON.stringify([remoteConcerns,remoteExpiry]);
       pruneResolvedKeys();
@@ -6390,15 +6400,40 @@ function renderFleetSummary(){
 
 /* ---------- bike picker: the first thing on the home view ---------- */
 var activeBike=null;
-function setBike(id){ activeBike=(activeBike===id?null:id); renderBikePicker(); }
+function setBike(id){
+  var u=remoteInUse[id];
+  if(u && activeBike!==id){
+    uiAlert(bikeName(id)+' is out with '+(u.by||'someone')+'. It is back once it is returned on the After Duty form.','In use');
+    return;
+  }
+  activeBike=(activeBike===id?null:id); renderBikePicker();
+}
+function markBikeReturned(id){
+  var url=CONTENT_ENDPOINT(); if(!url) return;
+  if(!requireAuth('this bike being marked returned')) return;
+  var was=remoteInUse[id];
+  delete remoteInUse[id]; renderBikePicker(); renderDash();
+  try{
+    fetch(url,{method:'POST',mode:'no-cors',headers:{'Content-Type':'text/plain;charset=utf-8'},
+      body:JSON.stringify({form:'__bikereturn', site:'bike', bikeId:id, idToken:googleIdToken, key:publishKey()})});
+  }catch(e){}
+  setTimeout(function(){
+    fetchSharedState().then(function(ok){
+      if(ok && remoteInUse[id]) uiAlert('That did not save — sign in again, or the spreadsheet needs the current script.','Not saved');
+      else if(!ok && was) remoteInUse[id]=was;
+      renderBikePicker(); renderDash();
+    });
+  },2500);
+}
 function renderBikePicker(){
   var el=document.getElementById('bikePicker'); if(!el) return;
   el.innerHTML='<div class="card mb"><h3>Which bike are you taking?</h3>'+
     '<div class="bikepick">'+DB.bikes.map(function(b){
-      var m=STATUS_MAP[statusOf(b)]||STATUS_MAP.warn, r=bikeRecency(b.id);
-      return '<button type="button" class="pick'+(activeBike===b.id?' on':'')+'" onclick="setBike(\''+esc(b.id)+'\')">'+
+      var m=STATUS_MAP[statusOf(b)]||STATUS_MAP.warn, r=bikeRecency(b.id), u=remoteInUse[b.id];
+      return '<button type="button" class="pick'+(activeBike===b.id?' on':'')+(u?' inuse':'')+'"'+(u?' aria-disabled="true"':'')+' onclick="setBike(\''+esc(b.id)+'\')">'+
         '<span class="pname">'+esc(b.name)+'</span>'+
-        '<span class="status '+m[0]+'"><span class="dot"></span>'+m[1]+'</span>'+
+        (u?'<span class="status st-use"><span class="dot"></span>In use · '+esc(u.by||'someone')+'</span>'
+          :'<span class="status '+m[0]+'"><span class="dot"></span>'+m[1]+'</span>')+
         '<span class="prec'+(r.stale?' stale':'')+'">'+esc(r.txt)+'</span></button>';
     }).join('')+'</div>'+
     '<p class="hint">'+(activeBike?'This check will be recorded against that bike.'
@@ -6429,14 +6464,17 @@ function renderDash(){
     // Clear-to-ride is offered on any bike that is not already cleared — a bike at
     // "needs review" is the common case for it, not just one fully out of service.
     var isReady=statusOf(b)==='ok';
+    var u=remoteInUse[b.id];
     var acts='<div class="row mt bikeacts webonly">'+
+      (u?'<button class="btn xs solid" onclick="markBikeReturned(\''+esc(b.id)+'\')">Mark returned</button>':'')+
       '<button class="btn xs" onclick="renameBike(\''+esc(b.id)+'\')">Rename</button>'+
       (isReady?'':'<button class="btn xs" onclick="returnToService(\''+esc(b.id)+'\')">Clear to ride</button>')+
       '<button class="btn xs danger" onclick="markBikeOOS(\''+esc(b.id)+'\')">'+
         (isReady?'Mark out of service':'Update problems')+'</button>'+
       '</div>';
     return '<div class="card"><div class="bike-head"><b>'+esc(b.name)+'</b>'+
-      '<span class="status '+m[0]+'"><span class="dot"></span>'+m[1]+'</span></div>'+
+      (u?'<span class="status st-use"><span class="dot"></span>In use · '+esc(u.by||'someone')+'</span>'
+        :'<span class="status '+m[0]+'"><span class="dot"></span>'+m[1]+'</span>')+'</div>'+
       '<p class="brec'+(r.stale?' stale':'')+'">'+esc(r.txt)+'</p>'+body+acts+'</div>';
   }).join('');
 
